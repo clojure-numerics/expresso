@@ -3,4 +3,16 @@
   <groupId>clojure-numerics</groupId>
   <artifactId>expresso</artifactId>
   <version>0.0.1-SNAPSHOT</version>
+  <dependencies>
+  	<dependency>
+  		<groupId>net.mikera</groupId>
+  		<artifactId>core.matrix</artifactId>
+  		<version>0.4.0</version>
+  	</dependency>
+  	<dependency>
+  		<groupId>org.clojure</groupId>
+  		<artifactId>clojure</artifactId>
+  		<version>1.4.0</version>
+  	</dependency>
+  </dependencies>
 </project>
