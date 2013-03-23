@@ -14,5 +14,10 @@
   		<artifactId>clojure</artifactId>
   		<version>1.4.0</version>
   	</dependency>
+  	<dependency>
+  		<groupId>org.clojure</groupId>
+  		<artifactId>core.logic</artifactId>
+  		<version>0.8.0-rc3</version>
+  	</dependency>
   </dependencies>
 </project>
