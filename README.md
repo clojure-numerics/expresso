@@ -22,6 +22,7 @@ WORK IN PROGRESS: not much to see here yet!
  
 ### Syntax ideas
 
+```clojure
 ;; ex macro constructs expression data structures from regular s-expressions. 
 (def F1 (ex (= Y (+ X Z)))
 (def F2 (ex (= X [1 2 3]))
@@ -34,6 +35,7 @@ WORK IN PROGRESS: not much to see here yet!
 ;; solutions may have unknowns?
 (solve [X] F3)
 => ((* 0.5 Z))
+```
 
 
 
