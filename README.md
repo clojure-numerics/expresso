@@ -13,6 +13,13 @@ WORK IN PROGRESS: not much to see here yet!
  - Full compatibility with [core.matrix](https://github.com/mikera/matrix-api)
  
  
+### Implementation ideas / questions
+
+ - Feasible to use core.logic to search for solutions?
+ - Expressions should be wrapped in deftypes?
+ - Need a way of handling vector / matrix expressions. 
+ - Should an expresso expression implement core.matrix protocols? 
+ 
 ### Syntax ideas
 
 ;; ex macro constructs expression data structures from regular s-expressions. 
