@@ -48,4 +48,5 @@
   (resulto [- a b] 0 ))
 
 
-;; (run* [q] (equivo [+ 4 5] [+ 1 8]))
+;; (run* [q] (equivo [+ 4 5] [+ 1 [* 2 4]]))
+;; => (_0) ;; success!
