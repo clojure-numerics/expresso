@@ -1,23 +1,46 @@
-<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
-  <modelVersion>4.0.0</modelVersion>
-  <groupId>clojure-numerics</groupId>
-  <artifactId>expresso</artifactId>
-  <version>0.0.1-SNAPSHOT</version>
-  <dependencies>
-  	<dependency>
-  		<groupId>net.mikera</groupId>
-  		<artifactId>core.matrix</artifactId>
-  		<version>0.4.0</version>
-  	</dependency>
-  	<dependency>
-  		<groupId>org.clojure</groupId>
-  		<artifactId>clojure</artifactId>
-  		<version>1.4.0</version>
-  	</dependency>
-  	<dependency>
-  		<groupId>org.clojure</groupId>
-  		<artifactId>core.logic</artifactId>
-  		<version>0.8.0-rc3</version>
-  	</dependency>
-  </dependencies>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+	<modelVersion>4.0.0</modelVersion>
+	<groupId>net.mikera</groupId>
+	<artifactId>expresso</artifactId>
+	<version>0.0.1-SNAPSHOT</version>
+	<dependencies>
+		<dependency>
+			<groupId>net.mikera</groupId>
+			<artifactId>core.matrix</artifactId>
+			<version>0.4.0</version>
+		</dependency>
+		<dependency>
+			<groupId>org.clojure</groupId>
+			<artifactId>clojure</artifactId>
+			<version>1.4.0</version>
+		</dependency>
+		<dependency>
+			<groupId>org.clojure</groupId>
+			<artifactId>core.logic</artifactId>
+			<version>0.8.0-rc3</version>
+		</dependency>
+	</dependencies>
+
+	<licenses>
+		<license>
+			<name>GNU Lesser General Public License (LGPL)</name>
+			<url>http://www.gnu.org/licenses/lgpl.html</url>
+		</license>
+	</licenses>
+
+	<repositories>
+		<repository>
+			<id>clojars.org</id>
+			<name>Clojars repository</name>
+			<url>https://clojars.org/repo</url>
+		</repository>
+	</repositories>
+
+	<scm>
+		<connection>scm:git:git@github.com:clojure-numerics/${project.artifactId}.git</connection>
+		<url>scm:git:git@github.com:clojure-numerics/${project.artifactId}.git</url>
+		<developerConnection>scm:git:git@github.com:clojure-numerics/${project.artifactId}.git</developerConnection>
+		<tag>HEAD</tag>
+	</scm>
 </project>
