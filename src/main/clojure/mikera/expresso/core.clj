@@ -44,7 +44,7 @@
 
 
 (defn constant? [^Expression x]
-  (not (seq? (.node x))))
+  (not (sequential? (.node x))))
 
 (defn- express-list 
   ([[op & exprs]]
@@ -70,9 +70,38 @@
   ([expr]
     (ex* expr)))
 
+;; logic stuff
+
+(defn expo [op params exp]
+  (== (ex* (cons op params)) exp))
+
+(defn mapo [fo vs rs]
+  (conda
+    [(emptyo vs) (emptyo rs)]
+    [(fresh [v r restvs restrs]
+            (conso v restvs vs)
+            (conso r restrs rs)
+            (fo v r)
+            (mapo fo restvs restrs))]))
+
+(defn resulto 
+  "Computes the arithmetical result of an expression. Not relational."
+  ([exp v]
+    (conda 
+      [(pred exp constant? ) (project [exp] (== v (.node ^Expression exp)))]
+      [(fresh [op params eparams]
+              (expo op params exp)
+              (mapo resulto params eparams)
+              (project [eparams op] (== v (apply op eparams))))])))
+
 (comment
   (run* [q] 
         (fresh [a b]
           (== (ex [+ 2 4]) [a b q] )))
+  
+  (run* [q]
+        (expo + [1 2] q))
+  
+  (run* [q] (resulto (ex (+ 2 3)) q))
   
   )

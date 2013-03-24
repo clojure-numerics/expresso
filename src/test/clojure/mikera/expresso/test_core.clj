@@ -14,3 +14,7 @@
     (is (= [(ex X)] (run* [q] (fresh [a b] (== ex1 [a b q])))))
     
     ))
+
+(deftest test-constant
+  (is (constant? (ex 1)))
+  (is (not (constant? (ex (+ 1 'X))))))
