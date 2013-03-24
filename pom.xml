@@ -20,6 +20,11 @@
 			<artifactId>core.logic</artifactId>
 			<version>0.8.0-rc3</version>
 		</dependency>
+		<dependency>
+			<groupId>net.mikera</groupId>
+			<artifactId>clojure-utils</artifactId>
+			<version>0.1.2</version>
+		</dependency>
 	</dependencies>
 
 	<licenses>
