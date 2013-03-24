@@ -17,4 +17,10 @@
 
 (deftest test-constant
   (is (constant? (ex 1)))
-  (is (not (constant? (ex (+ 1 'X))))))
+  (is (not (constant? (ex (+ 1 X))))))
+
+(deftest test-lifto
+  (is (= [3] (run* [q] ((lifto inc) 2 q)))))
+
+(deftest test-resulto
+  (is (= [2] (run* [q] (resulto (ex 2) q)))))

@@ -72,6 +72,12 @@
 
 ;; logic stuff
 
+(defn lifto
+  "Lifts a function into a core.logic relation."
+  ([f]
+    (fn [& vs]
+      (project [vs] (== (last vs) (apply f (butlast vs)))))))
+
 (defn expo [op params exp]
   (== (ex* (cons op params)) exp))
 
@@ -92,7 +98,7 @@
       [(fresh [op params eparams]
               (expo op params exp)
               (mapo resulto params eparams)
-              (project [eparams op] (== v (apply op eparams))))])))
+              ((lifto op) eparams v))])))
 
 (comment
   (run* [q] 
