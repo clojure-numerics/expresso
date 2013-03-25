@@ -28,6 +28,9 @@
     (toString [this]
       (str node)))
 
+(defn expression? [a]
+  (instance? Expression a))
+
 (defn unify-with-expression* [^Expression u v s]
    (cond 
      (and (sequential? v) (sequential? (.node u)))
@@ -35,7 +38,10 @@
          (if (empty? v)
            s
            (when-let [s (unify s (first v) (first ns))]
-             (recur (next ns) (next v) s))))))
+             (recur (next ns) (next v) s))))
+     (expression? v)
+       (let [^Expression v v]
+         (unify s (.node u) (.node v)))))
 
 (extend-type mikera.expresso.core.Expression
   IUnifyTerms

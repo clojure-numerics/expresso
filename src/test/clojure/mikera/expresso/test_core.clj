@@ -10,8 +10,9 @@
 
 (deftest test-unify
   (let [ex1 (ex [+ 1 X])]
-    ;;(is (= [(ex X)] (run* [q] (fresh [a b] (== [a b q] ex1)))))
-    (is (= [(ex X)] (run* [q] (fresh [a b] (== ex1 [a b q])))))
+    ;;(is (= [(ex X)] (run* [q] (fresh [op p] (== [op p q] ex1)))))
+    (is (= [(ex X)] (run* [q] (fresh [op p] (== ex1 [op p q])))))
+    (is (= [(ex [+ 1 X])] (run* [q] (== ex1 q))))
     
     ))
 
