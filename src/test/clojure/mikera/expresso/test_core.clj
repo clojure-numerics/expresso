@@ -9,10 +9,10 @@
   (:require [clojure.core.logic.unifier :as u]))
 
 (deftest test-unify
-  (let [ex1 (ex [+ 1 X])]
+  (let [ex1 (ex (+ 1 X))]
     ;;(is (= [(ex X)] (run* [q] (fresh [op p] (== [op p q] ex1)))))
     (is (= [(ex X)] (run* [q] (fresh [op p] (== ex1 [op p q])))))
-    (is (= [(ex [+ 1 X])] (run* [q] (== ex1 q))))
+    (is (= [(ex (+ 1 X))] (run* [q] (== ex1 q))))
     
     ))
 

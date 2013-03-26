@@ -12,47 +12,6 @@
 
 (declare ex*)
 
-;; ========================================
-;; Expression datatype
-;; node is either: 
-;;  - a constant value
-;;  - a lvar
-;;  - a list of (Operation Expression+)
-(deftype Expression [node vars]
-  java.lang.Object
-    (hashCode [a]
-      (.hashCode node))
-    (equals [a b]
-      (and (instance? Expression b) 
-           (let [^Expression b b] 
-             (and (= (.node a) (.node b)) (= (.vars a) (.vars b))))))
-    (toString [this]
-      (str node)))
-
-(defn expression? [a]
-  (instance? Expression a))
-
-(defn unify-with-expression* [^Expression u v s]
-   (cond 
-     (and (sequential? v) (sequential? (.node u)))
-       (loop [ns (.node u) v v s s]
-         (if (empty? v)
-           s
-           (when-let [s (unify s (first v) (first ns))]
-             (recur (next ns) (next v) s))))
-     (expression? v)
-       (let [^Expression v v]
-         (unify s (.node u) (.node v)))))
-
-(extend-type mikera.expresso.core.Expression
-  IUnifyTerms
-   (unify-terms [u v s]
-     (unify-with-expression* u v s)))
-
-
-(defn constant? [^Expression x]
-  (not (sequential? (.node x))))
-
 (defn- express-list 
   ([[op & exprs]]
     (cons op (map ex* exprs))))
@@ -63,19 +22,23 @@
       ;; an operation with child expressions
       (sequential? expr)
         (let [childs (express-list expr)]
-          (Expression. childs 
-                      (reduce (fn [s ^Expression x] (into s (.vars x))) #{} (rest childs))))
+          childs)
+        
       ;; a symbol
       (symbol? expr)
-        (Expression. expr #{expr})
+        expr
+        
       ;; else must be a constant
       :else
-        (Expression. expr nil))))
+        expr)))
 
 (defmacro ex 
   "Constructs an Expression."
   ([expr]
-    (ex* expr)))
+    `(quote ~(ex* expr))))
+
+(defn constant? [expr]
+  (number? expr))
 
 ;; logic stuff
 
@@ -121,14 +84,14 @@
   "Computes the arithmetical result of an expression. Not relational."
   ([exp v]
     (conda 
-      [(pred exp constant? ) (project [exp] (== v (.node ^Expression exp)))]
+      [(pred exp number? ) (== v exp)]
       [(fresh [op params eparams]
               (expo op params exp)
               (mapo resulto params eparams)
               ((lifto op) eparams v))])))
 
 (defn equivo [a b]
-  (let [diff (ex (- a b))]
+  (let [diff `(- ~a ~b)]
     (conda 
       [(fresh [s] (== 0 (simplifico s diff)))]
       [(resulto diff 0)])))
