@@ -20,6 +20,12 @@
   (is (constant? (ex 1)))
   (is (not (constant? (ex (+ 1 X))))))
 
+(deftest test-without-symbol
+  (is (without-symbol? 'X (ex Y)))
+  (is (without-symbol? 'X (ex (+ 1 Y))))
+  (is (not (without-symbol? 'X (ex X))))
+  (is (not (without-symbol? 'X (ex (+ 1 X))))))
+
 (deftest test-lifto
   (is (= [3] (run* [q] ((lifto inc) 2 q)))))
 
@@ -30,3 +36,6 @@
 
 (deftest test-resulto
   (is (= [2] (run* [q] (resulto (ex 2) q)))))
+
+(deftest test-expresso
+  (is (= [3] (run* [q] (expresso 'X (ex (= X 3)) q)))))

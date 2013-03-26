@@ -90,11 +90,31 @@
               (mapo resulto params eparams)
               ((lifto op) eparams v))])))
 
+(defn without-symbol? [sym expr]
+  (cond
+    (and (symbol? expr) (= sym expr)) false
+    (sequential? expr) (every? #(without-symbol? sym %) expr)
+    :else true))
+
 (defn equivo [a b]
   (let [diff `(- ~a ~b)]
     (conda 
       [(fresh [s] (== 0 (simplifico s diff)))]
       [(resulto diff 0)])))
+
+(defn rearrangeo 
+  "Re-arranges an expression."
+  ([orig res]
+    (conde 
+      [(== orig res)])))
+
+(defn expresso 
+  "Expresses a symbol as a formula"
+  ([sym expr result]
+    (fresh [r]
+           (rearrangeo expr r)
+           (== ['= sym result] r)
+           (pred result #(without-symbol? sym %)))))
 
 (comment
   (run* [q] 
