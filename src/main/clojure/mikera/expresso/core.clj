@@ -16,6 +16,7 @@
 ;; Expression datatype
 ;; node is either: 
 ;;  - a constant value
+;;  - a lvar
 ;;  - a list of (Operation Expression+)
 (deftype Expression [node vars]
   java.lang.Object
@@ -84,8 +85,16 @@
     (fn [& vs]
       (project [vs] (== (last vs) (apply f (butlast vs)))))))
 
-(defn expo [op params exp]
-  (== (ex* (cons op params)) exp))
+(def NO_MATCH (Object.))
+
+(defn lifto-with-inverse
+  "Lifts a unary function into a core.logic relation."
+  ([f g]
+    (fn [& vs]
+      (let [[x y] vs]
+        (conda 
+          [(project [x] (== y (if (number? x) (f x) NO_MATCH)))]
+          [(project [y] (== x (if (number? y) (g y) NO_MATCH)))])))))
 
 (defn mapo [fo vs rs]
   (conda
@@ -96,6 +105,18 @@
             (fo v r)
             (mapo fo restvs restrs))]))
 
+
+(defn expo 
+  "Creates an expression with the given operator and parameters"
+  ([op params exp]
+    (== (ex* (cons op params)) exp)))
+
+
+(defn simplifico 
+  "Determines the simplified form of an expression."
+  ([a b]
+    nil))
+
 (defn resulto 
   "Computes the arithmetical result of an expression. Not relational."
   ([exp v]
@@ -105,6 +126,12 @@
               (expo op params exp)
               (mapo resulto params eparams)
               ((lifto op) eparams v))])))
+
+(defn equivo [a b]
+  (let [diff (ex (- a b))]
+    (conda 
+      [(fresh [s] (== 0 (simplifico s diff)))]
+      [(resulto diff 0)])))
 
 (comment
   (run* [q] 

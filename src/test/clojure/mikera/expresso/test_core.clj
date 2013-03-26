@@ -23,5 +23,10 @@
 (deftest test-lifto
   (is (= [3] (run* [q] ((lifto inc) 2 q)))))
 
+(deftest test-lifto-with-inverse
+  (let [inco (lifto-with-inverse inc dec)]
+    (is (= [3] (run* [q] (inco 2 q))))
+    (is (= [2] (run* [q] (inco q 3))))))
+
 (deftest test-resulto
   (is (= [2] (run* [q] (resulto (ex 2) q)))))
