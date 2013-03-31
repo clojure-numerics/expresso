@@ -10,7 +10,7 @@
 (set! *warn-on-reflection* true)
 (set! *unchecked-math* true)
 
-(declare ex*)
+(declare ex* mapo resulto)
 
 (defn- express-list 
   ([[op & exprs]]
@@ -46,18 +46,20 @@
   "Lifts a function into a core.logic relation."
   ([f]
     (fn [& vs]
-      (project [vs] (== (last vs) (apply f (butlast vs)))))))
-
-(def NO_MATCH (Object.))
+      (fresh [res args]
+        (== res (last vs))
+        (mapo resulto (butlast vs) args)
+        (project [f args]
+             (== res (apply f args)))))))
 
 (defn lifto-with-inverse
-  "Lifts a unary function into a core.logic relation."
+  "Lifts a unary function and its inverse into a core.logic relation."
   ([f g]
     (fn [& vs]
       (let [[x y] vs]
         (conda 
-          [(project [x] (== y (if (number? x) (f x) NO_MATCH)))]
-          [(project [y] (== x (if (number? y) (g y) NO_MATCH)))])))))
+          [(pred x number?) (project [x] (== y (f x)))]
+          [(pred y number?) (project [y] (== x (g y)))])))))
 
 (defn mapo [fo vs rs]
   (conda
@@ -68,33 +70,51 @@
             (fo v r)
             (mapo fo restvs restrs))]))
 
+(defn applyo 
+  "Applies a logic function to a set of parameters."
+  ([fo params result]
+    (fresh []
+           (project [params]
+             (apply fo (concat params (list result)))))))
 
 (defn expo 
   "Creates an expression with the given operator and parameters"
   ([op params exp]
-    (== (ex* (cons op params)) exp)))
+    (conso op params exp)))
 
+(defn resolve-opo 
+  "Resolves an operator to an actual function"
+  ([op resolved-fn]
+    (fresh []
+      (project [op]
+           (== resolved-fn @(resolve op)))))) 
 
-(defn simplifico 
-  "Determines the simplified form of an expression."
-  ([a b]
-    nil))
 
 (defn resulto 
   "Computes the arithmetical result of an expression. Not relational."
   ([exp v]
     (conda 
-      [(pred exp number? ) (== v exp)]
-      [(fresh [op params eparams]
+      [(pred exp number?) 
+       (== v exp)]
+      [(pred exp sequential?)
+       (fresh [op rop params]
               (expo op params exp)
-              (mapo resulto params eparams)
-              ((lifto op) eparams v))])))
+              (resolve-opo op rop) 
+              (applyo (lifto rop) params v))])))
+
 
 (defn without-symbol? [sym expr]
   (cond
     (and (symbol? expr) (= sym expr)) false
     (sequential? expr) (every? #(without-symbol? sym %) expr)
     :else true))
+
+(defn simplifico 
+  "Determines the simplified form of an expression."
+  ([a b]
+    (conde
+      [(resulto a b)])))
+
 
 (defn equivo [a b]
   (let [diff `(- ~a ~b)]
@@ -103,10 +123,11 @@
       [(resulto diff 0)])))
 
 (defn rearrangeo 
-  "Re-arranges an expression."
+  "Re-arranges an equality expression."
   ([orig res]
     (conde 
-      [(== orig res)])))
+      [(== orig res)]
+      [(fresh [s x] (== orig ['= x s]) (simplifico s res))])))
 
 (defn expresso 
   "Expresses a symbol as a formula"

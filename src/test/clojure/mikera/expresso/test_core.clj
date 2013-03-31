@@ -17,6 +17,7 @@
     ))
 
 (deftest test-constant
+  (is (= 10 (ex 10)))
   (is (constant? (ex 1)))
   (is (not (constant? (ex (+ 1 X))))))
 
@@ -34,8 +35,25 @@
     (is (= [3] (run* [q] (inco 2 q))))
     (is (= [2] (run* [q] (inco q 3))))))
 
+(deftest test-resolve-opo
+  (is (= [clojure.core/+] (run* [q] (resolve-opo '+ q)))))
+
+(deftest test-expo 
+  (is (= [1] (run* [q] (expo '+ [q 2]  (ex (+ 1 2))))))
+  (is (= [] (run* [q] (expo '- [q 2]  (ex (+ 1 2)))))))
+
+(deftest test-mapo 
+  (is (= [[2 3 4]] (run* [q] (mapo (lifto inc) [1 2 3] q))))
+  (is (= [2] (run* [q] (mapo (lifto-with-inverse inc dec) [1 q 3] [2 3 4])))))
+
+(deftest test-applyo 
+  (is (= [[1 2 3 4]] (run* [q] (applyo conso [1 [2 3 4]] q))))
+  (is (= [3] (run* [q] (applyo conso [1 [2 q 4]] [1 2 3 4])))))
+
 (deftest test-resulto
-  (is (= [2] (run* [q] (resulto (ex 2) q)))))
+  (is (= [2] (run* [q] (resulto (ex 2) q))))
+  (is (= [6] (run* [q] (resulto (ex (+ 2 4)) q)))))
 
 (deftest test-expresso
-  (is (= [3] (run* [q] (expresso 'X (ex (= X 3)) q)))))
+  (is (= [3] (run* [q] (expresso 'X (ex (= X 3)) q))))
+  (is (= [3] (run* [q] (expresso 'X (ex (= X (+ 1 2))) q)))))
