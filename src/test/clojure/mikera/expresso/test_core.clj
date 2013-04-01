@@ -54,6 +54,16 @@
   (is (= [2] (run* [q] (resulto (ex 2) q))))
   (is (= [6] (run* [q] (resulto (ex (+ 2 4)) q)))))
 
+(deftest test-simplifico
+  (is (= [3] (run* [q] (simplifico (ex (+ 1 2)) q))))
+  (is (= [10] (run* [q] (simplifico (ex (+ 1 2 3 4)) q))))
+  ;; (is (= [3] (run* [q] (simplifico (ex (+ 1 2 q 4)) 10)))) reverse simplification not impl.
+  )
+
+(deftest test-rearrangeo
+  (is (= [['= 'X 3]] (run* [q] (rearrangeo (ex (= X (+ 1 2))) q))))
+  )
+
 (deftest test-expresso
   (is (= [3] (run* [q] (expresso 'X (ex (= X 3)) q))))
   (is (= [3] (run* [q] (expresso 'X (ex (= X (+ 1 2))) q)))))

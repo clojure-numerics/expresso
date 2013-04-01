@@ -112,8 +112,10 @@
 (defn simplifico 
   "Determines the simplified form of an expression."
   ([a b]
-    (conde
-      [(resulto a b)])))
+    (conda
+      [(pred a number?) (== a b)]
+      [(resulto a b)]
+      [(== a b)])))
 
 
 (defn equivo [a b]
@@ -123,11 +125,13 @@
       [(resulto diff 0)])))
 
 (defn rearrangeo 
-  "Re-arranges an equality expression."
+  "Re-arranges and simplifies an equality expression."
   ([orig res]
     (conde 
-      [(== orig res)]
-      [(fresh [s x] (== orig ['= x s]) (simplifico s res))])))
+      [(fresh [s x simp] 
+              (== orig ['= x s]) 
+              (simplifico s simp)
+              (== res ['= x simp]))])))
 
 (defn expresso 
   "Expresses a symbol as a formula"
