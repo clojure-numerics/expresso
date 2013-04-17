@@ -7,9 +7,14 @@ WORK IN PROGRESS: not much to see here yet!
 
 ### Objectives
 
+expresso aims to be a general library for manipulating mathematical expressions.
+In particular it should provide following features
+
  - Enable mathematical expressions to be encoded
  - Support arbitrary symbols as unknowns / variables in expression
- - Provide a basis for building numerical and analytical solvers
+ - Provide a standart (canonical?) form for expressions on which more sophisticated functionality can be built
+ - An Optimizer, which optimizes expression for excecution on core.matrix
+ - A Solver, which finds analytical (or numerical?) solutions to sets of expressions 
  - Full compatibility with [core.matrix](https://github.com/mikera/matrix-api)
  
  
