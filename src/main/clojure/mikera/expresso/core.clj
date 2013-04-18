@@ -10,48 +10,7 @@
 (set! *warn-on-reflection* true)
 (set! *unchecked-math* true)
 
-(declare ex*)
-
-;; ========================================
-;; Expression datatype
-;; node is either: 
-;;  - a constant value
-;;  - a lvar
-;;  - a list of (Operation Expression+)
-(deftype Expression [node vars]
-  java.lang.Object
-    (hashCode [a]
-      (.hashCode node))
-    (equals [a b]
-      (and (instance? Expression b) 
-           (let [^Expression b b] 
-             (and (= (.node a) (.node b)) (= (.vars a) (.vars b))))))
-    (toString [this]
-      (str node)))
-
-(defn expression? [a]
-  (instance? Expression a))
-
-(defn unify-with-expression* [^Expression u v s]
-   (cond 
-     (and (sequential? v) (sequential? (.node u)))
-       (loop [ns (.node u) v v s s]
-         (if (empty? v)
-           s
-           (when-let [s (unify s (first v) (first ns))]
-             (recur (next ns) (next v) s))))
-     (expression? v)
-       (let [^Expression v v]
-         (unify s (.node u) (.node v)))))
-
-(extend-type mikera.expresso.core.Expression
-  IUnifyTerms
-   (unify-terms [u v s]
-     (unify-with-expression* u v s)))
-
-
-(defn constant? [^Expression x]
-  (not (sequential? (.node x))))
+(declare ex* mapo resulto)
 
 (defn- express-list 
   ([[op & exprs]]
@@ -63,19 +22,23 @@
       ;; an operation with child expressions
       (sequential? expr)
         (let [childs (express-list expr)]
-          (Expression. childs 
-                      (reduce (fn [s ^Expression x] (into s (.vars x))) #{} (rest childs))))
+          childs)
+        
       ;; a symbol
       (symbol? expr)
-        (Expression. expr #{expr})
+        expr
+        
       ;; else must be a constant
       :else
-        (Expression. expr nil))))
+        expr)))
 
 (defmacro ex 
   "Constructs an Expression."
   ([expr]
-    (ex* expr)))
+    `(quote ~(ex* expr))))
+
+(defn constant? [expr]
+  (number? expr))
 
 ;; logic stuff
 
@@ -83,18 +46,20 @@
   "Lifts a function into a core.logic relation."
   ([f]
     (fn [& vs]
-      (project [vs] (== (last vs) (apply f (butlast vs)))))))
-
-(def NO_MATCH (Object.))
+      (fresh [res args]
+        (== res (last vs))
+        (mapo resulto (butlast vs) args)
+        (project [f args]
+             (== res (apply f args)))))))
 
 (defn lifto-with-inverse
-  "Lifts a unary function into a core.logic relation."
+  "Lifts a unary function and its inverse into a core.logic relation."
   ([f g]
     (fn [& vs]
       (let [[x y] vs]
         (conda 
-          [(project [x] (== y (if (number? x) (f x) NO_MATCH)))]
-          [(project [y] (== x (if (number? y) (g y) NO_MATCH)))])))))
+          [(pred x number?) (project [x] (== y (f x)))]
+          [(pred y number?) (project [y] (== x (g y)))])))))
 
 (defn mapo [fo vs rs]
   (conda
@@ -105,33 +70,76 @@
             (fo v r)
             (mapo fo restvs restrs))]))
 
+(defn applyo 
+  "Applies a logic function to a set of parameters."
+  ([fo params result]
+    (fresh []
+           (project [params]
+             (apply fo (concat params (list result)))))))
 
 (defn expo 
   "Creates an expression with the given operator and parameters"
   ([op params exp]
-    (== (ex* (cons op params)) exp)))
+    (conso op params exp)))
 
+(defn resolve-opo 
+  "Resolves an operator to an actual function"
+  ([op resolved-fn]
+    (fresh []
+      (project [op]
+           (== resolved-fn @(resolve op)))))) 
 
-(defn simplifico 
-  "Determines the simplified form of an expression."
-  ([a b]
-    nil))
 
 (defn resulto 
   "Computes the arithmetical result of an expression. Not relational."
   ([exp v]
     (conda 
-      [(pred exp constant? ) (project [exp] (== v (.node ^Expression exp)))]
-      [(fresh [op params eparams]
+      [(pred exp number?) 
+       (== v exp)]
+      [(pred exp sequential?)
+       (fresh [op rop params]
               (expo op params exp)
-              (mapo resulto params eparams)
-              ((lifto op) eparams v))])))
+              (resolve-opo op rop) 
+              (applyo (lifto rop) params v))])))
+
+
+(defn without-symbol? [sym expr]
+  (cond
+    (and (symbol? expr) (= sym expr)) false
+    (sequential? expr) (every? #(without-symbol? sym %) expr)
+    :else true))
+
+(defn simplifico 
+  "Determines the simplified form of an expression."
+  ([a b]
+    (conda
+      [(pred a number?) (== a b)]
+      [(resulto a b)]
+      [(== a b)])))
+
 
 (defn equivo [a b]
-  (let [diff (ex (- a b))]
+  (let [diff `(- ~a ~b)]
     (conda 
       [(fresh [s] (== 0 (simplifico s diff)))]
       [(resulto diff 0)])))
+
+(defn rearrangeo 
+  "Re-arranges and simplifies an equality expression."
+  ([orig res]
+    (conde 
+      [(fresh [s x simp] 
+              (== orig ['= x s]) 
+              (simplifico s simp)
+              (== res ['= x simp]))])))
+
+(defn expresso 
+  "Expresses a symbol as a formula"
+  ([sym expr result]
+    (fresh [r]
+           (rearrangeo expr r)
+           (== ['= sym result] r)
+           (pred result #(without-symbol? sym %)))))
 
 (comment
   (run* [q] 
