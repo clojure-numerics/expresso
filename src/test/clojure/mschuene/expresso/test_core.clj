@@ -1,4 +1,4 @@
-(ns mikera.expresso.test-core
+(ns mschuene.expresso.test-core
   (:use mikera.expresso.core)
   (:use clojure.test)
   (:refer-clojure :exclude [==])
