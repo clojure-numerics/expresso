@@ -1,5 +1,5 @@
 (ns numeric.expresso.test-core
-  (:use mikera.expresso.core)
+  (:use numeric.expresso.core)
   (:use clojure.test)
   (:refer-clojure :exclude [==])
   (:use [clojure.core.logic.protocols]
