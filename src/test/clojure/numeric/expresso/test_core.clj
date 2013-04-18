@@ -1,4 +1,4 @@
-(ns mikera.expresso.test-core
+(ns numeric.expresso.test-core
   (:use mikera.expresso.core)
   (:use clojure.test)
   (:refer-clojure :exclude [==])
@@ -7,6 +7,7 @@
         clojure.test)
   (:require [clojure.core.logic.fd :as fd])
   (:require [clojure.core.logic.unifier :as u]))
+
 
 (deftest test-unify
   (let [ex1 (ex (+ 1 X))]
