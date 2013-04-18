@@ -1,4 +1,4 @@
-(ns mschuene.expresso.core
+(ns numeric.expresso.core
   (:refer-clojure :exclude [==])
   (:use [clojure.core.logic.protocols]
         [clojure.core.logic :exclude [is] :as l]
@@ -6,12 +6,73 @@
   (:require [clojure.core.logic.fd :as fd])
   (:require [clojure.core.logic.unifier :as u]))
 
-(run* [q]
-      (fresh [a b] 
-             (== [a q b] '(1 2 3))))
+(set! *warn-on-reflection* true)
+(set! *unchecked-math* true)
 
-(defn expo [op params ex]
-  (conso op params ex))
+(declare ex* mapo resulto)
+
+(defn- express-list 
+  ([[op & exprs]]
+    (cons op (map ex* exprs))))
+
+(defn ex* 
+  ([expr]
+    (cond 
+      ;; an operation with child expressions
+      (sequential? expr)
+        (let [childs (express-list expr)]
+          childs)
+        
+      ;; a symbol
+      (symbol? expr)
+        expr
+        
+      ;; else must be a constant
+      :else
+        expr)))
+
+(defmacro ex 
+  "Constructs an Expression."
+  ([expr]
+    `(quote ~(ex* expr))))
+
+;;logic stuff
+
+
+(defn lifto
+  "Lifts a function into a core.logic relation."
+  ([f]
+    (fn [& vs]
+      (fresh [res args]
+        (== res (last vs))
+        (mapo resulto (butlast vs) args)
+        (project [f args]
+             (== res (apply f args)))))))
+
+(defn lifto-with-inverse
+  "Lifts a unary function and its inverse into a core.logic relation."
+  ([f g]
+    (fn [& vs]
+      (let [[x y] vs]
+        (conda 
+          [(pred x number?) (project [x] (== y (f x)))]
+          [(pred y number?) (project [y] (== x (g y)))])))))
+
+
+(defn constant? [expr]
+  (number? expr))
+
+(defn expo 
+  "Creates an expression with the given operator and parameters"
+  ([op params exp]
+    (conso op params exp)))
+
+(defn resolve-opo 
+  "Resolves an operator to an actual function"
+  ([op resolved-fn]
+    (fresh []
+      (project [op]
+           (== resolved-fn @(resolve op)))))) 
 ;; (run* [q] (fresh [a b] (expo '+ [a b] q)))
 ;; => ((+ _0 _1))
 
@@ -32,30 +93,77 @@
             (mapo fo restvs restrs))]))
 ;; (run* [q] (mapo inco [1 2] q))
 
+
+(defn applyo 
+  "Applies a logic function to a set of parameters."
+  ([fo params result]
+    (fresh []
+           (project [params]
+             (apply fo (concat params (list result)))))))
+
+
 (defn resulto 
   "Computes the arithmetical result of an expression. Not relational."
   ([exp v]
     (conda 
-      [(pred exp number? ) (== v exp)]
-      [(fresh [op params eparams]
+      [(pred exp number?) 
+       (== v exp)]
+      [(pred exp sequential?)
+       (fresh [op rop params]
               (expo op params exp)
-              (mapo resulto params eparams)
-              (project [eparams op] (== v (apply (resolve op) eparams))))])))
+              (resolve-opo op rop) 
+              (applyo (lifto rop) params v))])))
+
+
 ;; (run* [q] (resulto 10 q))
 ;; => 10
 ;;
 ;; (run* [q] (resulto [+ 5 6] q))
 ;; => 11
 
+
+(defn without-symbol? [sym expr]
+  (cond
+    (and (symbol? expr) (= sym expr)) false
+    (sequential? expr) (every? #(without-symbol? sym %) expr)
+    :else true))
+
+(defn simplifico 
+  "Determines the simplified form of an expression."
+  ([a b]
+    (conda
+      [(pred a number?) (== a b)]
+      [(resulto a b)]
+      [(== a b)])))
+
+
 (defn equivo [a b]
-  (resulto [- a b] 0 ))
+  (let [diff `(- ~a ~b)]
+    (conda 
+      [(fresh [s] (== 0 (simplifico s diff)))]
+      [(resulto diff 0)])))
+
+(defn rearrangeo 
+  "Re-arranges and simplifies an equality expression."
+  ([orig res]
+    (conde 
+      [(fresh [s x simp] 
+              (== orig ['= x s]) 
+              (simplifico s simp)
+              (== res ['= x simp]))])))
+
+(defn expresso 
+  "Expresses a symbol as a formula"
+  ([sym expr result]
+    (fresh [r]
+           (rearrangeo expr r)
+           (== ['= sym result] r)
+           (pred result #(without-symbol? sym %)))))
 
 
-;; (run* [q] (equivo [+ 4 5] [+ 1 [* 2 4]]))
-;; => (_0) ;; success!
 
-
-(declare no-variablo)
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; a little proof of concept rule based translator
 
 (defn no-variablo [eq]
   (conda
@@ -76,6 +184,7 @@
        (matche [~eq]
                ([~lhs] (== ~eq1 ~rhs))))))
     
+
 (defn calculo [eq eq1]
   (no-variablo eq)
   (resulto eq eq1))
@@ -120,7 +229,6 @@
    ((fresh [a]
           (mapo simplifyo expression a)
           (simp-ruleso a nexpression)))))
-
 
                                         ; test cases
 
