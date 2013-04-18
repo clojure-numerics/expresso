@@ -1,0 +1,143 @@
+(ns mschuene.expresso.core
+  (:refer-clojure :exclude [==])
+  (:use [clojure.core.logic.protocols]
+        [clojure.core.logic :exclude [is] :as l]
+        clojure.test)
+  (:require [clojure.core.logic.fd :as fd])
+  (:require [clojure.core.logic.unifier :as u]))
+
+(run* [q]
+      (fresh [a b] 
+             (== [a q b] '(1 2 3))))
+
+(defn expo [op params ex]
+  (conso op params ex))
+;; (run* [q] (fresh [a b] (expo '+ [a b] q)))
+;; => ((+ _0 _1))
+
+(defn inco [a res]
+  (project [a]
+           (== res (inc a))))
+
+(defn atom? [x] (not (sequential? x)))
+
+
+(defn mapo [fo vs rs]
+  (conda
+    [(emptyo vs) (emptyo rs)]
+    [(fresh [v r restvs restrs]
+            (conso v restvs vs)
+            (conso r restrs rs)
+            (fo v r)
+            (mapo fo restvs restrs))]))
+;; (run* [q] (mapo inco [1 2] q))
+
+(defn resulto 
+  "Computes the arithmetical result of an expression. Not relational."
+  ([exp v]
+    (conda 
+      [(pred exp number? ) (== v exp)]
+      [(fresh [op params eparams]
+              (expo op params exp)
+              (mapo resulto params eparams)
+              (project [eparams op] (== v (apply (resolve op) eparams))))])))
+;; (run* [q] (resulto 10 q))
+;; => 10
+;;
+;; (run* [q] (resulto [+ 5 6] q))
+;; => 11
+
+(defn equivo [a b]
+  (resulto [- a b] 0 ))
+
+
+;; (run* [q] (equivo [+ 4 5] [+ 1 [* 2 4]]))
+;; => (_0) ;; success!
+
+
+
+(comment 
+(defn reordero [eq eq1]
+  (matche [eq]
+          ([['= ?lhs ?rhs]] (== eq1 ['= ?rhs ?lhs]))))
+
+(run* [q]
+  (fresh [a o]
+    (== a [= [+ 2 3] [* 3 'x]])
+    (matche [a]
+            ([ [= ?o ?p] ]
+             (== q [= ?o ?p])))))
+)
+(defn not! [g]
+  (conda (g (project [] (do (prn "Nun fail") (== 1 1))) fail)
+         (succeed)))
+
+  (defn zeropexo [eq eq1]
+  (matche [eq]
+         ([['+ x 0]] (== eq1 x))))
+(defn expzeroo [eq eq1]
+  (matche [eq]
+          ([['+ 0 x]] (== eq1 x))))
+
+(declare no-variablo)
+
+(defn no-variablo [eq]
+  (conda
+   ((pred eq atom?)  (!= 'x eq))
+   ((matche [eq]
+            ([[?op ?lhs ?rhs]] (no-variablo ?lhs) (no-variablo ?rhs))))))
+
+
+(comment syntax ist
+         (rule ['+ 0 x] :=> x)
+         )
+
+(defmacro rule [lhs _ rhs]
+  (let [eq (gensym "eq")
+        eq1 (gensym "eq1")]
+    `(fn [~eq ~eq1]
+       (matche [~eq]
+               ([~lhs] (== ~eq1 ~rhs))))))
+    
+(defn calculo [eq eq1]
+  (no-variablo eq)
+  (resulto eq eq1))
+
+(def rules
+  [(rule ['+ 0 x] :=> x)
+   (rule ['* 0 x] :=> 0)
+                                        ;zeropexo
+   ;expzeroo
+   ;calculo                                     ;reordero
+   ])
+
+
+
+
+(defn apply-ruleo [rule equation new-equation]
+  (project [rule equation new-equation]
+           (rule equation new-equation)))
+
+(defn apply-ruleso [rules equation nequation]
+  (matche [rules]
+          ([[?r . ?rs]] (conda
+                         ((apply-ruleo ?r equation nequation))
+                         ((apply-ruleso ?rs equation nequation))))))
+;        ([?e] (emptyo ?e) (== nequation equation))))
+
+(declare simplifyo)
+
+(defn simp-ruleso [expression nexpression]
+  (fresh [a]
+         (project [expression] (do (prn "simp-ruleso with" expression) (== expression expression)))
+         (conda
+          ((apply-ruleso rules expression a) (simplifyo a nexpression))
+          ((== expression nexpression)))))
+
+
+(defn simplifyo [expression nexpression]
+  (conda
+   ((pred expression atom?) (== nexpression expression))
+   ((fresh [a]
+          (mapo simplifyo expression a)
+          (simp-ruleso a nexpression)))))
