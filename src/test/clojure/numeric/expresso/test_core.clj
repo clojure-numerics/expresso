@@ -68,3 +68,12 @@
 (deftest test-expresso
   (is (= [3] (run* [q] (expresso 'X (ex (= X 3)) q))))
   (is (= [3] (run* [q] (expresso 'X (ex (= X (+ 1 2))) q)))))
+
+(deftest test-apply-ruleo
+  (is (= ['x] (run* [q] (apply-ruleo (rule ['+ 0 x] :=> x) '(+ 0 x) q))))
+  (is (= [0] (run* [q] (apply-ruleo (rule ['* x 0] :=> 0) '(* x 0) q))))
+  (is (= ['(+ 0 (+ 0 x))] (run* [q] (apply-ruleo (rule ['+ 0 x] :=> x) q '(+ 0 x)))))
+  (is (= [7] (run* [q] (apply-ruleo calculo '(+ 1 (* 2 3)) q)))))
+
+(deftest test-simplifyo
+  (is (= [0] (run* [q] (simplifyo '(* x (+ 0 (* 3 (* x 0)))) q)))))
