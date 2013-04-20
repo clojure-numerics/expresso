@@ -41,7 +41,12 @@
 
 (deftest test-expo 
   (is (= [1] (run* [q] (expo '+ [q 2]  (ex (+ 1 2))))))
-  (is (= [] (run* [q] (expo '- [q 2]  (ex (+ 1 2)))))))
+  (is (= [] (run* [q] (expo '- [q 2]  (ex (+ 1 2))))))
+  (is (= [[1 2]] (run* [q] (fresh [ex op lhs rhs]
+                                  (expo '+ [1 2] ex)
+                                  (expo op [lhs rhs] ex)
+                                  (== q [lhs rhs]))))))
+
 
 (deftest test-mapo 
   (is (= [[2 3 4]] (run* [q] (mapo (lifto inc) [1 2 3] q))))
@@ -69,6 +74,7 @@
   (is (= [3] (run* [q] (expresso 'X (ex (= X 3)) q))))
   (is (= [3] (run* [q] (expresso 'X (ex (= X (+ 1 2))) q)))))
 
+
 (deftest test-apply-ruleo
   (is (= ['x] (run* [q] (apply-ruleo (rule ['+ 0 x] :=> x) '(+ 0 x) q))))
   (is (= [0] (run* [q] (apply-ruleo (rule ['* x 0] :=> 0) '(* x 0) q))))
@@ -77,3 +83,7 @@
 
 (deftest test-simplifyo
   (is (= [0] (run* [q] (simplifyo '(* x (+ 0 (* 3 (* x 0)))) q)))))
+
+(deftest test-solveo
+  (is (= ['(= x 7/3)] (run* [q] (solveo '(= (- (* x 3) 3) 4) 'x q))))
+  (is (= ['(= x 4) ] (run* [q] (solveo '(= (+ (* 3 (+ (* x 4) (* x 3))) 5) 89) 'x  q)))))

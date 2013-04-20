@@ -165,9 +165,16 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; a little proof of concept rule based translator
 
+(def debug-mode nil)
+
+(defmacro debug [vars & message]
+  `(project ~vars
+            (do (when debug-mode
+                  (prn ~@message)) (== 1 1))))
+
 (defn no-variablo [eq]
   (conda
-   ((pred eq atom?)  (!= 'x eq))
+   ((pred eq atom?)  (pred eq number?))
    ((matche [eq]
             ([[?op ?lhs ?rhs]] (no-variablo ?lhs) (no-variablo ?rhs))))))
 
@@ -199,6 +206,16 @@
    (rule ['* x 0] :=> 0)
    (rule ['* 1 x] :=> x)
    (rule ['* x 1] :=> x)
+   (rule ['- 0 x] :=> x)
+   (rule ['- x 0] :=> x)
+   (rule ['- x x] :=> 0)
+   (rule ['* y ['+ 'x z]] :=> ['+ ['* y 'x] ['* y z]])
+   (rule ['* ['+ 'x z] y] :=> ['+ ['* y 'x] ['* y z]])
+   (rule ['+ x x] :=> ['* 2 x])
+   (rule ['+ ['* y 'x] ['* z 'x]] :=> ['* ['+ z y] 'x])
+   (rule ['+ ['* y 'x] ['* 'x z]] :=> ['* ['+ z y] 'x])
+   (rule ['+ ['* 'x y] ['* z 'x]] :=> ['* ['+ z y] 'x])
+   (rule ['+ ['* 'x y] ['* 'x z]] :=> ['* ['+ z y] 'x])
    calculo
    ])
 
@@ -246,7 +263,88 @@
   ;=> (19)
  )
   
-  
-  
 
-  
+(declare findo isolateo calc-rhso)
+
+(defn solveo [eq new-eq]
+  (fresh [pos neq nneq]
+         (findo eq 'x pos)
+         (isolateo 'x eq pos neq)
+         (calc-rhso neq nneq)
+         (== eq new-eq)))
+
+(defn flato
+  "non-relational flat"
+  [coll flat-coll]
+  (fresh []
+         (project [coll flat-coll]
+                  (== (flatten coll) flat-coll))))
+
+(defn symb-ino [x eq]
+  (fresh [feq]
+         (debug [x eq] "symb-ino " x eq)
+         (conda [(pred eq atom?) (== x eq)]
+                [(flato eq feq)
+                 (membero x feq)])))
+
+
+(defn poso [x eq pos]
+  (fresh [op lhs rhs]
+         (debug [x eq pos] "x " x "eq " eq "pos " pos)
+         (conda
+          [(pred eq atom?) (debug [] "atom") (== pos 0)]
+          [(expo op [lhs rhs] eq) 
+           (conde
+            [(symb-ino x lhs) (fresh [npos]
+                                     (poso x lhs npos)
+                                     (conso 1 npos pos))]
+            [(symb-ino x rhs) (fresh [npos]
+                                     (poso x rhs npos)
+                                     (conso 2 npos pos))])])))
+
+
+(defn findo [x eq pos]
+  (conda
+   [(pred eq atom?) succeed]))
+
+
+(def isolate-rules
+  [
+   (rule [1 ['= ['+ x y] z]] :=> ['= x ['- z y]])
+   (rule [2 ['= ['+ y x] z]] :=> ['= x ['- z y]])
+   (rule [1 ['= ['* x y] z]] :=> ['= x ['/ z y]])
+   (rule [2 ['= ['* y x] z]] :=> ['= x ['/ z y]])
+   (rule [1 ['= ['- x y] z]] :=> ['= x ['+ z y]])
+   (rule [2 ['= ['- y x] z]] :=> ['= ['- 0 x] ['- z y]])
+   ])
+
+(defn isolato [eq pos neq]
+  (fresh []
+  (debug [eq pos] "eq " eq "pos " pos)
+  (matcha [pos]
+          ([0] (debug [] "rest ist " ) (fresh [op lhs rhs nrhs nlhs]
+                                              (expo op [lhs rhs] eq)
+                                              (simplifyo rhs nrhs)
+                                              (simplifyo lhs nlhs)
+                                              (expo op [nlhs nrhs] neq)))
+          ([(y . x)] (fresh [a req]
+                            (debug [y x] "y " y "x " x)
+                           (== a [y eq])
+                           (apply-ruleso isolate-rules a req)
+                           (isolato req x neq))))))
+
+(defn solve-diffo [eq symb neq]
+  (fresh [ rpos pos fpos]
+         (poso symb eq rpos)
+         (debug [rpos] "rpos ist " rpos)
+         (conso fpos pos rpos)
+        ; (resto rpos pos)
+         (isolato eq pos neq)))
+
+
+(defn solveo [eq symb neq]
+  (fresh [a lhs rhs seq]
+         (expo '= [lhs rhs] eq)
+         (== a ['= ['- lhs rhs] 0])
+         (simplifyo a seq)
+         (solve-diffo seq symb neq)))
