@@ -5,17 +5,19 @@
   (:use [clojure.core.logic.protocols]
         [clojure.core.logic :exclude [is] :as l]
         clojure.test)
+;  (:require [numeric.expresso.construct :as c])
   (:require [clojure.core.logic.fd :as fd]
-            [numeric.expressso.construct :as c])
+            [numeric.expresso.construct :as c]
+            [numeric.expresso.solve :as s])
   (:require [clojure.core.logic.unifier :as u]))
 
 
-#_(deftest test-constant
+(deftest test-constant
   (is (= 10 (c/ex 10)))
   (is (constant? (c/ex 1)))
   (is (not (constant? (c/ex (+ 1 X))))))
 
-#_(deftest test-without-symbol
+(deftest test-without-symbol
   (is (without-symbol? 'X (c/ex Y)))
   (is (without-symbol? 'X (c/ex (+ 1 Y))))
   (is (not (without-symbol? 'X (c/ex X))))
@@ -27,10 +29,13 @@
     (is (= [3] (run* [q] (inco 2 q))))
     (is (= [2] (run* [q] (inco q 3))))))
 
-#_(deftest test-expo 
-  (is (= [1] (run* [q] (expo '+ [q 2]  (ex (+ 1 2))))))
-  (is (= [] (run* [q] (expo '- [q 2]  (ex (+ 1 2))))))
-  (is (= [[1 2]] (run* [q] (fresh [ex op lhs rhs]
-                                  (expo '+ [1 2] ex)
-                                  (expo op [lhs rhs] ex)
-                                  (== q [lhs rhs]))))))
+(deftest test-mapo 
+  (is (= [[2 3 4]] (run* [q] (mapo (s/lifto inc) [1 2 3] q))))
+  (is (= [2] (run* [q] (mapo (lifto-with-inverse inc dec) [1 q 3] [2 3 4])))))
+
+(deftest test-resolve-opo
+  (is (= [clojure.core/+] (run* [q] (resolve-opo '+ q)))))
+
+(deftest test-applyo 
+  (is (= [[1 2 3 4]] (run* [q] (applyo conso [1 [2 3 4]] q))))
+  (is (= [3] (run* [q] (applyo conso [1 [2 q 4]] [1 2 3 4])))))
