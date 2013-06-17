@@ -6,5 +6,5 @@
   :dependencies [[org.clojure/clojure "1.5.1"]
                  [org.clojure/core.logic "0.8.3"]]
   :src-paths ["src/main/clojure"]
-  :test-paths ["src/test/clojure"]
+  :test-paths ["src/main/clojure"]
 )

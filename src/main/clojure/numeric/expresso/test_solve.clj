@@ -5,8 +5,18 @@
   (:use [clojure.core.logic.protocols]
         [clojure.core.logic :exclude [is] :as l]
         clojure.test)
+  (:require [numeric.expresso.construct :as c])
   (:require [clojure.core.logic.fd :as fd])
   (:require [clojure.core.logic.unifier :as u]))
+
+(deftest test-lifto
+  (is (= [3] (run* [q] ((lifto inc) 2 q)))))
+
+
+(deftest test-resulto
+  (is (= [2] (run* [q] (resulto (c/ex 2) q))))
+  (is (= [6] (run* [q] (resulto (c/ex (+ 2 4)) q)))))
+
 
 (deftest test-simplifyo
   (is (= [0] (run* [q] (simplifyo '(* x (+ 0 (* 3 (* x 0)))) q)))))

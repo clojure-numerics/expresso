@@ -37,4 +37,7 @@
   "Creates an expression with the given operator and parameters"
   ([op params exp]
     (conso op params exp)))
-  
+
+
+(defn plus [a b]
+  (+ a b))
