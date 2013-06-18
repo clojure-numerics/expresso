@@ -5,5 +5,9 @@
             :url "http://www.eclipse.org/legal/epl-v10.html"}
   :dependencies [[org.clojure/clojure "1.5.1"]
                  [org.clojure/core.logic "0.8.3"]]
-  :src-paths ["src" "src/main/clojure"]
-  :test-paths ["src" "src/test/clojure"])
+
+  :source-paths ["src" "src/main/clojure"]
+  :test-paths ["test" "src/test/clojure"]
+
+)
+
