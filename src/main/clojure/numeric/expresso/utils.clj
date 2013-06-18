@@ -6,7 +6,7 @@
   (:require [clojure.core.logic.fd :as fd])
   (:require [clojure.core.logic.unifier :as u]))
 
-(def debug-mode true)
+(def debug-mode nil)
 
 (defmacro debug [vars & message]
   `(project ~vars
