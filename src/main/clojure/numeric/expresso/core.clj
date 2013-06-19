@@ -50,8 +50,9 @@
 
 (defmacro ?-to-logic [code]
   (?-to-lvar code))
-(def rule (?-to-logic [(ce `* ?x 1)  ?x]))
 
+(def rule (?-to-logic [(ce `* ?x 1)  ?x]))
+(def rule2 (?-to-logic [(ce `* 0 ?x) 0]))
 (defn apply-rule-simple [rule expression]
   (run 1 [q]
        (fresh [pat trans]
