@@ -14,13 +14,14 @@
 
 
 (deftest test-resulto
-  (is (= [2] (run* [q] (resulto (c/ex 2) q))))
-  (is (= [6] (run* [q] (resulto (c/ex (+ 2 4)) q)))))
+  (is (= [6] (run* [q] (resulto (c/ex `+ 2 4) q)))))
 
 
 (deftest test-simplifyo
-  (is (= [0] (run* [q] (simplifyo '(* x (+ 0 (* 3 (* x 0)))) q)))))
+  (is (= [0] (run 1 [q] (simplifyo '(* x (+ 0 (* 3 (* x 0)))) q)))))
 
-(deftest test-solveo
-  (is (= ['(= x 7/3)] (run* [q] (solveo '(= (- (* x 3) 3) 4) 'x q))))
-  (is (= ['(= x 4) ] (run* [q] (solveo '(= (+ (* 3 (+ (* x 4) (* x 3))) 5) 89) 'x  q)))))
+
+#_(deftest test-solveo
+  (is (= ['(= x 7/3)] (run 1 [q] (solveo '(= (- (* x 3) 3) 4) 'x q))))
+  (is (= ['(= x 4) ] (run 1 [q] (solveo '(= (+ (* 3 (+ (* x 4) (* x 3))) 5) 89) 'x  q)))))
+

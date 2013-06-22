@@ -54,23 +54,23 @@
 ; A rule is a clause which gets an expression and returns a modified expression
 ; If a rule is not applicable, it fails
 (def simp-rules
-  [(r/rule ['+ 0 x] :=> x)
-   (r/rule ['+ x 0] :=> x)
-   (r/rule ['* 0 x] :=> 0)
-   (r/rule ['* x 0] :=> 0)
-   (r/rule ['* 1 x] :=> x)
-   (r/rule ['* x 1] :=> x)
-   (r/rule ['- 0 x] :=> x)
-   (r/rule ['- x 0] :=> x)
-   (r/rule ['- x x] :=> 0)
-   (r/rule ['* y ['+ 'x z]] :=> ['+ ['* y 'x] ['* y z]])
-   (r/rule ['* ['+ 'x z] y] :=> ['+ ['* y 'x] ['* y z]])
-   (r/rule ['+ x x] :=> ['* 2 x])
-   (r/rule ['+ ['* y 'x] ['* z 'x]] :=> ['* ['+ z y] 'x])
-   (r/rule ['+ ['* y 'x] ['* 'x z]] :=> ['* ['+ z y] 'x])
-   (r/rule ['+ ['* 'x y] ['* z 'x]] :=> ['* ['+ z y] 'x])
-   (r/rule ['+ ['* 'x y] ['* 'x z]] :=> ['* ['+ z y] 'x])
-   calculo
+  [(r/rule ['+ 0 ?x] :=> ?x)
+   (r/rule ['+ ?x 0] :=> ?x)
+   (r/rule ['* 0 ?x] :=> 0)
+   (r/rule ['* ?x 0] :=> 0)
+   (r/rule ['* 1 ?x] :=> ?x)
+   (r/rule ['* ?x 1] :=> ?x)
+   (r/rule ['- 0 ?x] :=> ?x)
+   (r/rule ['- ?x 0] :=> ?x)
+   (r/rule ['- ?x ?x] :=> 0)
+   (r/rule ['* ?y ['+ 'x ?z]] :=> ['+ ['* ?y 'x] ['* ?y ?z]])
+   (r/rule ['* ['+ 'x ?z] ?y] :=> ['+ ['* ?y 'x] ['* ?y ?z]])
+   (r/rule ['+ ?x ?x] :=> ['* 2 ?x])
+   (r/rule ['+ ['* ?y 'x] ['* ?z 'x]] :=> ['* ['+ ?z ?y] 'x])
+   (r/rule ['+ ['* ?y 'x] ['* 'x ?z]] :=> ['* ['+ ?z ?y] 'x])
+   (r/rule ['+ ['* 'x ?y] ['* ?z 'x]] :=> ['* ['+ ?z ?y] 'x])
+   (r/rule ['+ ['* 'x ?y] ['* 'x ?z]] :=> ['* ['+ ?z ?y] 'x])
+   (r/rule ?x :=> (fn [res] (resulto ?x res)) :if (no-variablo ?x))
    ])
 
 
@@ -78,12 +78,13 @@
 
 (defn simp-ruleso [expression nexpression]
   (fresh [a]
+         (utils/debug [expression] "simp-ruleso " expression)
          (conda
           ((r/apply-ruleso simp-rules expression a) (simplifyo a nexpression))
           ((== expression nexpression)))))
 
 
-(defn simplifyo
+#_(defn simplifyo
   "simplifies the expression according to simp-rules"
   [expression nexpression]
   (conda
@@ -91,6 +92,10 @@
    ((fresh [a]
           (utils/mapo simplifyo expression a)
           (simp-ruleso a nexpression)))))
+
+(defn simplifyo [expression nexpression]
+  (project [expression]
+           (== (r/transform-with-rules simp-rules expression) nexpression)))
 
 
 (declare findo isolateo calc-rhso)
@@ -141,12 +146,12 @@
 
 (def isolate-rules
   [
-   (r/rule [1 ['= ['+ x y] z]] :=> ['= x ['- z y]])
-   (r/rule [2 ['= ['+ y x] z]] :=> ['= x ['- z y]])
-   (r/rule [1 ['= ['* x y] z]] :=> ['= x ['/ z y]])
-   (r/rule [2 ['= ['* y x] z]] :=> ['= x ['/ z y]])
-   (r/rule [1 ['= ['- x y] z]] :=> ['= x ['+ z y]])
-   (r/rule [2 ['= ['- y x] z]] :=> ['= ['- 0 x] ['- z y]])
+   (r/rule [1 ['= ['+ ?x ?y] ?z]] :=> ['= ?x ['- ?z ?y]])
+   (r/rule [2 ['= ['+ ?y ?x] ?z]] :=> ['= ?x ['- ?z ?y]])
+   (r/rule [1 ['= ['* ?x ?y] ?z]] :=> ['= ?x ['/ ?z ?y]])
+   (r/rule [2 ['= ['* ?y ?x] ?z]] :=> ['= ?x ['/ ?z ?y]])
+   (r/rule [1 ['= ['- ?x ?y] ?z]] :=> ['= ?x ['+ ?z ?y]])
+   (r/rule [2 ['= ['- ?y ?x] ?z]] :=> ['= ['- 0 ?x] ['- ?z ?y]])
    ])
 
 (defn isolato [eq pos neq]
@@ -177,5 +182,7 @@
   (fresh [a lhs rhs seq]
          (c/expo '= [lhs rhs] eq)
          (== a ['= ['- lhs rhs] 0])
+         (utils/debug [a] "a ist " a)
          (simplifyo a seq)
+         (utils/debug [seq] "seq ist " seq)
          (solve-diffo seq symb neq)))
