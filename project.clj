@@ -8,6 +8,7 @@
 
   :source-paths ["src" "src/main/clojure"]
   :test-paths ["test" "src/test/clojure"]
+  :aot [numeric.expresso.islvar]
 
 )
 

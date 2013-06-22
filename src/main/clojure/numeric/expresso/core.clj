@@ -1,12 +1,14 @@
 (ns numeric.expresso.core
-  (:refer-clojure :exclude [==])
+  (:refer-clojure :exclude [== * + / -])
   (:use [clojure.core.logic.protocols]
         [clojure.core.logic :exclude [is] :as l]
+        [numeric.expresso.construct :only [* + / - ca+ ca*]]
         [clojure.test])
   (:require [clojure.core.logic.fd :as fd]
             [clojure.walk :as walk]
             [clojure.core.logic.unifier :as u]
             [numeric.expresso.utils :as utils]
+            [numeric.expresso.solve :as s]
             [numeric.expresso.construct :as c]))
 
 
@@ -18,42 +20,11 @@
          (has-metao exp {:properties m})
          (membero :commutative m)))
 
-(defn isao [a b]
-  (project [a b]
-  (== true (isa? a b))))
-
-(defn expression-matcho [e1 e2]
-  (conda
-   ((== e1 e2))
-   ((fresh [a b c d]
-           (c/expo a b e1)
-           (c/expo c d e2)
-           (isao a c)
-           (== b d))))
-  )
-
-(defn ce [symb & args]
-  (list* symb args))
-
-(defn replace-?-with-lvar [node]
-  (if (and (symbol? node) (.startsWith (name node) "?"))
-    (lvar node false)
-    node))
 
 
-(defn ?-to-lvar [code]
-  (walk/prewalk replace-?-with-lvar code))
 
 
-(defmacro with-? [& code]
-  `(fresh []  ~@(?-to-lvar code)))
-
-(defmacro ?-to-logic [code]
-  (?-to-lvar code))
-
-(def rule (?-to-logic [(ce `* ?x 1)  ?x]))
-(def rule2 (?-to-logic [(ce `* 0 ?x) 0]))
-(defn apply-rule-simple [rule expression]
+#_(defn apply-rule-simple [rule expression]
   (run 1 [q]
        (fresh [pat trans]
               (== rule [pat trans])
@@ -79,10 +50,11 @@
       a)))
 
 (defn split-list [v]
+ ; (println "split-list " v)
   (for [x (range (count v)) :when (not (lvar? (nth v x)))] 
     (let [elem (nth v x)
           left (take x v)
-          right (drop (+ x 1) v)]
+          right (drop (clojure.core/+ x 1) v)]
       [elem (concat left right)])))
 
 (comment
@@ -112,6 +84,16 @@
               (match-commutativeo expression patt n)
               (== q trans))))
 
+
+
+
+
+(comment (def rule (r/?-to-logic [(* ?x 1)  ?x]))
+(def rule2 (r/?-to-logic [(* 0 ?x) 0]))
+
+(def rule3 (r/?-to-logic [(ca+ ?x 1) ?x]))
+(def rule4 (r/?-to-logic [(ca* ?x (+ ?a ?b)) (+ (ca* ?x ?a) (ca* ?x ?b))])))
+
 (defn match-commutativeo [expr pat n]
   (conda
    ((== expr pat))
@@ -123,9 +105,35 @@
            (membero [ng r] split-list)
            (split-listo exprargs split-list-expr)
            (membero [ng a] split-list-expr)
-           (match-commutativeo (ce `* a) (ce `* r) n)
+           (match-commutativeo (* a) (* r) n)
            ))))
-         ;  (== n [exprsymb patsymb exprargs patargs])))))
-           
 
-(apply-commutative-rule rule (ce `* 1 2))
+           
+(comment 
+(apply-commutative-rule rule3 (* 1 2))
+(apply-commutative-rule rule4 (* 3 (+ 2 4))))
+
+
+#_(next thing to do is to let the expression symbol match with the actual
+        symbol. And in the expression match match recursively and with the
+        right symbol. And make the transformation a function and not a
+        pattern)
+
+
+(defn not-nullo [x]
+  (!= x 0))
+
+(defn calculate [expr]
+  (fn [result]
+    (s/resulto expr result)))
+(comment 
+(def frule (?-to-logic [?expr (s/no-variablo ?expr) (calculate ?expr)]))
+
+(run* [q] (fresh [pat guard trans]
+					(== [pat guard trans] frule)
+					(expression-matcho (* 10 2) pat)
+					(project [guard] guard)
+					(project [trans]
+						 (trans q))))
+
+)
