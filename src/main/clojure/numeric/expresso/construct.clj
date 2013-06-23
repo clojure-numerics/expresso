@@ -28,7 +28,14 @@
       :else
         expr)))
 
-(def props {'clojure.core/* [:associative :commutative :n-ary]
+(defmulti props identity)
+(defmethod props :default [_] nil)
+(defmethod props 'clojure.core/* [_] [:associative :commutative :n-ary])
+(defmethod props 'clojure.core/+ [_] [:associative :commutative :n-ary])
+(defmethod props 'clojure.core/- [_] [:n-ary [:inverse-of 'clojure.core/+]])
+(defmethod props 'clojure.core// [_] [:n-ary [:inverse-of 'clojure.core/*]])
+
+#_(def props {'clojure.core/* [:associative :commutative :n-ary]
             'clojure.core/+ [:associative :commutative :n-ary]
             'clojure.core/- [:n-ary [:inverse-of 'clojure.core/+]]
             'clojure.core// [:n-ary [:inverse-of 'clojure.core/*]]})
@@ -55,6 +62,7 @@
         erg (-> (.substring s 2 (.length s)) symbol)]
     erg))
 
+
 (defn replace-with-expresso-sexp [s s-exp]
   (if (and (coll? s-exp) (s (first s-exp)))
     (let [f (first s-exp)
@@ -66,4 +74,6 @@
   (let [s-set (set s)]
     `(do 
        ~@(clojure.walk/postwalk #(replace-with-expresso-sexp s-set %) code))))
+
+
 

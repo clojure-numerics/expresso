@@ -27,3 +27,22 @@
   (is (=  '((clojure.core/- (clojure.core/* 2 1)))
           (run* [q] (apply-ruleo (last rules) (- 1 1) q)))))
 )
+
+(c/with-expresso [* + - e/ca+ e/ca* e/- e/div]
+
+(def simplification-rules
+  [(rule (e/ca+ 0 ?x) :=> ?x)
+   (rule (e/ca* 0 ?x) :=> 0)
+   (rule (e/ca* 1 ?x) :=> ?x)
+   (rule (e/- 0 ?x) :=> (e/- ?x))
+   (rule (e/- ?x 0) :=> ?x)
+   (rule (e/ca* ?x (e/div 1 ?x)) :=> 1 :if (!= ?x 0))
+   (rule (e/ca+ ?x (e/- ?x)) :=> 0)
+   (rule (e/ca+ (e/ca* ?a ?x) (e/ca* ?b ?x)) :=> (collabs-factorso ?x ?a ?b)
+         :if (numberso [?a ?b]))
+   (rule (e/ca* ?x (e/ca+ ?a ?b)) :=> (e/ca+ (e/ca* ?x ?a) (e/ca* ?x ?b)))])
+
+(deftest test-transform-with-rules
+  (is (= '(clojure.core/* 3 3)
+         (transform-with-rules simplification-rules 
+			       (* 3 (+ (+ 0 3) (* 0 3))))))))
