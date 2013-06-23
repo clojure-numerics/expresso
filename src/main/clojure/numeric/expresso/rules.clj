@@ -121,7 +121,7 @@
              (do (swap! replacements assoc ps es)
                  succeed))))
 (defn match-expressiono [pat exp]
-  (conda
+  (conde
    ((== pat exp))
    ((is-seqo pat) (is-seqo exp)
     (fresh [ps es pargs eargs]
@@ -138,7 +138,9 @@
   (first (run 1 [q]
                (fresh [pat trans guard tmp]
                       (== rule [pat trans guard])
+                      (utils/debug [pat exp ] "vor match " pat exp)
                       (match-expressiono pat exp)
+                      (utils/debug [] "nach match")
                       (check-guardo guard)
                       (apply-transformationo trans tmp)
                       (replace-symbolso tmp q)))))
