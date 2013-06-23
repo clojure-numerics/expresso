@@ -28,6 +28,13 @@
       :else
         expr)))
 
+(defn properties [s-exp]
+  (:properties (meta (first s-exp))))
+
+(defn propertieso [s-exp q]
+  (project [s-exp]
+           (== q (properties s-exp))))
+
 (defmulti props identity)
 (defmethod props :default [_] nil)
 (defmethod props 'clojure.core/* [_] [:associative :commutative :n-ary])
