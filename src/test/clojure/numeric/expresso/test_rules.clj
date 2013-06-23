@@ -28,6 +28,16 @@
           (run* [q] (apply-ruleo (last rules) (- 1 1) q)))))
 )
 
+(defn collabs-factorso [x a b]
+  (fn [res]
+    (project [a b]
+             (== res (c/ex 'e/ca* x (+ a b))))))
+
+  
+(defna numberso [vars] 
+  ([[n . rest]] (project [n] (do (== true (number? n))) (numberso rest)))
+  ([[]] succeed))
+
 (c/with-expresso [* + - e/ca+ e/ca* e/- e/div]
 
 (def simplification-rules

@@ -162,14 +162,4 @@
   (walk/postwalk #(or (first (run* [q] (apply-ruleso rules % q))) %) expr))
 
 
-(defn collabs-factorso [x a b]
-  (fn [res]
-    (project [a b]
-             (== res (c/ex 'e/ca* x (+ a b))))))
-
-  
-(defna numberso [vars] 
-  ([[n . rest]] (project [n] (do (== true (number? n))) (numberso rest)))
-  ([[]] succeed))
-
 
