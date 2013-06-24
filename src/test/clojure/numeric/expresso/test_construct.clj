@@ -17,6 +17,3 @@
                                   (== q [lhs rhs]))))))
 
 
-(deftest test-ex
-  (is (= '(clojure.core/* 1 2 (clojure.core/+ 3 4) 3 4 5)
-         (ex `* 1 2 (ex `+ 3 4) [:numeric.expresso.construct/seq-match [3 4 5]]))))

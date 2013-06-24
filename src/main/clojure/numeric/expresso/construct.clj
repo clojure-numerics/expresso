@@ -4,6 +4,7 @@
         [clojure.core.logic :exclude [is] :as l]
         [clojure.test])
   (:require [clojure.core.logic.fd :as fd]
+            [clojure.walk :as walk]
             [clojure.core.logic.unifier :as u]
             [numeric.expresso.utils :as utils]))
 (declare ex*)
@@ -51,8 +52,11 @@
   (mapcat #(if (and (coll? %) (= (first %) ::seq-match)) (second %) [%]) c))
 
 
+(defn splice-in-seq-matchers [expr]
+  (walk/postwalk (fn [expr] (if (coll? expr) (extract expr) expr)) expr))
+
 (defn ex [symb & args]
-  (list* (with-meta symb {:properties (props symb)}) (extract args)))
+  (list* (with-meta symb {:properties (props symb)}) args))
 
 
 (defn expo 

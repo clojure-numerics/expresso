@@ -34,6 +34,22 @@
   (project [pat]
            (== res (get-positions-of-seq-matchers pat))))
 
+(defn seq-expr-matcho [psm esm]
+  (== psm [:numeric.expresso.construct/seq-match esm]))
+
+(defn split-expr [pargs eargs]
+  (let [pos (get-positions-of-seq-matchers pargs)]
+    (if (= (count pos) 0)
+      [[pargs nil] [eargs nil]]
+      (if (or (> (count pos) 1) (not= (first pos) (- (count pargs) 1)))
+        (throw (Exception. "only one seq-match in last position is supported"))
+        (let [cpa (count pargs)]
+        [[(butlast pargs) (last pargs)] [(take (- cpa 1) eargs) (drop (- cpa 1) eargs)]])))))
+
+(defn split-expro [pargs eargs res]
+  (project [pargs eargs]
+           (== res (split-expr pargs eargs))))
+
 (defn ?-to-lvar [code]
   (walk/prewalk replace-?-with-lvar code))
 
@@ -71,13 +87,22 @@
   ([[] []] succeed)
   ([_ _] fail))
 
-(defn expression-matcho [pargs eargs]
+
+
+(defn single-expr-matcho [pargs eargs]
   (project [pargs eargs]
            (do ;(prn "expr-matcho with " pargs eargs)
            (if (not= (count pargs) (count eargs))
              fail
              succeed)))
   (match-expressionso pargs eargs))
+
+
+(defn expression-matcho [pargs eargs]
+  (fresh [pa ea psm esm]
+        (split-expro pargs eargs [[pa psm] [ea esm]])
+        (single-expr-matcho pa ea)
+        (seq-expr-matcho psm esm)))
 
 (defn split-list [v]
                                         ; (println "split-list " v)
@@ -130,7 +155,8 @@
 
 (defn replace-symbolso [old new]
   (project [old]
-           (let [res (walk/prewalk-replace @replacements old)]
+           (let [res (walk/prewalk-replace @replacements old)
+                 res (c/splice-in-seq-matchers res)]
              (do (reset! replacements {})
                  (== res new)))))
 
