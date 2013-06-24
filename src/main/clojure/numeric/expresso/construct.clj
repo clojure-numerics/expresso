@@ -47,8 +47,12 @@
             'clojure.core/- [:n-ary [:inverse-of 'clojure.core/+]]
             'clojure.core// [:n-ary [:inverse-of 'clojure.core/*]]})
 
+(defn extract [c]
+  (mapcat #(if (and (coll? %) (= (first %) ::seq-match)) (second %) [%]) c))
+
+
 (defn ex [symb & args]
-  (list* (with-meta symb {:properties (props symb)}) args))
+  (list* (with-meta symb {:properties (props symb)}) (extract args)))
 
 
 (defn expo 

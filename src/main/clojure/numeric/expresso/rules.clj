@@ -13,6 +13,26 @@
     (lvar node false)
     node))
 
+(defn zip [& colls]
+  (apply (partial map (fn [& a] a)) colls))
+
+(defn seq-matcher? [elem]
+  (and (lvar? elem) (.startsWith (:name elem) "?&*")))
+
+(defn counto [pat q]
+  (project [pat]
+           (== q (if (coll? pat) (count pat) 1))))
+
+(defn get-positions-of-seq-matchers [pat]
+  (reduce (fn [ps [p elem]]
+            (if (seq-matcher? elem)
+              (conj ps p)
+              ps))
+          [] (zip (range) (if (coll? pat) pat [pat]))))
+
+(defn pos-of-seq-matcherso [pat res]
+  (project [pat]
+           (== res (get-positions-of-seq-matchers pat))))
 
 (defn ?-to-lvar [code]
   (walk/prewalk replace-?-with-lvar code))
@@ -138,9 +158,7 @@
   (first (run 1 [q]
                (fresh [pat trans guard tmp]
                       (== rule [pat trans guard])
-                      (utils/debug [pat exp ] "vor match " pat exp)
                       (match-expressiono pat exp)
-                      (utils/debug [] "nach match")
                       (check-guardo guard)
                       (apply-transformationo trans tmp)
                       (replace-symbolso tmp q)))))
