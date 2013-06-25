@@ -15,7 +15,7 @@
 
 (defn removeo [i x xr]
   (project [i x]
-           (== xr (do (prn "hmmmm") (concat (take i x) (drop (+ i 1) x))))))
+           (== xr (concat (take i x) (drop (+ i 1) x)))))
 
 (defn positivo [n]
   (project [n] (if (> n 0) succeed fail)))
@@ -26,9 +26,16 @@
 (defn my-appendo [ap r nap]
   (project [ap r]
            (== nap (conj (vec ap) r))))
+
+(defn membersplito [l x]
+  (project [x]
+           (fresh [a i xr]
+                  (memberposo [a i] x)
+                  (removeo i x xr)
+                  (== l [a xr]))))
+
 (defn subseto [n x ap res]
   (fresh []
-         (utils/debug [n x ap] "subseto " n x ap)
          (conda
           ((positivo n)
            (fresh [r rx nap nn]
@@ -38,12 +45,7 @@
                   (subseto nn rx nap res)))
           ((== res [ap x])))))
   
-(defn membersplito [l x]
-  (project [x]
-           (fresh [a i xr]
-                  (memberposo [a i] x)
-                  (removeo i x xr)
-                  (== l [a xr]))))
+
 
 #_(defn subseto [n supset]
   (fresh [a b c d]
@@ -133,10 +135,9 @@
 
 (defn single-expr-matcho [pargs eargs]
   (project [pargs eargs]
-           (do ;(prn "expr-matcho with " pargs eargs)
            (if (not= (count pargs) (count eargs))
              fail
-             succeed)))
+             succeed))
   (match-expressionso pargs eargs))
 
 
@@ -147,7 +148,6 @@
         (seq-expr-matcho psm esm)))
 
 (defn split-list [v]
-                                        ; (println "split-list " v)
   (let [res
         (for [x (range (count v)) :when (not (lvar? (nth v x)))] 
           (let [elem (nth v x)
@@ -159,7 +159,6 @@
 
 (defn split-listo [l erg]
   (project [l ]
-       ;    (println "l ist " l " erg ist " erg)
            (== erg (split-list l))))
 
 (defn only-lvarso [args]
@@ -170,26 +169,31 @@
   (let [p (filter #(seq-matcher? (second %)) (zip (range) pargs))]
     (if (not= (count p) 1)
       (throw (Exception. "only one seq-matcher supported in commutative matching"))
-      (let [p (first (first p))
+      (let [pp (first (first p))
             sm (second (first p))]
-        [(concat (take p pargs) (drop (+ p 1) pargs)) sm]))))
+        [(concat (take pp pargs) (drop (+ pp 1) pargs)) sm]))))
 
 (defn split-pargso [pargs res]
-  (== res (split-pargs pargs)))
+  (project [pargs]
+           (== res (split-pargs pargs))))
+
+(defn no-seq-matcherso [pargs]
+  (project [pargs] (== 0 (count (filter seq-matcher? pargs)))))
 
 (defn match-lvars-commutativeo [pargs eargs]
   (fresh [perm npargs sm cnp neargs to-seq-match]
-         (utils/debug [] "nur noch lvars")
-         (split-pargso pargs [npargs sm])
-         (project [npargs] (== cnp (count npargs)))
-         (subseto cnp eargs [] [neargs to-seq-match])
-         (utils/debug [to-seq-match] "to-s-m " to-seq-match)
-         (== neargs npargs)
-         (== sm to-seq-match)))
+         (conda
+          ((no-seq-matcherso pargs)
+           (permuteo pargs perm)
+           (== perm eargs))
+          ((split-pargso pargs [npargs sm])
+           (project [npargs] (== cnp (count npargs)))
+           (subseto cnp eargs [] [neargs to-seq-match])
+           (== neargs npargs)
+           (seq-expr-matcho sm to-seq-match)))))
 
 (defn match-commutativeo [pargs eargs]
   (fresh [esl psl eng png er pr]
-         (utils/debug [] "match-commutativeo " pargs " " eargs)
          (conda
           ((only-lvarso pargs) (match-lvars-commutativeo pargs eargs))
           ((only-lvarso eargs) (match-lvars-commutativeo pargs eargs))
@@ -197,9 +201,8 @@
           (membero [png pr] psl)
           (split-listo eargs esl)
           (membero [eng er] esl)
-          (utils/debug [] "hier bin ich noch")
           (match-expressiono png eng)
-          (match-expressionso pr er)))))
+          (match-commutativeo pr er)))))
 
 (defn get-symbol [expr]
   (if (coll? expr) (first expr) expr))
@@ -227,8 +230,6 @@
              (do (swap! replacements assoc ps es)
                  succeed))))
 (defn match-expressiono [pat exp]
-  (fresh []
-         (utils/debug [pat exp] "match-expressiono " pat exp)
   (conde
    ((== pat exp))
    ((is-seqo pat) (is-seqo exp)
@@ -239,7 +240,7 @@
            (add-replacemento es ps)
            (project [ps pargs eargs pat exp]
                     (let [f (matcher ps)]
-                      (f pargs eargs))))))))
+                      (f pargs eargs)))))))
     
 
 (defn apply-rule [rule exp]
