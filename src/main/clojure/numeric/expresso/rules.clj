@@ -223,7 +223,7 @@
            (if (and (< fp tp) (< fe te))
              (fresh []
                     (== (nth pargs fp) (nth eargs fe))
-                    (match-in-positions (+ fp 1) tp (+ fe 1) te  pargs eargs))
+                    (match-in-positionso (+ fp 1) tp (+ fe 1) te  pargs eargs))
              succeed)))
 
 (defn match-fix-parto [sm-start sp-end sm-end pargs eargs]
@@ -233,14 +233,39 @@
                   (match-in-positionso sp-end (count pargs)
                                        sm-end (count eargs)
                                        pargs eargs))))
-(defn match-variable-parto [from to v-parts])
 
+(defn start-positionso [from v-parts to pos]
+  (project [from v-parts to]
+           (let [s (apply + (map count v-parts))
+                 anz-positions (- to from s)]
+             (== pos (range from (+ from anz-positions))))))
+
+(defn match-parto [part start eargs]
+  (project [part start eargs]
+           (do (prn "parto " part start)
+           (match-in-positionso 0 (count part) start (+ start (count part))
+                                part eargs))) )
+
+(defn match-variable-parto [from to v-parts eargs]
+  (conda
+   ((emptyo v-parts) succeed)
+   ((fresh [pos start fpart rpart]
+           (utils/debug [from to v-parts] "f t v " from to v-parts)
+           (start-positionso from v-parts to pos)
+           (utils/debug [pos] "positions " pos)
+           (membero start pos)
+           (utils/debug [start] "start " start)
+          (conso fpart rpart v-parts)
+          (match-parto fpart start eargs)
+          (project [from fpart]
+                   (match-variable-parto (+ from (count fpart)) to rpart eargs))))))
+          
 
 (defn match-associativeo [pargs eargs]
   (fresh [from top toe v-parts]
          (split-seq-matcherso pargs eargs [from top toe v-parts])
          (match-fix-parto from top toe pargs eargs)
-         (match-variable-parto from toe v-parts)))
+         (match-variable-parto from toe v-parts eargs)))
 
 (defn get-symbol [expr]
   (if (coll? expr) (first expr) expr))
