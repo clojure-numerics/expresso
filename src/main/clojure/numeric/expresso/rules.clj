@@ -204,6 +204,44 @@
           (match-expressiono png eng)
           (match-commutativeo pr er)))))
 
+                                        ;var-start is the first position of an seq-matcher
+                                        ;var-end is the last position of an seq-matcher
+
+(defn split-seq-matchers [pargs eargs]
+  (let [indices (map first (filter (comp seq-matcher? second) (zip (range) pargs)))
+        _ (prn indices)
+        sections (partition 2 1 indices)
+        v-part (map #(subvec pargs (inc (first %)) (second %)) sections)]
+    [(first indices) (+ 1 (last indices))  (+ 1 (- (count eargs) (last indices))) v-part]))
+
+(defn split-seq-matcherso [pargs eargs res]
+  (project [eargs pargs]
+           (== res (split-seq-matchers (vec pargs) (vec eargs)))))
+
+(defn match-in-positionso [fp tp fe te pargs eargs]
+  (project [fp tp fe te  pargs eargs]
+           (if (and (< fp tp) (< fe te))
+             (fresh []
+                    (== (nth pargs fp) (nth eargs fe))
+                    (match-in-positions (+ fp 1) tp (+ fe 1) te  pargs eargs))
+             succeed)))
+
+(defn match-fix-parto [sm-start sp-end sm-end pargs eargs]
+  (project [sm-start sp-end sm-end pargs eargs]
+           (fresh []
+                  (match-in-positionso 0 sm-start 0 sm-start pargs eargs)
+                  (match-in-positionso sp-end (count pargs)
+                                       sm-end (count eargs)
+                                       pargs eargs))))
+(defn match-variable-parto [from to v-parts])
+
+
+(defn match-associativeo [pargs eargs]
+  (fresh [from top toe v-parts]
+         (split-seq-matcherso pargs eargs [from top toe v-parts])
+         (match-fix-parto from top toe pargs eargs)
+         (match-variable-parto from toe v-parts)))
+
 (defn get-symbol [expr]
   (if (coll? expr) (first expr) expr))
 
@@ -213,6 +251,8 @@
   expression-matcho)
 
 (defmethod matcher 'e/ca-op [_] match-commutativeo)
+
+(defmethod matcher 'e/ao-op [_] match-associativeo)
 
 (def replacements (atom {}))
 
