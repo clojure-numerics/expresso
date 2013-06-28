@@ -209,10 +209,11 @@
 
 (defn split-seq-matchers [pargs eargs]
   (let [indices (map first (filter (comp seq-matcher? second) (zip (range) pargs)))
-        _ (prn indices)
         sections (partition 2 1 indices)
-        v-part (map #(subvec pargs (inc (first %)) (second %)) sections)]
-    [(first indices) (+ 1 (last indices))  (+ 1 (- (count eargs) (last indices))) v-part]))
+        v-part (concat (map (fn [[f l]] [(nth pargs f) (subvec pargs (inc f) l)]) sections) [[(nth pargs (last indices)) []]])]
+    [(first indices) (+ 1 (last indices))
+     (- (count eargs) (- (count pargs) (last indices)))
+     v-part]))
 
 (defn split-seq-matcherso [pargs eargs res]
   (project [eargs pargs]
@@ -236,37 +237,47 @@
 
 (defn start-positionso [from v-parts to pos]
   (project [from v-parts to]
-           (let [s (apply + (map count v-parts))
-                 anz-positions (- to from s)]
-             (== pos (range from (+ from anz-positions))))))
+           (let [s (apply + (map (comp count second) v-parts))
+                 anz-positions (- (+ to 1) from s)]
+             (== pos (range from (+ from anz-positions 1))))))
 
-(defn match-parto [part start eargs]
-  (project [part start eargs]
-           (do (prn "parto " part start)
-           (match-in-positionso 0 (count part) start (+ start (count part))
-                                part eargs))) )
+(defn match-parto [from part start eargs]
+  (project [from part start eargs]
+           (let [
+                 p (second part)
+                 sm (first part)
+                 tsm (subvec eargs from start)]
+             (fresh []
+                    (match-in-positionso 0 (count p) start (+ start (count p))
+                                         p eargs)
+                    (seq-expr-matcho sm tsm)))))
 
-(defn match-variable-parto [from to v-parts eargs]
-  (conda
-   ((emptyo v-parts) succeed)
-   ((fresh [pos start fpart rpart]
-           (utils/debug [from to v-parts] "f t v " from to v-parts)
-           (start-positionso from v-parts to pos)
-           (utils/debug [pos] "positions " pos)
-           (membero start pos)
-           (utils/debug [start] "start " start)
-          (conso fpart rpart v-parts)
-          (match-parto fpart start eargs)
-          (project [from fpart]
-                   (match-variable-parto (+ from (count fpart)) to rpart eargs))))))
-          
+(defn match-last-seq-matchero [from to seq-matcher eargs]
+  (project [from to seq-matcher eargs]
+           (let [sm (first seq-matcher)
+                 tsm (subvec eargs from (+ to 1))]
+             (seq-expr-matcho sm tsm))))
+
+(defna match-variable-parto [from to v-parts eargs]
+  ([_ _ [part . '()] _]
+     (match-last-seq-matchero from to part eargs))
+  ([_ _ [part . parts] _]
+     (fresh [pos start]
+            (start-positionso from v-parts to pos)
+            (membero start pos)
+            (match-parto from part start eargs)
+            (project [from part start]
+                     (match-variable-parto (+ start (count (second part))) to parts eargs))))
+  ([_ _ _ _] succeed))
 
 (defn match-associativeo [pargs eargs]
-  (fresh [from top toe v-parts]
-         (split-seq-matcherso pargs eargs [from top toe v-parts])
-         (match-fix-parto from top toe pargs eargs)
-         (match-variable-parto from toe v-parts eargs)))
-
+  (project [pargs eargs]
+           (let [pargs (vec pargs) eargs (vec eargs)]
+             (fresh [from top toe v-parts]
+                    (split-seq-matcherso pargs eargs [from top toe v-parts])
+                    (match-fix-parto from top toe pargs eargs)
+                    (match-variable-parto from toe v-parts eargs)))))
+           
 (defn get-symbol [expr]
   (if (coll? expr) (first expr) expr))
 
