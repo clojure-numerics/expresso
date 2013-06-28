@@ -38,7 +38,7 @@
   ([[n . rest]] (project [n] (do (== true (number? n))) (numberso rest)))
   ([[]] succeed))
 
-(c/with-expresso [* + - e/ca+ e/ca* e/- e/div]
+(c/with-expresso [* + - e/ca+ e/ca* e/- e/div °]
 
 (def simplification-rules
   [(rule (e/ca+ 0 ?&*) :=> ?&*)
@@ -57,9 +57,22 @@
          (transform-with-rules simplification-rules 
            (* 3 (+ (+ 0 3) (* 0 3)))))))
 
-(def rr (rule (+ (* ?x ?&*a) (* ?x ?&*b) ?&*r) :=>
-              (+ (* ?x (+ (* ?&*a) (* ?&*b))) ?&*r)))
+(def factor-out-rule (rule (+ (* ?x ?&*a) (* ?x ?&*b) ?&*r) :=>
+                           (+ (* ?x (+ (* ?&*a) (* ?&*b))) ?&*r)))
 
 (deftest test-seq-matching-commutative-rule
   (is (= '(clojure.core/+ (clojure.core/* x (clojure.core/+ (clojure.core/* 3 2) (clojure.core/* 4 3))) 1)
-          (apply-rule rr (+ (* 'x 3 2) (* 'x 4 3) 1))))))
+         (apply-rule factor-out-rule (+ (* 'x 3 2) (* 'x 4 3) 1)))))
+
+;; make  ° (the list constructor) an associative operation
+;; (° 1 2 3) means the list with elements 1 2 3
+
+(derive `° 'e/ao-op)
+(defn biggero [x y] (project [x y] (== true (> x y))))
+
+(def sort-rule (rule (° ?&*1 ?x ?&*2 ?y ?&*3) :=> (° ?&*1 ?y ?&*2 ?x ?&*3)
+                     :if (biggero ?y ?x)))
+
+(deftest test-seq-matcher-in-associative-rule
+  (is (= '(numeric.expresso.test-rules/° 9 8 7 6 5 4 4 3 2 1)
+         (transform-with-rules [sort-rule] (° 1 4 2 6 5 4 3 7 8 9))))))

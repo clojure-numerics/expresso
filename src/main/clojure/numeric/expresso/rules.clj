@@ -337,6 +337,8 @@
          (== res (apply-rule rule exp))
          (conda ((nilo res) fail) ((== res n-exp))))))
 
+
+
 (defn apply-ruleso [rules expr nexpr]
   (matche [rules]
           ([[?r . ?rs]] (conda
@@ -344,7 +346,8 @@
                          ((apply-ruleso ?rs expr nexpr))))))
 
 (defn transform-with-rules [rules expr]
-  (walk/postwalk #(or (first (run* [q] (apply-ruleso rules % q))) %) expr))
+  (let [tmp (walk/prewalk #(or (first (run* [q] (apply-ruleso rules % q))) %) expr)]
+    (if (= tmp expr) tmp (transform-with-rules rules tmp)))) 
 
 
 
