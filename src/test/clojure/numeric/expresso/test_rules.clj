@@ -6,13 +6,13 @@
         [clojure.core.logic :exclude [is] :as l]
         clojure.test)
   (:require [clojure.core.logic.fd :as fd])
-  (:require [numeric.expresso.construct :as c])
+  (:use [numeric.expresso.construct])
   (:require [clojure.core.logic.unifier :as u]))
 
 
 
 
-(c/with-expresso [* + - e/ca+ e/ca* e/- e/div]
+(with-expresso [* + - e/ca+ e/ca* e/- e/div]
 (def rules [(rule (* ?x 1) :=> ?x)
             (rule (* ?x 0) :=> 0)
             (rule (+ ?x 0) :=> ?x)
@@ -31,14 +31,16 @@
 (defn collabs-factorso [x a b]
   (fn [res]
     (project [a b]
-             (== res (c/ex 'e/ca* x (+ a b))))))
+             (== res (ex 'e/ca* x (+ a b))))))
 
   
 (defna numberso [vars] 
   ([[n . rest]] (project [n] (do (== true (number? n))) (numberso rest)))
   ([[]] succeed))
 
-(c/with-expresso [* + - e/ca+ e/ca* e/- e/div °]
+
+
+(with-expresso [* + - e/ca+ e/ca* e/- e/div °]
 
 (def simplification-rules
   [(rule (e/ca+ 0 ?&*) :=> ?&*)
@@ -67,12 +69,16 @@
 ;; make  ° (the list constructor) an associative operation
 ;; (° 1 2 3) means the list with elements 1 2 3
 
-(derive `° 'e/ao-op)
 (defn biggero [x y] (project [x y] (== true (> x y))))
 
 (def sort-rule (rule (° ?&*1 ?x ?&*2 ?y ?&*3) :=> (° ?&*1 ?y ?&*2 ?x ?&*3)
                      :if (biggero ?y ?x)))
 
+(defn test-seq-matcher-associative []
+  (transform-with-rules [sort-rule] (° 1 4 2 6 5 4 3 7 8 9)))
+
+
 (deftest test-seq-matcher-in-associative-rule
-  (is (= '(numeric.expresso.test-rules/° 9 8 7 6 5 4 4 3 2 1)
-         (transform-with-rules [sort-rule] (° 1 4 2 6 5 4 3 7 8 9))))))
+  (is (= '(numeric.expresso.construct/° 9 8 7 6 5 4 4 3 2 1)
+         (test-seq-matcher-associative)))))
+

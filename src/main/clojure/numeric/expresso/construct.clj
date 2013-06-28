@@ -58,6 +58,7 @@
 (defn ex [symb & args]
   (list* (with-meta symb {:properties (props symb)}) args))
 
+(def °)
 
 (defn expo 
   "Creates an expression with the given operator and parameters"
@@ -70,6 +71,7 @@
 (derive 'clojure.core/* 'e/ca*)
 (derive 'clojure.core/- 'e/-)
 (derive 'clojure.core// 'e/div)
+(derive `° 'e/ao-op)
 
 
 (defn var-to-symbol [v]
