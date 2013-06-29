@@ -145,7 +145,9 @@
   (fresh [pa ea psm esm]
         (split-expro pargs eargs [[pa psm] [ea esm]])
         (single-expr-matcho pa ea)
-        (seq-expr-matcho psm esm)))
+        (conda
+         ((seq-expr-matcho psm esm))
+         ((nilo psm) (nilo esm) succeed))))
 
 (defn split-list [v]
   (let [res
@@ -221,12 +223,13 @@
 
 (defn match-in-positionso [fp tp fe te pargs eargs]
   (project [fp tp fe te  pargs eargs]
-           (if (and (< fp tp) (< fe te))
-             (fresh []
-                    (== (nth pargs fp) (nth eargs fe))
-                    (match-in-positionso (+ fp 1) tp (+ fe 1) te  pargs eargs))
-             succeed)))
-
+           (if (or (> tp (count pargs)) (> te (count eargs)))
+             fail
+             (if (and (< fp tp) (< fe te))
+               (fresh []
+                      (== (nth pargs fp) (nth eargs fe))
+                      (match-in-positionso (+ fp 1) tp (+ fe 1) te  pargs eargs))
+               succeed))))
 (defn match-fix-parto [sm-start sp-end sm-end pargs eargs]
   (project [sm-start sp-end sm-end pargs eargs]
            (fresh []
@@ -320,13 +323,15 @@
     
 
 (defn apply-rule [rule exp]
-  (first (run 1 [q]
-               (fresh [pat trans guard tmp]
-                      (== rule [pat trans guard])
-                      (match-expressiono pat exp)
-                      (check-guardo guard)
-                      (apply-transformationo trans tmp)
-                      (replace-symbolso tmp q)))))
+  (try 
+    (first (run 1 [q]
+                (fresh [pat trans guard tmp]
+                       (== rule [pat trans guard])
+                       (match-expressiono pat exp)
+                       (check-guardo guard)
+                       (apply-transformationo trans tmp)
+                       (replace-symbolso tmp q))))
+    (catch Exception e (do (prn "apply-rule generated Exception - fail") nil))))
 
 (defn apply-ruleo
   "applies rule to exp failing if not applicable or unifying n-exp
@@ -346,7 +351,7 @@
                          ((apply-ruleso ?rs expr nexpr))))))
 
 (defn transform-with-rules [rules expr]
-  (let [tmp (walk/prewalk #(or (first (run* [q] (apply-ruleso rules % q))) %) expr)]
+  (let [tmp (walk/postwalk (fn [a] (let [res (or (first (run* [q] (apply-ruleso rules a q))) a)] res)) expr)]
     (if (= tmp expr) tmp (transform-with-rules rules tmp)))) 
 
 

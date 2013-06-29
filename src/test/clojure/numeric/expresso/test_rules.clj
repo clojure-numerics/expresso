@@ -40,7 +40,7 @@
 
 
 
-(with-expresso [* + - e/ca+ e/ca* e/- e/div °]
+(with-expresso [* + - e/ca+ e/ca* e/- e/div ° map]
 
 (def simplification-rules
   [(rule (e/ca+ 0 ?&*) :=> ?&*)
@@ -66,7 +66,7 @@
   (is (= '(clojure.core/+ (clojure.core/* x (clojure.core/+ (clojure.core/* 3 2) (clojure.core/* 4 3))) 1)
          (apply-rule factor-out-rule (+ (* 'x 3 2) (* 'x 4 3) 1)))))
 
-;; make  ° (the list constructor) an associative operation
+;; ° (the list constructor) is an associative operation
 ;; (° 1 2 3) means the list with elements 1 2 3
 
 (defn biggero [x y] (project [x y] (== true (> x y))))
@@ -74,11 +74,8 @@
 (def sort-rule (rule (° ?&*1 ?x ?&*2 ?y ?&*3) :=> (° ?&*1 ?y ?&*2 ?x ?&*3)
                      :if (biggero ?y ?x)))
 
-(defn test-seq-matcher-associative []
-  (transform-with-rules [sort-rule] (° 1 4 2 6 5 4 3 7 8 9)))
 
 
 (deftest test-seq-matcher-in-associative-rule
   (is (= '(numeric.expresso.construct/° 9 8 7 6 5 4 4 3 2 1)
-         (test-seq-matcher-associative)))))
-
+         (transform-with-rules [sort-rule] (° 1 4 2 6 5 4 3 7 8 9))))))
