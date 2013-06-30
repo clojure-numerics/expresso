@@ -141,13 +141,25 @@
   (match-expressionso pargs eargs))
 
 
-(defn expression-matcho [pargs eargs]
+#_(defn expression-matcho [pargs eargs]
   (fresh [pa ea psm esm]
         (split-expro pargs eargs [[pa psm] [ea esm]])
         (single-expr-matcho pa ea)
         (conda
          ((seq-expr-matcho psm esm))
          ((nilo psm) (nilo esm) succeed))))
+
+
+(defn any-seq-matcherso [pargs]
+  (project [pargs]
+           (== false (not (some seq-matcher? pargs)))))
+
+(declare match-with-seq-matcherso)
+(defn expression-matcho [pargs eargs]
+  (fresh []
+         (conda
+          ((any-seq-matcherso pargs) (match-with-seq-matcherso pargs eargs))
+          ((single-expr-matcho pargs eargs)))))
 
 (defn split-list [v]
   (let [res
@@ -277,7 +289,7 @@
                      (match-variable-parto (+ start (count (second part))) to parts eargs))))
   ([_ _ _ _] succeed))
 
-(defn match-associativeo [pargs eargs]
+(defn match-with-seq-matcherso [pargs eargs]
   (project [pargs eargs]
            (let [pargs (vec pargs) eargs (vec eargs)]
              (fresh [from top toe v-parts]
@@ -300,8 +312,6 @@
 
 (defmethod matcher 'e/ca-op [_] match-commutativeo)
 
-(defmethod matcher 'e/ao-op [_] match-associativeo)
-
 (def replacements (atom {}))
 
 (defn replace-symbolso [old new]
@@ -317,6 +327,7 @@
              succeed
              (do (swap! replacements assoc ps es)
                  succeed))))
+
 (defn match-expressiono [pat exp]
   (conde
    ((== pat exp))
