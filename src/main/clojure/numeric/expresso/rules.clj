@@ -213,7 +213,7 @@
   (let [indices (map first (filter (comp seq-matcher? second) (zip (range) pargs)))
         sections (partition 2 1 indices)
         v-part (concat (map (fn [[f l]] [(nth pargs f) (subvec pargs (inc f) l)]) sections) [[(nth pargs (last indices)) []]])]
-    [(first indices) (+ 1 (last indices))
+    [(first indices) (last indices)
      (- (count eargs) (- (count pargs) (last indices)))
      v-part]))
 
@@ -227,15 +227,19 @@
              fail
              (if (and (< fp tp) (< fe te))
                (fresh []
-                      (== (nth pargs fp) (nth eargs fe))
+                      ;(utils/debug [fp fe] "match " fp fe (nth pargs fp) (nth eargs fe))
+                      (match-expressiono (nth pargs fp) (nth eargs fe))
                       (match-in-positionso (+ fp 1) tp (+ fe 1) te  pargs eargs))
                succeed))))
 (defn match-fix-parto [sm-start sp-end sm-end pargs eargs]
   (project [sm-start sp-end sm-end pargs eargs]
            (fresh []
+                 ; (utils/debug [sm-start sp-end sm-end]
+                 ;     "match-fix-parto " sm-start sp-end sm-end)
                   (match-in-positionso 0 sm-start 0 sm-start pargs eargs)
-                  (match-in-positionso sp-end (count pargs)
-                                       sm-end (count eargs)
+                 ; (utils/debug [] "hier noch ")
+                  (match-in-positionso (+ sp-end 1) (count pargs)
+                                       (+ sm-end 1) (count eargs)
                                        pargs eargs))))
 
 (defn start-positionso [from v-parts to pos]
@@ -277,9 +281,14 @@
   (project [pargs eargs]
            (let [pargs (vec pargs) eargs (vec eargs)]
              (fresh [from top toe v-parts]
+                  ;  (utils/debug [pargs eargs] "match-associativeo " pargs eargs)
                     (split-seq-matcherso pargs eargs [from top toe v-parts])
+               ;     (utils/debug [from top toe v-parts]
+               ;                  "split-seq-matcherso " from top toe v-parts)
                     (match-fix-parto from top toe pargs eargs)
+               ;     (utils/debug [] "nach match-fix-parto ")
                     (match-variable-parto from toe v-parts eargs)))))
+               ;     (utils/debug [] "nach match-variable-parto")))))
            
 (defn get-symbol [expr]
   (if (coll? expr) (first expr) expr))
@@ -323,15 +332,13 @@
     
 
 (defn apply-rule [rule exp]
-  (try 
-    (first (run 1 [q]
-                (fresh [pat trans guard tmp]
-                       (== rule [pat trans guard])
-                       (match-expressiono pat exp)
-                       (check-guardo guard)
-                       (apply-transformationo trans tmp)
-                       (replace-symbolso tmp q))))
-    (catch Exception e (do (prn "apply-rule generated Exception - fail") nil))))
+  (first (run 1 [q]
+              (fresh [pat trans guard tmp]
+                     (== rule [pat trans guard])
+                     (match-expressiono pat exp)
+                     (check-guardo guard)
+                     (apply-transformationo trans tmp)
+                     (replace-symbolso tmp q)))))
 
 (defn apply-ruleo
   "applies rule to exp failing if not applicable or unifying n-exp
@@ -353,6 +360,7 @@
 (defn transform-with-rules [rules expr]
   (let [tmp (walk/postwalk (fn [a] (let [res (or (first (run* [q] (apply-ruleso rules a q))) a)] res)) expr)]
     (if (= tmp expr) tmp (transform-with-rules rules tmp)))) 
+
 
 
 
