@@ -1,5 +1,5 @@
 (ns numeric.expresso.core
-  (:refer-clojure :exclude [== * + / -])
+  (:refer-clojure :exclude [==])
   (:use [clojure.core.logic.protocols]
         [clojure.core.logic :exclude [is] :as l]
         [numeric.expresso.construct :only [with-expresso]]
@@ -24,6 +24,23 @@
      (rule (or (or ?a ?b) ?c) :=> (or ?a (or ?b ?c)))]))
 
 
-(with-expresso [and not or]
+(comment (with-expresso [and not or]
 (transform-with-rules disjunctive-normal-form-rules
-  (or 'a (not (or 'b (and 'c (not 'd)))))))
+  (or 'a (not (or 'b (and 'c (not 'd))))))))
+
+
+;; start example of using the rule based translator to simplify and transform
+;; a polynomial input to standart form. start with variable 'x
+
+(with-expresso [+ - * /]
+
+(def normal-form-rules
+  [(rule (+) :=> 0)
+   (rule (*) :=> 1)
+   (rule (+ 0 ?&*) :=> (+ ?&*))
+   (rule (* 0 ?&*) :=> 0)
+   (rule (- ?x ?&* 0 ?&*r) :=> (- ?x ?&* ?&*r))])
+
+
+(transform-with-rules normal-form-rules (+ 3 4 0 5))
+)
