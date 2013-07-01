@@ -24,9 +24,10 @@
      (rule (or (or ?a ?b) ?c) :=> (or ?a (or ?b ?c)))]))
 
 
-(comment (with-expresso [and not or]
-(transform-with-rules disjunctive-normal-form-rules
-  (or 'a (not (or 'b (and 'c (not 'd))))))))
+(with-expresso [and not or]
+  (transform-with-rules disjunctive-normal-form-rules
+    (or 'a (not (or 'b (and 'c (not 'd)))))))
+
 
 
 ;; start example of using the rule based translator to simplify and transform
