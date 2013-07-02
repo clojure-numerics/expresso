@@ -84,8 +84,18 @@
   (project [pat]
            (== res (get-positions-of-seq-matchers pat))))
 
+
+(defn +-seq-matcher? [psm] (.startsWith (:name psm) "?&+"))
+
+(defn check-boundso [psm esm]
+  (project [esm]
+           (if (and (+-seq-matcher? psm) (empty? esm))
+             fail succeed)))
+
 (defn seq-expr-matcho [psm esm]
-  (== psm [:numeric.expresso.construct/seq-match esm]))
+  (fresh []
+         (check-boundso psm esm)
+         (== psm [:numeric.expresso.construct/seq-match esm])))
 
 (defn split-expr [pargs eargs]
   (let [pos (get-positions-of-seq-matchers pargs)]
