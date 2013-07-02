@@ -30,7 +30,7 @@
 
 
 
-;; start example of using the rule based translator to simplify and transform
+x;; start example of using the rule based translator to simplify and transform
 ;; a polynomial input to standart form. start with variable 'x
 
 (with-expresso [+ - * /]
