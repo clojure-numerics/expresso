@@ -9,22 +9,32 @@
             [numeric.expresso.utils :as utils]
             [numeric.expresso.construct :as c]))
 (defn- replace-?-with-lvar
-  "used by the rule macro to make ?... symbols unifyable"
+  "replaces a symbol with a not gensymed lvar if it starts with a ?"
   [node]
   (if (and (symbol? node) (.startsWith (name node) "?"))
     (lvar node false)
     node))
 
-(defn- ?-to-lvar [code]
+(defn- ?-to-lvar
+  "walks the code to replace ?-symbols with unifyable lvars"
+  [code]
   (walk/prewalk replace-?-with-lvar code))
 
 
-(defn- check-guardo [guard]
+(defn- check-guardo
+  "succeeds iff the guard relation succeeds"
+  [guard]
   (project [guard] guard))
 
-(defn- apply-transformationo [trans n-exp]
+(defn- apply-transformationo
+  "the transformation can either be an expression or a core.logic relation
+   of (trans result)"
+  [trans n-exp]
   (project [trans]
-           (if (and  (ifn? trans) (not (coll? trans)) (not (keyword? trans)) (not (symbol? trans)))
+           (if (and (ifn? trans)
+                    (not (coll? trans))
+                    (not (keyword? trans))
+                    (not (symbol? trans)))
              (trans n-exp)
              (== trans n-exp))))
 
@@ -41,8 +51,7 @@
 
   
 (defn apply-rule
-  "applies rule to expression in a core.logic run 1 block, so the first succesful application of a rule
-   gets chosen"
+  "applies rule to expression. The first succesful application of the rule gets performed"
   [rule exp]
   (first (run 1 [q]
               (fresh [pat trans guard tmp]
@@ -54,8 +63,7 @@
 
 
 (defn apply-ruleo
-  "applies rule to exp failing if not applicable or unifying n-exp
-   to the result"
+  "core.logic relation of apply-rule - not relational, you can't generate all possible rules which transform an expression to the new-expression"
   [rule exp n-exp]
   (project [rule]
   (fresh [res]
@@ -65,7 +73,7 @@
 
 
 (defn apply-ruleso
-  "returns the result of the first succesful application of a rule in rules"
+  "non-relational core.logic equivalent of apply-rules"
   [rules expr nexpr]
   (matche [rules]
           ([[?r . ?rs]] (conda
@@ -73,7 +81,7 @@
                          ((apply-ruleso ?rs expr nexpr))))))
 
 (defn apply-rules-debug
-  "returns the result of the first succesful application of a rule in rules "
+  "like apply-rules but gives realtime information about the rules which gets tried and applied"
   [rules expr]
   (loop  [rules rules expr expr]
     (if (seq rules)
@@ -94,10 +102,15 @@
         (recur (rest rules) expr))
       expr)))
 
-(defn transform-with-rules [rules expr]
-  (let [tmp (walk/postwalk
-             (fn [a] (let [res (apply-rules rules a)] res)) expr)]
-    (if (= tmp expr) tmp (recur rules tmp))))
+(defn transform-with-rules
+  "transforms the expr according to the rules in the rules vector until no rule
+   can be applied any more. Uses clojure.walk/prewalk to walk the expression tree
+   in the default case. A custom walkfn can be specified"
+  ([rules expr walkfn]
+     (let [tmp (walkfn
+                (fn [a] (let [res (apply-rules rules a)] res)) expr)]
+       (if (= tmp expr) tmp (recur rules tmp walkfn))))
+  ([rules expr] (transform-with-rules rules expr walk/prewalk)))
 
 
 
