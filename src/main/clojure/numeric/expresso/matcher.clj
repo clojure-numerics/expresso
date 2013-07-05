@@ -226,17 +226,13 @@
              fail
              (if (and (< fp tp) (< fe te))
                (fresh []
-                      ;(utils/debug [fp fe] "match " fp fe (nth pargs fp) (nth eargs fe))
                       (match-expressiono (nth pargs fp) (nth eargs fe))
                       (match-in-positionso (+ fp 1) tp (+ fe 1) te  pargs eargs))
                succeed))))
 (defn match-fix-parto [sm-start sp-end sm-end pargs eargs]
   (project [sm-start sp-end sm-end pargs eargs]
            (fresh []
-                 ; (utils/debug [sm-start sp-end sm-end]
-                 ;     "match-fix-parto " sm-start sp-end sm-end)
                   (match-in-positionso 0 sm-start 0 sm-start pargs eargs)
-                 ; (utils/debug [] "hier noch ")
                   (match-in-positionso (+ sp-end 1) (count pargs)
                                        (+ sm-end 1) (count eargs)
                                        pargs eargs))))
@@ -273,8 +269,7 @@
             (membero start pos)
             (match-parto from part start eargs)
             (project [from part start]
-                     (match-variable-parto (+ start (count (second part))) to parts eargs))))
-  ([_ _ _ _] succeed))
+                     (match-variable-parto (+ start (count (second part))) to parts eargs)))))
 
 (defn match-with-seq-matcherso
   "default matching function when there are seq-matchers"
@@ -282,14 +277,9 @@
   (project [pargs eargs]
            (let [pargs (vec pargs) eargs (vec eargs)]
              (fresh [from top toe v-parts]
-                  ;  (utils/debug [pargs eargs] "match-associativeo " pargs eargs)
                     (split-seq-matcherso pargs eargs [from top toe v-parts])
-               ;     (utils/debug [from top toe v-parts]
-               ;                  "split-seq-matcherso " from top toe v-parts)
                     (match-fix-parto from top toe pargs eargs)
-               ;     (utils/debug [] "nach match-fix-parto ")
                     (match-variable-parto from toe v-parts eargs)))))
-               ;     (utils/debug [] "nach match-variable-parto")))))
 
 
 

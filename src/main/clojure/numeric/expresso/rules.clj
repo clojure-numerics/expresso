@@ -72,18 +72,32 @@
                          ((apply-ruleo ?r expr nexpr))
                          ((apply-ruleso ?rs expr nexpr))))))
 
+(defn apply-rules-debug
+  "returns the result of the first succesful application of a rule in rules "
+  [rules expr]
+  (loop  [rules rules expr expr]
+    (if (seq rules)
+      (do (prn "try apply " (butlast (first rules)) "with " expr)
+          (if-let [erg (apply-rule (first rules) expr)]
+            (do (prn "applied rule " (butlast (first rules)) " with result " erg)
+                erg)
+            (recur (rest rules) expr)))
+      expr)))
+
 (defn apply-rules
   "returns the result of the first succesful application of a rule in rules "
   [rules expr]
   (loop  [rules rules expr expr]
     (if (seq rules)
-      (or (apply-rule (first rules) expr) (recur (rest rules) expr))
+      (if-let [erg (apply-rule (first rules) expr)]
+        erg
+        (recur (rest rules) expr))
       expr)))
 
-
 (defn transform-with-rules [rules expr]
-  (let [tmp (walk/prewalk (fn [a] (let [res (apply-rules rules a)] res)) expr)]
-    (if (= tmp expr) tmp (transform-with-rules rules tmp))))
+  (let [tmp (walk/postwalk
+             (fn [a] (let [res (apply-rules rules a)] res)) expr)]
+    (if (= tmp expr) tmp (recur rules tmp))))
 
 
 

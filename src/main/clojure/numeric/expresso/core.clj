@@ -3,7 +3,8 @@
   (:use [clojure.core.logic.protocols]
         [clojure.core.logic :exclude [is] :as l]
         [numeric.expresso.construct :only [with-expresso ex]]
-        [numeric.expresso.rules :only [rule apply-rule transform-with-rules]]
+        [numeric.expresso.rules :only [rule apply-rule
+                                       apply-rules transform-with-rules]]
         [clojure.test])
   (:require [clojure.core.logic.fd :as fd]
             [clojure.walk :as walk]
@@ -12,7 +13,7 @@
             [numeric.expresso.solve :as s]
             [numeric.expresso.construct :as c]))
 
-(defn ** [a b]
+(defn ^:dynamic ** [a b]
   (Math/pow a b))
 
 (def disjunctive-normal-form-rules
@@ -47,9 +48,7 @@
                                                  (for [a aargs b bargs] [a b]))]
                            ?&*))))))
 
-(with-expresso [+ - * /]
-
-  
+(with-expresso [+ - * / **]
 
 (def expand-brackets)
 
@@ -73,4 +72,67 @@
 (apply-rule (last normal-form-rules) (* (+ 'a 'b) (+ 'c 'd)))
 
 (transform-with-rules normal-form-rules (- 3 4 0 5))
-)
+
+(defn not-nullo [x]
+  (project [x] (== true (!= x 0))))
+
+
+(defn calc-res [x]
+  (fn [res]
+    (project [x]
+             (== (eval x) res))))
+
+(defn no-symbol [x]
+  (when (coll? x)
+    (not (some #(and (symbol? %) (not (resolve %))) (flatten x)))))
+
+(defn no-symbolso [x]
+  (project [x]
+           (== true (no-symbol x))))
+
+(def simp-rules
+  [(rule ?x :=> (calc-res ?x) :if (no-symbolso ?x))
+   (rule (+) :=> 0)
+   (rule (*) :=> 1)
+   (rule (+ ?x) :=> ?x)
+   (rule (* ?x) :=> ?x)
+   (rule (+ 0 ?&*) :=> (+ ?&*))
+   (rule (+ ?x ?x ?&*) :=> (+ (* 2 ?x) ?&*))
+   (rule (- ?x 0 ?&*) :=> (- ?x ?&*))
+   (rule (- 0 ?x) :=> (- ?x))
+   (rule (- ?x ?x) :=> 0)
+   ;buggy (rule (- ?x ?&*a ?x ?&*b) :=> (- 0 ?&*a ?&*b))
+   (rule (- 0) :=> 0)
+   (rule (* 1 ?&*) :=> (* ?&*))
+   (rule (* 0 ?&*) :=> 0)
+   (rule (* ?x ?x ?&*) :=> (* (** ?x 2) ?&*))
+   (rule (/ ?x ?&* 0 ?&*a) :=> 'div-by-zero-error :if (not-nullo ?x))
+   (rule (/ 0 ?&*) :=> 0)
+   (rule (/ ?x 1 ?&*) :=> (/ ?x ?&*))
+   (rule (/ ?x ?x) :=> 1)
+   ;also buggy (rule (/ ?x ?&* ?x ?&*2) :=> (/ 1 ?&* ?&*2))
+   (rule (** 0 0) :=> 'undefined)
+   (rule (** ?x 0) :=> 1)
+   (rule (** 0 ?x) :=> 0)
+   (rule (** 1 ?x) :=> 1)
+   (rule (** ?x 1 ) :=> ?x)
+   (rule (** ?x -1) :=> (/ 1 ?x))
+   (rule (* ?x (/ ?&+ ?x ?&*2) ?&*) :=> (* (/ ?&+ ?&*2) ?&*))
+   (rule (/ (* ?x ?&*) ?x) :=> (* ?&*))
+   (rule (/ ?x (* ?x ?&*)) :=> (* ?&*))
+   (rule (+ ?x (- ?x) ?&*) :=> (+ ?&*))
+   ])
+
+(transform-with-rules simp-rules (+ 2 2))
+
+(transform-with-rules simp-rules (+ (* 5 20) 30 7))
+
+(transform-with-rules simp-rules (- (* 5 'x) (* (+ 4 1) 'x)))
+
+(transform-with-rules simp-rules (* (/ 'y 'z) (- (* 5 'x) (* (+ 4 1) 'x))))
+
+(transform-with-rules simp-rules (* 3 2 'x))
+
+(transform-with-rules simp-rules (* 2 'x 3 'y 4 'z 5 6))
+
+(transform-with-rules simp-rules (+ 'x 3 4 (- 'x))))
