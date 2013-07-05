@@ -48,7 +48,7 @@
                                                  (for [a aargs b bargs] [a b]))]
                            ?&*))))))
 
-(with-expresso [+ - * / **]
+(with-expresso [+ - * / ** ln diff]
 (def expand-brackets)
 
 (def concat-similar)
@@ -98,12 +98,15 @@
   (let [gb (group-by contains-no-var? args)
         fix (concat (gb nil) (gb true))
         var (gb false)]
-    (list* xs (eval (list* xs fix)) var)))
+    (if (or (empty? fix) (< (count fix) 2))
+            (list* xs args)
+            (list* xs (eval (list* xs fix)) var))))
 
 (defn collabse-arguments-associative [xs args]
   (let [parts (partition-by contains-no-var? args)
         eval-parts (fn [part]
-                     (if (or (= nil (contains-no-var? part)) (contains-no-var? part))
+                     (if (and (and (coll? part) (> (count part) 1))
+                              (or (= nil (contains-no-var? part)) (contains-no-var? part)))
                        [(eval (list* xs part))]
                        part))
         mc (mapcat eval-parts parts)]
@@ -121,13 +124,16 @@
   (fn [res]
     (project [x]
              (let [tmp (compute-subexpression x)]
-               (if (= tmp res)
+               (if (= tmp x)
                  fail
                  (== res tmp))))))
-           
+
+
+(defn symbolo [x] (project [x] (== true (symbol? x))))
 
 (def simp-rules
-  [(rule ?x :=> (calc-reso ?x) :if (no-symbolso ?x))
+  [;(rule ?x :=> (calc-reso ?x) :if (no-symbolso ?x))
+   (rule ?x :=> (compute-subexpressiono ?x))
    (rule (+) :=> 0)
    (rule (*) :=> 1)
    (rule (+ ?x) :=> ?x)
@@ -142,6 +148,9 @@
    (rule (* 1 ?&*) :=> (* ?&*))
    (rule (* 0 ?&*) :=> 0)
    (rule (* ?x ?x ?&*) :=> (* (** ?x 2) ?&*))
+   (rule (+ (* ?x ?&*1) (* ?x ?&*2) ?&*) :=> (+ (* ?x (+ ?&*1 ?&*2)) ?&*)
+         :if (symbolo ?x))
+   (rule (+ (* ?x ?&*1) ?x ?&*) :=> (+ (* ?x (+ ?&*1 1)) ?&*))
    (rule (/ ?x ?&* 0 ?&*a) :=> 'div-by-zero-error :if (not-nullo ?x))
    (rule (/ 0 ?&*) :=> 0)
    (rule (/ ?x 1 ?&*) :=> (/ ?x ?&*))
@@ -157,8 +166,8 @@
    (rule (/ (* ?x ?&*) ?x) :=> (* ?&*))
    (rule (/ ?x (* ?x ?&*)) :=> (* ?&*))
    (rule (+ ?x (- ?x) ?&*) :=> (+ ?&*))
-   (rule ?x :=> (compute-subexpressiono ?x))
-
+   (rule (ln 1) :=> 0)
+   (rule (ln 0) :=> 'undefined)
    ])
 
 (transform-with-rules simp-rules (+ 2 2))
