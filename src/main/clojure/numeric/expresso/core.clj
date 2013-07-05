@@ -2,7 +2,7 @@
   (:refer-clojure :exclude [==])
   (:use [clojure.core.logic.protocols]
         [clojure.core.logic :exclude [is] :as l]
-        [numeric.expresso.construct :only [with-expresso ex]]
+        [numeric.expresso.construct :only [with-expresso ex expo]]
         [numeric.expresso.rules :only [rule apply-rule
                                        apply-rules transform-with-rules]]
         [clojure.test])
@@ -49,7 +49,6 @@
                            ?&*))))))
 
 (with-expresso [+ - * / **]
-
 (def expand-brackets)
 
 (def concat-similar)
@@ -77,21 +76,58 @@
   (project [x] (== true (!= x 0))))
 
 
-(defn calc-res [x]
+(defn calc-reso [x]
   (fn [res]
     (project [x]
              (== (eval x) res))))
 
 (defn no-symbol [x]
-  (when (coll? x)
+  (if (coll? x)
     (not (some #(and (symbol? %) (not (resolve %))) (flatten x)))))
 
 (defn no-symbolso [x]
   (project [x]
            (== true (no-symbol x))))
+ 
+(defn zip [& colls]
+  (apply (partial map (fn [& a] a)) colls))
+
+(defn contains-no-var? [x] (and (not (symbol? x)) (no-symbol x)))
+
+(defn collabse-arguments-commutative [xs args]
+  (let [gb (group-by contains-no-var? args)
+        fix (concat (gb nil) (gb true))
+        var (gb false)]
+    (list* xs (eval (list* xs fix)) var)))
+
+(defn collabse-arguments-associative [xs args]
+  (let [parts (partition-by contains-no-var? args)
+        eval-parts (fn [part]
+                     (if (or (= nil (contains-no-var? part)) (contains-no-var? part))
+                       [(eval (list* xs part))]
+                       part))
+        mc (mapcat eval-parts parts)]
+    (list* xs mc)))
+
+(defn compute-subexpression [expr]
+  (if (coll? expr)
+    (let [[xs & args] expr]
+      (cond (isa? xs 'e/ca-op) (collabse-arguments-commutative xs args)
+            (isa? xs 'e/ao-op) (collabse-arguments-associative xs args)
+            :else expr))
+    expr))
+                                                        
+(defn compute-subexpressiono [x]
+  (fn [res]
+    (project [x]
+             (let [tmp (compute-subexpression x)]
+               (if (= tmp res)
+                 fail
+                 (== res tmp))))))
+           
 
 (def simp-rules
-  [(rule ?x :=> (calc-res ?x) :if (no-symbolso ?x))
+  [(rule ?x :=> (calc-reso ?x) :if (no-symbolso ?x))
    (rule (+) :=> 0)
    (rule (*) :=> 1)
    (rule (+ ?x) :=> ?x)
@@ -100,8 +136,8 @@
    (rule (+ ?x ?x ?&*) :=> (+ (* 2 ?x) ?&*))
    (rule (- ?x 0 ?&*) :=> (- ?x ?&*))
    (rule (- 0 ?x) :=> (- ?x))
-   (rule (- ?x ?x) :=> 0)
-   ;buggy (rule (- ?x ?&*a ?x ?&*b) :=> (- 0 ?&*a ?&*b))
+  ; (rule (- ?x ?x) :=> 0)
+   (rule (- ?x ?&*a ?x ?&*b) :=> (- 0 ?&*a ?&*b))
    (rule (- 0) :=> 0)
    (rule (* 1 ?&*) :=> (* ?&*))
    (rule (* 0 ?&*) :=> 0)
@@ -109,8 +145,8 @@
    (rule (/ ?x ?&* 0 ?&*a) :=> 'div-by-zero-error :if (not-nullo ?x))
    (rule (/ 0 ?&*) :=> 0)
    (rule (/ ?x 1 ?&*) :=> (/ ?x ?&*))
-   (rule (/ ?x ?x) :=> 1)
-   ;also buggy (rule (/ ?x ?&* ?x ?&*2) :=> (/ 1 ?&* ?&*2))
+  ; (rule (/ ?x ?x) :=> 1)
+   (rule (/ ?x ?&* ?x ?&*2) :=> (/ 1 ?&* ?&*2))
    (rule (** 0 0) :=> 'undefined)
    (rule (** ?x 0) :=> 1)
    (rule (** 0 ?x) :=> 0)
@@ -121,6 +157,8 @@
    (rule (/ (* ?x ?&*) ?x) :=> (* ?&*))
    (rule (/ ?x (* ?x ?&*)) :=> (* ?&*))
    (rule (+ ?x (- ?x) ?&*) :=> (+ ?&*))
+   (rule ?x :=> (compute-subexpressiono ?x))
+
    ])
 
 (transform-with-rules simp-rules (+ 2 2))
