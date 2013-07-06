@@ -62,6 +62,15 @@
                      (apply-transformationo trans tmp)
                      (replace-symbolso tmp q)))))
 
+(defn apply-syntactic-rule
+  "applies simple syntactical rule to expression."
+  [rule exp]
+  (first (run 1 [q]
+              (fresh [pat trans guard]
+                     (== rule [pat trans guard])
+                     (== pat exp)
+                     (check-guardo guard)
+                     (apply-transformationo trans q)))))
 
 (defn apply-ruleo
   "core.logic relation of apply-rule - not relational, you can't generate all possible rules which transform an expression to the new-expression"
