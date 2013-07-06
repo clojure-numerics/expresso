@@ -18,13 +18,13 @@
 
 (def disjunctive-normal-form-rules
   (with-expresso [not and or]
-    [(rule (not (not ?x)) :=> ?x)
-     (rule (not (or ?a ?b)) :=> (and (not ?a) (not ?b)))
-     (rule (not (and ?a ?b)) :=> (or (not ?a) (not ?b)))
-     (rule (and ?a (or ?b ?c)) :=> (or (and ?a ?b) (and ?a ?c)))
-     (rule (and (or ?a ?b) ?c) :=> (or (and ?a ?c) (and ?b ?c)))
-     (rule (and (and ?a ?b) ?c) :=> (and ?a (and ?b ?c)))
-     (rule (or (or ?a ?b) ?c) :=> (or ?a (or ?b ?c)))]))
+    [(rule (not (not ?x)) :=> ?x :syntactical)
+     (rule (not (or ?a ?b)) :=> (and (not ?a) (not ?b)) :syntactical)
+     (rule (not (and ?a ?b)) :=> (or (not ?a) (not ?b)) :syntactical)
+     (rule (and ?a (or ?b ?c)) :=> (or (and ?a ?b) (and ?a ?c)) :syntactical)
+     (rule (and (or ?a ?b) ?c) :=> (or (and ?a ?c) (and ?b ?c)) :syntactical)
+     (rule (and (and ?a ?b) ?c) :=> (and ?a (and ?b ?c)) :syntactical)
+     (rule (or (or ?a ?b) ?c) :=> (or ?a (or ?b ?c)) :syntactical)]))
 
 
 (with-expresso [and not or]
@@ -48,7 +48,7 @@
                                                  (for [a aargs b bargs] [a b]))]
                            ?&*))))))
 
-(with-expresso [+ - * / ** ln diff]
+(with-expresso [+ - * / ** ln diff sin cos]
 (def expand-brackets)
 
 (def concat-similar)
@@ -168,6 +168,32 @@
    (rule (+ ?x (- ?x) ?&*) :=> (+ ?&*))
    (rule (ln 1) :=> 0)
    (rule (ln 0) :=> 'undefined)
+   (rule (ln 'e) :=> 1)
+   (rule (sin 0) :=> 0)
+   (rule (sin 'pi) :=> 0)
+   (rule (cos 0) :=> 1)
+   (rule (cos 'pi) :=> -1)
+   (rule (sin (/ 'pi 2)) :=> 1)
+   (rule (cos (/ 'pi 2)) :=> 0)
+   (rule (ln (** 'e ?x)) :=> ?x)
+   (rule (** 'e (ln ?x)) :=> ?x)
+   (rule (* (** ?x ?y) (** ?x ?z) ?&*) :=> (* (** ?x (+ ?y ?z)) ?&*))
+   (rule (/ (** ?x ?y) (** ?x ?z)) :=> (** ?x (- ?y ?z)))
+   (rule (+ (ln ?x) (ln ?y)) :=> (ln (* ?x ?y)))
+   (rule (- (ln ?x) (ln ?y)) :=> (ln (/ ?x ?y)))
+   (rule (+ (** (sin ?x) 2) (** (cos ?x) 2) ?&*) :=> (+ 1 ?&*))
+   (rule (diff ?x ?x) :=> 1)
+   (rule (diff (+ ?u ?&*) ?x) :=> (+ (diff ?u ?x) (diff (+ ?&*) ?x)))
+   (rule (diff (- ?u ?v) ?x) :=> (- (diff ?u ?x) (diff ?v ?x)))
+   (rule (diff (- ?u) ?x) :=> (- (diff ?u ?x)))
+   (rule (diff (* ?u ?&*) ?x) :=> (+ (* (diff ?u ?x) ?&*) (* (diff (* ?&*) ?x) ?u)))
+   (rule (diff (/ ?u ?v) ?x) :=> (/ (- (* (diff ?u ?x) ?v) (* (diff ?v ?x) ?u)) (** ?v 2)))
+   (rule (diff (** ?u ?n) ?x) :=> (* ?n (** ?u (- ?n 1)) (diff ?u ?x)))
+   (rule (diff (ln ?u) ?x) :=> (/ (diff ?u ?x) ?u))
+   (rule (diff (sin ?u) ?x) :=> (* (cos ?u) (diff ?u ?x)))
+   (rule (diff (cos ?u) ?x) :=> (* (- (sin ?u)) (diff ?u ?x)))
+   (rule (diff (** 'e ?u) ?x) :=> (* (** 'e ?u) (diff ?u ?x)))
+   (rule (diff ?u ?x) :=> 0)
    ])
 
 (transform-with-rules simp-rules (+ 2 2))

@@ -44,14 +44,13 @@
   [& v]
   (let [expanded (?-to-lvar v)
         [pat to trans & rest] expanded
-       ; ep (c/ex* pat) et (c/ex* trans)
-        guard (if (seq rest) (second rest) succeed)]
-    [pat trans guard]))
+                                        ; ep (c/ex* pat) et (c/ex* trans)
+        guard (if (and (seq rest) (= :if (first rest))) (second rest) succeed)]
+    (with-meta [pat trans guard] {:syntactic (and (seq rest) (= (last rest) :syntactical))})))
 
 
 
-  
-(defn apply-rule
+(defn apply-semantic-rule
   "applies rule to expression. The first succesful application of the rule gets performed"
   [rule exp]
   (first (run 1 [q]
@@ -71,6 +70,13 @@
                      (== pat exp)
                      (check-guardo guard)
                      (apply-transformationo trans q)))))
+
+
+(defn apply-rule [rule exp]
+  (if-let [m (meta rule)]
+    (if (:syntactical m)
+      (apply-syntactic-rule rule exp)
+      (apply-semantic-rule rule exp))))
 
 (defn apply-ruleo
   "core.logic relation of apply-rule - not relational, you can't generate all possible rules which transform an expression to the new-expression"
