@@ -14,7 +14,7 @@
 
 
 (deftest test-resulto
-  (is (= [6] (run* [q] (resulto (c/ex `+ 2 4) q)))))
+  (is (= [6] (run* [q] (resulto (c/ce `+ 2 4) q)))))
 
 
 (deftest test-simplifyo

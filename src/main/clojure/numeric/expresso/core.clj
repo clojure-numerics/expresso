@@ -2,7 +2,7 @@
   (:refer-clojure :exclude [==])
   (:use [clojure.core.logic.protocols]
         [clojure.core.logic :exclude [is] :as l]
-        [numeric.expresso.construct :only [with-expresso ex expo]]
+        [numeric.expresso.construct :only [with-expresso ex ce expo]]
         [numeric.expresso.rules :only [rule apply-rule
                                        apply-rules transform-with-rules]]
         [clojure.test])
@@ -36,15 +36,15 @@
 (defn minus-to-pluso [?a ?&+]
   (fn [res]
     (project [?a ?&+]
-             (let [nargs [(first ?&+) (map (fn [a] (ex `* -1  a)) (second ?&+))]]
-             (== res (ex `+ ?a nargs))))))
+             (let [nargs [(first ?&+) (map (fn [a] (ce `* -1  a)) (second ?&+))]]
+             (== res (ce `+ ?a nargs))))))
 
 (defn multiply-outo [?&+a ?&+b ?&*]
   (fn [res]
     (project [?&+a ?&+b ?&*]
              (let [aargs (second ?&+a)
                    bargs (second ?&+b)]
-               (== res (ex `+ [(first ?&+a) (map (fn [[a b]] (ex `* a b)) 
+               (== res (ce `+ [(first ?&+a) (map (fn [[a b]] (ce `* a b)) 
                                                  (for [a aargs b bargs] [a b]))]
                            ?&*))))))
 
@@ -153,7 +153,7 @@
    (rule (+ (* ?x ?&*1) ?x ?&*) :=> (+ (* ?x (+ ?&*1 1)) ?&*))
    (rule (/ ?x ?&* 0 ?&*a) :=> 'div-by-zero-error :if (not-nullo ?x))
    (rule (/ 0 ?&*) :=> 0)
-   (rule (/ ?x 1 ?&*) :=> (/ ?x ?&*))
+
   ; (rule (/ ?x ?x) :=> 1)
    (rule (/ ?x ?&* ?x ?&*2) :=> (/ 1 ?&* ?&*2))
    (rule (** 0 0) :=> 'undefined)

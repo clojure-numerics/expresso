@@ -19,7 +19,6 @@
             (rule (+ ?x (- ?x)) :=> 0)
             (rule (- ?x ?x) :=> (- (* 2 ?x)))])
 
-
 (deftest test-apply-ruleo
   (is (= '(3) (run* [q] (apply-ruleo (first rules) (* 3 1) q))))
   (is (= '() (run* [q] (apply-ruleo (first rules) (+ 3 1) q))))
@@ -31,7 +30,7 @@
 (defn collabs-factorso [x a b]
   (fn [res]
     (project [a b]
-             (== res (ex 'e/ca* x (+ a b))))))
+             (== res (ce 'e/ca* x (+ a b))))))
 
   
 (defna numberso [vars] 

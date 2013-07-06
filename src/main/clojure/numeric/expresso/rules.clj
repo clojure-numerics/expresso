@@ -44,6 +44,7 @@
   [& v]
   (let [expanded (?-to-lvar v)
         [pat to trans & rest] expanded
+       ; ep (c/ex* pat) et (c/ex* trans)
         guard (if (seq rest) (second rest) succeed)]
     [pat trans guard]))
 

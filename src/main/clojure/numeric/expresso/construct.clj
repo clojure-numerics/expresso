@@ -7,27 +7,7 @@
             [clojure.walk :as walk]
             [clojure.core.logic.unifier :as u]
             [numeric.expresso.utils :as utils]))
-(declare ex*)
 
-(defn- express-list 
-  ([[op & exprs]]
-    (cons op (map ex* exprs))))
-
-(defn ex* 
-  ([expr]
-    (cond 
-      ;; an operation with child expressions
-      (sequential? expr)
-        (let [childs (express-list expr)]
-          childs)
-        
-      ;; a symbol
-      (symbol? expr)
-        expr
-        
-      ;; else must be a constant
-      :else
-        expr)))
 
 (defn properties [s-exp]
   (:properties (meta (first s-exp))))
@@ -43,10 +23,6 @@
 (defmethod props 'clojure.core/- [_] [:n-ary [:inverse-of 'clojure.core/+]])
 (defmethod props 'clojure.core// [_] [:n-ary [:inverse-of 'clojure.core/*]])
 
-#_(def props {'clojure.core/* [:associative :commutative :n-ary]
-            'clojure.core/+ [:associative :commutative :n-ary]
-            'clojure.core/- [:n-ary [:inverse-of 'clojure.core/+]]
-            'clojure.core// [:n-ary [:inverse-of 'clojure.core/*]]})
 
 (defn extract [c]
   (mapcat #(if (and (coll? %) (= (first %) ::seq-match)) (second %) [%]) c))
@@ -55,7 +31,7 @@
 (defn splice-in-seq-matchers [expr]
   (walk/postwalk (fn [expr] (if (coll? expr) (extract expr) expr)) expr))
 
-(defn ex [symb & args]
+(defn ce [symb & args]
   (list* (with-meta symb {:properties (props symb)}) args))
 
 (def °)
@@ -84,7 +60,7 @@
   (if (and (coll? s-exp) (s (first s-exp)))
     (let [f (first s-exp)
           symb (if-let [r (resolve f)] (var-to-symbol r) f)]
-      (list* `ex (list 'quote symb) (rest s-exp)))
+      (list* `ce (list 'quote symb) (rest s-exp)))
     s-exp))
 
 (defmacro with-expresso [s & code]
@@ -92,5 +68,47 @@
     `(do 
        ~@(clojure.walk/postwalk #(replace-with-expresso-sexp s-set %) code))))
 
+(defn add-meta [symb args]
+  (list* (with-meta symb {:properties (props symb)}) args))
 
+(defn create-expression [v]
+  (cond
+   (and (sequential? v) (symbol? (first v)))
+   (if (= (first v) 'clojure.core/unquote)
+     (eval (second v))
+     (let [f (first v)
+           symb (if-let [r (resolve f)] (var-to-symbol r) f)]
+       (add-meta symb (rest v))))
+   :else v))
 
+(defn ex* [expr]
+  (walk/postwalk #(create-expression %) expr))
+
+(defmacro ex [expr]
+   (list 'quote (walk/postwalk #(create-expression %) expr)))
+
+(defn create-expression-with-values [s expr]
+  (if (and (sequential? expr) (symbol? (first expr)))
+    (if (= (first expr) 'clojure.core/unquote)
+      (eval (second expr))
+      (let [f (first expr)
+            symb (if-let [r (resolve f)] (var-to-symbol r) f)]
+        (list* `ce  (list 'quote symb) (rest expr))))
+    (if (s expr)
+      (list 'quote expr)
+      expr)))
+  
+(defn ex'* [& expr]
+  (let [[s expr]
+        (if (= (count expr) 1)
+          [#{} (first expr)]
+          [(into #{} (first expr)) (second expr)])]
+    (eval (walk/postwalk #(create-expression-with-values s %) expr))))
+
+(defmacro ex'
+  [& expr]
+  (let [[s expr]
+        (if (= (count expr) 1)
+          [#{} (first expr)]
+          [(into #{} (first expr)) (second expr)])]
+    (walk/postwalk #(create-expression-with-values s %) expr)))
