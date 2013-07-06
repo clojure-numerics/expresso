@@ -132,7 +132,7 @@
 (defn symbolo [x] (project [x] (== true (symbol? x))))
 
 (def simp-rules
-  [;(rule ?x :=> (calc-reso ?x) :if (no-symbolso ?x))
+  [(rule ?x :=> (calc-reso ?x) :if (no-symbolso ?x))
    (rule ?x :=> (compute-subexpressiono ?x))
    (rule (+) :=> 0)
    (rule (*) :=> 1)
@@ -142,7 +142,7 @@
    (rule (+ ?x ?x ?&*) :=> (+ (* 2 ?x) ?&*))
    (rule (- ?x 0 ?&*) :=> (- ?x ?&*))
    (rule (- 0 ?x) :=> (- ?x))
-  ; (rule (- ?x ?x) :=> 0)
+   (rule (- ?x ?x) :=> 0)
    (rule (- ?x ?&*a ?x ?&*b) :=> (- 0 ?&*a ?&*b))
    (rule (- 0) :=> 0)
    (rule (* 1 ?&*) :=> (* ?&*))
@@ -154,7 +154,7 @@
    (rule (/ ?x ?&* 0 ?&*a) :=> 'div-by-zero-error :if (not-nullo ?x))
    (rule (/ 0 ?&*) :=> 0)
 
-  ; (rule (/ ?x ?x) :=> 1)
+   (rule (/ ?x ?x) :=> 1)
    (rule (/ ?x ?&* ?x ?&*2) :=> (/ 1 ?&* ?&*2))
    (rule (** 0 0) :=> 'undefined)
    (rule (** ?x 0) :=> 1)
@@ -183,9 +183,11 @@
    (rule (- (ln ?x) (ln ?y)) :=> (ln (/ ?x ?y)))
    (rule (+ (** (sin ?x) 2) (** (cos ?x) 2) ?&*) :=> (+ 1 ?&*))
    (rule (diff ?x ?x) :=> 1)
+   (rule (diff (+ ?u ?v) ?x) :=> (+ (diff ?u ?x) (diff ?v ?x)))
    (rule (diff (+ ?u ?&*) ?x) :=> (+ (diff ?u ?x) (diff (+ ?&*) ?x)))
    (rule (diff (- ?u ?v) ?x) :=> (- (diff ?u ?x) (diff ?v ?x)))
    (rule (diff (- ?u) ?x) :=> (- (diff ?u ?x)))
+   (rule (diff (* ?u ?v) ?x) :=> (+ (* (diff ?u ?x) ?v) (* (diff ?v ?x) ?u)))
    (rule (diff (* ?u ?&*) ?x) :=> (+ (* (diff ?u ?x) ?&*) (* (diff (* ?&*) ?x) ?u)))
    (rule (diff (/ ?u ?v) ?x) :=> (/ (- (* (diff ?u ?x) ?v) (* (diff ?v ?x) ?u)) (** ?v 2)))
    (rule (diff (** ?u ?n) ?x) :=> (* ?n (** ?u (- ?n 1)) (diff ?u ?x)))
