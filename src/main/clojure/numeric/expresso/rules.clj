@@ -38,13 +38,48 @@
              (trans n-exp)
              (== trans n-exp))))
 
+(defn name-of-lvar [c]
+  (let [n (re-find #"<lvar:(\?(?:\&[\+\*])?\w*)>" (str c))]
+    (and (seq n) (symbol (second n)))))
+
+(defn revert-back-lvars [code]
+  (walk/postwalk (fn [c] (if-let [name (name-of-lvar c)]
+                           name
+                           c)) code))
+
+
+(defmacro transfn [args & code]
+  (let [args (revert-back-lvars args)]
+  `(fn ~args
+     (fn [res#]
+       (project ~args
+                (fresh [tmp#]
+                       (== tmp# (do ~@code))
+                       (conda
+                        ((nilo tmp#) fail)
+                        ((== res# tmp#)))))))))
+
+(defmacro transrel [args & code]
+  `(project ~(vec (butlast args))
+            (fresh []
+                   ~@code)))
+
+(defmacro guardfn [args & code]
+  `(fn ~args
+     (project ~args
+              (== true (do ~@code)))))
+
+(defmacro guardrel [args & code]
+  `(fn ~(vec (butlast args))
+     (project ~(vec (butlast args))
+              (fresh [] ~@code))))
+
 (defmacro rule
   "constructs an rule. Syntax is (rule pat :=> trans) or \n
    (rule pat :=> trans :if guard)"
   [& v]
   (let [expanded (?-to-lvar v)
         [pat to trans & rest] expanded
-                                        ; ep (c/ex* pat) et (c/ex* trans)
         guard (if (and (seq rest) (= :if (first rest))) (second rest) succeed)]
     (with-meta [pat trans guard] {:syntactic (and (seq rest) (= (last rest) :syntactical))})))
 
@@ -86,9 +121,16 @@
          (== res (apply-rule rule exp))
          (conda ((nilo res) fail) ((== res n-exp))))))
 
+(declare apply-rules)
+(defn apply-ruleso [rules expr nexpr]
+  (project [rules expr]
+           (fresh [a]
+                  (== a (apply-rules rules expr))
+                  (conda
+                   ((nilo a) fail)
+                   ((== nexpr a))))))
 
-
-(defn apply-ruleso
+#_(defn apply-ruleso
   "non-relational core.logic equivalent of apply-rules"
   [rules expr nexpr]
   (matche [rules]
@@ -108,6 +150,31 @@
             (recur (rest rules) expr)))
       expr)))
 
+(declare apply-rules transform-with-rules transform-expression)
+(defn apply-to-end
+  [rules expr]
+  (loop [rules rules expr expr]
+    (let [nexpr (apply-rules rules expr)]
+      (if (= expr nexpr)
+        nexpr
+        (transform-expression rules nexpr)))))
+
+(defn apply-simp
+  [rules expr]
+  (let [nexpr (apply-rules rules expr)]
+    (if (= nexpr expr)
+      expr
+      (transform-with-rules rules nexpr walk/postwalk apply-simp))))
+
+(defn apply-all-rules
+  "tries to apply all rules in rules on expression"
+  [rules expr]
+  (loop [rules rules expr expr]
+    (if (seq rules)
+      (recur (rest rules) (if-let [nexpr (apply-rule (first rules) expr)]
+                            nexpr expr))
+      expr)))
+
 (defn apply-rules
   "returns the result of the first succesful application of a rule in rules "
   [rules expr]
@@ -121,12 +188,19 @@
 (defn transform-with-rules
   "transforms the expr according to the rules in the rules vector until no rule
    can be applied any more. Uses clojure.walk/prewalk to walk the expression tree
-   in the default case. A custom walkfn can be specified"
-  ([rules expr walkfn]
+   in the default case. A custom walkfn and applyfn can be specified defaults to
+   clojure.walk/postwalk and apply-rules"
+  ([rules expr walkfn applyfn]
      (let [tmp (walkfn
-                (fn [a] (let [res (apply-rules rules a)] res)) expr)]
-       (if (= tmp expr) tmp (recur rules tmp walkfn))))
-  ([rules expr] (transform-with-rules rules expr walk/prewalk)))
+                (fn [a] (let [res (applyfn rules a)] res)) expr)]
+       (if (= tmp expr) tmp (recur rules tmp walkfn applyfn))))
+  ([rules expr] (transform-with-rules rules expr walk/prewalk apply-rules)))
 
 
+(defn transform-expression [rules expr]
+  (if (and (sequential? expr) (symbol? (first expr)))
+    (let [transformed (map (partial transform-expression rules) (rest expr))
+         ]
+      (apply-to-end rules (list* (first expr) transformed)))
+    (apply-to-end rules expr)))
 

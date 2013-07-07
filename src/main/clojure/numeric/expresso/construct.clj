@@ -23,6 +23,11 @@
 (defmethod props 'clojure.core/- [_] [:n-ary [:inverse-of 'clojure.core/+]])
 (defmethod props 'clojure.core// [_] [:n-ary [:inverse-of 'clojure.core/*]])
 
+(defn seq-matcher [data]
+  [::seq-match data])
+
+(defn matcher-args [seq-matcher]
+  (second seq-matcher))
 
 (defn extract [c]
   (mapcat #(if (and (coll? %) (= (first %) ::seq-match)) (second %) [%]) c))
@@ -88,22 +93,35 @@
    (list 'quote (walk/postwalk #(create-expression %) expr)))
 
 (defn create-expression-with-values [s expr]
-  (if (and (sequential? expr) (symbol? (first expr)))
+  (if (and (sequential? expr) (symbol? (first expr)) (not= 'quote (first expr)))
     (if (= (first expr) 'clojure.core/unquote)
-      (eval (second expr))
+      (second expr)
       (let [f (first expr)
             symb (if-let [r (resolve f)] (var-to-symbol r) f)]
         (list* `ce  (list 'quote symb) (rest expr))))
     (if (s expr)
       (list 'quote expr)
       expr)))
-  
+
+(defn quote-if-not-unquote [args]
+  (prn "hihihihihih args" args)
+  (map #(if (and (sequential? %) (= (first %) 'clojure.core/unquote))
+          (do (prn "vs " % )(second %))
+          (if (and (sequential? %) (symbol? (first %)))
+            (do (prn "hiiiiiier " %) %)
+            (do (prn "vlq " %) (list 'quote %)))) args))
+
+(defn create-expression-with-quoted-values [s expr]
+  (if (and (sequential? expr) (symbol? (first expr)) (not= 'clojure.core/unquote (first expr)))
+    (do (prn "hier" expr)(list* `ce (list 'quote (first expr)) (quote-if-not-unquote (rest expr))))
+    (do (prn "daa " ) expr)))
+
 (defn ex'* [& expr]
   (let [[s expr]
         (if (= (count expr) 1)
           [#{} (first expr)]
           [(into #{} (first expr)) (second expr)])]
-    (eval (walk/postwalk #(create-expression-with-values s %) expr))))
+    (eval (walk/prewalk #(create-expression-with-values s %) expr))))
 
 (defmacro ex'
   [& expr]
@@ -111,4 +129,7 @@
         (if (= (count expr) 1)
           [#{} (first expr)]
           [(into #{} (first expr)) (second expr)])]
-    (walk/postwalk #(create-expression-with-values s %) expr)))
+    (walk/prewalk #(create-expression-with-values s %) expr)))
+
+(defmacro exn [expr]
+  (walk/postwalk #(create-expression-with-quoted-values #{} %) expr))

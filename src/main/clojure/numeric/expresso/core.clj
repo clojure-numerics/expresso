@@ -3,8 +3,7 @@
   (:use [clojure.core.logic.protocols]
         [clojure.core.logic :exclude [is] :as l]
         [numeric.expresso.construct :only [with-expresso ex ce expo]]
-        [numeric.expresso.rules :only [rule apply-rule
-                                       apply-rules transform-with-rules]]
+        [numeric.expresso.rules]
         [clojure.test])
   (:require [clojure.core.logic.fd :as fd]
             [clojure.walk :as walk]
@@ -25,7 +24,6 @@
      (rule (and (or ?a ?b) ?c) :=> (or (and ?a ?c) (and ?b ?c)) :syntactical)
      (rule (and (and ?a ?b) ?c) :=> (and ?a (and ?b ?c)) :syntactical)
      (rule (or (or ?a ?b) ?c) :=> (or ?a (or ?b ?c)) :syntactical)]))
-
 
 (with-expresso [and not or]
   (transform-with-rules disjunctive-normal-form-rules
@@ -138,6 +136,7 @@
    (rule (*) :=> 1)
    (rule (+ ?x) :=> ?x)
    (rule (* ?x) :=> ?x)
+   (rule (+ ?&* (+ ?&*1)) :=> (+ ?&* ?&*1))
    (rule (+ 0 ?&*) :=> (+ ?&*))
    (rule (+ ?x ?x ?&*) :=> (+ (* 2 ?x) ?&*))
    (rule (- ?x 0 ?&*) :=> (- ?x ?&*))
@@ -145,6 +144,7 @@
    (rule (- ?x ?x) :=> 0)
    (rule (- ?x ?&*a ?x ?&*b) :=> (- 0 ?&*a ?&*b))
    (rule (- 0) :=> 0)
+   (rule (* ?&* (* ?&*1)) :=> (* ?&* ?&*1))
    (rule (* 1 ?&*) :=> (* ?&*))
    (rule (* 0 ?&*) :=> 0)
    (rule (* ?x ?x ?&*) :=> (* (** ?x 2) ?&*))
@@ -153,7 +153,6 @@
    (rule (+ (* ?x ?&*1) ?x ?&*) :=> (+ (* ?x (+ ?&*1 1)) ?&*))
    (rule (/ ?x ?&* 0 ?&*a) :=> 'div-by-zero-error :if (not-nullo ?x))
    (rule (/ 0 ?&*) :=> 0)
-
    (rule (/ ?x ?x) :=> 1)
    (rule (/ ?x ?&* ?x ?&*2) :=> (/ 1 ?&* ?&*2))
    (rule (** 0 0) :=> 'undefined)
@@ -197,9 +196,9 @@
    (rule (diff (** 'e ?u) ?x) :=> (* (** 'e ?u) (diff ?u ?x)))
    (rule (diff ?u ?x) :=> 0)
    ])
-
+(comment
+  "a view examples of using the expresso rule based translator"
 (transform-with-rules simp-rules (+ 2 2))
-
 (transform-with-rules simp-rules (+ (* 5 20) 30 7))
 
 (transform-with-rules simp-rules (- (* 5 'x) (* (+ 4 1) 'x)))
@@ -210,4 +209,9 @@
 
 (transform-with-rules simp-rules (* 2 'x 3 'y 4 'z 5 6))
 
-(transform-with-rules simp-rules (+ 'x 3 4 (- 'x))))
+(transform-with-rules simp-rules (+ 'x 3 4 (- 'x)))
+
+(transform-with-rules simp-rules (** 'e (ln (+ 3 0 (* 0 42)))))
+
+(transform-expression simp-rules (sin (diff (* (** 'x 4) (/ (* 3 'x) 'x)) 'x)))
+))
