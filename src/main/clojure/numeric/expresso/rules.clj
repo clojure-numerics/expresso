@@ -39,7 +39,7 @@
              (== trans n-exp))))
 
 (defn name-of-lvar [c]
-  (let [n (re-find #"<lvar:(\?(?:\&[\+\*])?\w*)>" (str c))]
+  (let [n (re-find #"<lvar:(\?(?:\&[\+\*])?\w*)>"  (str c))]
     (and (seq n) (symbol (second n)))))
 
 (defn revert-back-lvars [code]
@@ -49,7 +49,8 @@
 
 
 (defmacro transfn [args & code]
-  (let [args (revert-back-lvars args)]
+  (let [args (revert-back-lvars args)
+        code (revert-back-lvars code)]
   `(fn ~args
      (fn [res#]
        (project ~args
@@ -74,14 +75,39 @@
      (project ~(vec (butlast args))
               (fresh [] ~@code))))
 
+#_(defn lvars-in-code [transcode]
+  (let [matches (re-seq #"<lvar:(\?(?:\&[\+\*])?\w*)>" (str transcode))
+                                        ;symb-matches (map (fn [v] [(symbol (first v)) (symbol (second v))]) matches)
+        ret (into [] (into #{} (map (comp symbol first) matches)))]
+    ret))
+
+(defn lvars-in-code [transcode]
+  (let [lv (filter #(.startsWith (str %) "?") (flatten transcode))]
+    (into [] (into #{} lv))))
+
+#_(defn reconstruct [lvars]
+  (map (fn [lvar]
+         (let [[lv name] (re-find #"<lvar:(\?(?:\&[\+\*])?\w*)>" (str lvar))
+               name (symbol name)]
+           `(lvar ~(list 'quote name) false))) lvars))
+
+(defn reconstruct [lvars]
+  (map replace-?-with-lvar lvars))
+
+(defn make-inline-trans [transcode]
+  (let [lvars (lvars-in-code transcode)]
+    `((transfn ~lvars ~transcode) ~@lvars)))
+    
+
 (defmacro rule
   "constructs an rule. Syntax is (rule pat :=> trans) or \n
    (rule pat :=> trans :if guard)"
   [& v]
   (let [expanded (?-to-lvar v)
-        [pat to trans & rest] expanded
+        [pat to trans & rest] v
+        trans (if (= to :==>) (make-inline-trans trans) trans)
         guard (if (and (seq rest) (= :if (first rest))) (second rest) succeed)]
-    (with-meta [pat trans guard] {:syntactic (and (seq rest) (= (last rest) :syntactical))})))
+    (with-meta [(?-to-lvar pat) (?-to-lvar trans) (?-to-lvar guard)] {:syntactic (and (seq rest) (= (last rest) :syntactical))})))
 
 
 

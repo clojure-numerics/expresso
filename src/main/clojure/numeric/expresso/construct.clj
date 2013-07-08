@@ -76,22 +76,6 @@
 (defn add-meta [symb args]
   (list* (with-meta symb {:properties (props symb)}) args))
 
-(defn create-expression [v]
-  (cond
-   (and (sequential? v) (symbol? (first v)))
-   (if (= (first v) 'clojure.core/unquote)
-     (eval (second v))
-     (let [f (first v)
-           symb (if-let [r (resolve f)] (var-to-symbol r) f)]
-       (add-meta symb (rest v))))
-   :else v))
-
-(defn ex* [expr]
-  (walk/postwalk #(create-expression %) expr))
-
-(defmacro ex [expr]
-   (list 'quote (walk/postwalk #(create-expression %) expr)))
-
 (defn create-expression-with-values [s expr]
   (if (and (sequential? expr) (symbol? (first expr)) (not= 'quote (first expr)))
     (if (= (first expr) 'clojure.core/unquote)
@@ -99,22 +83,7 @@
       (let [f (first expr)
             symb (if-let [r (resolve f)] (var-to-symbol r) f)]
         (list* `ce  (list 'quote symb) (rest expr))))
-    (if (s expr)
-      (list 'quote expr)
-      expr)))
-
-(defn quote-if-not-unquote [args]
-  (prn "hihihihihih args" args)
-  (map #(if (and (sequential? %) (= (first %) 'clojure.core/unquote))
-          (do (prn "vs " % )(second %))
-          (if (and (sequential? %) (symbol? (first %)))
-            (do (prn "hiiiiiier " %) %)
-            (do (prn "vlq " %) (list 'quote %)))) args))
-
-(defn create-expression-with-quoted-values [s expr]
-  (if (and (sequential? expr) (symbol? (first expr)) (not= 'clojure.core/unquote (first expr)))
-    (do (prn "hier" expr)(list* `ce (list 'quote (first expr)) (quote-if-not-unquote (rest expr))))
-    (do (prn "daa " ) expr)))
+    expr))
 
 (defn ex'* [& expr]
   (let [[s expr]
@@ -128,8 +97,31 @@
   (let [[s expr]
         (if (= (count expr) 1)
           [#{} (first expr)]
-          [(into #{} (first expr)) (second expr)])]
+          [(into #{} (first expr)) (second expr)])
+        expr (walk/postwalk #(if (s %) (list 'quote %) %) expr)]
     (walk/prewalk #(create-expression-with-values s %) expr)))
 
-(defmacro exn [expr]
-  (walk/postwalk #(create-expression-with-quoted-values #{} %) expr))
+(defn resolve-op [f]
+  (if-let [r (resolve f)] (var-to-symbol r) f))
+
+(defn exnright [expr]
+  (if (and (sequential? expr) (symbol? (first expr)))
+    (if (= 'clojure.core/unquote (first expr))
+      (second expr)
+      (list* `ce (list 'quote (resolve-op (first expr)))
+            (map exnright (rest expr))))
+    (list 'quote expr)))
+
+(defmacro ex [expr]
+  (exnright expr))
+
+(defn ex* [expr]
+  (ex ~expr))
+
+(defn exn*right [expr]
+  (if (and (sequential? expr) (symbol? (first expr)))
+    (if (= 'clojure.core/unquote (first expr))
+      (second expr)
+      (apply (partial ce (resolve-op (first expr)))
+             (map exn*right (rest expr))))
+    (list 'quote expr)))

@@ -2,7 +2,7 @@
   (:refer-clojure :exclude [==])
   (:use [clojure.core.logic.protocols]
         [clojure.core.logic :exclude [is] :as l]
-        [numeric.expresso.construct :only [with-expresso ex ce expo]]
+        [numeric.expresso.construct]
         [numeric.expresso.rules]
         [clojure.test])
   (:require [clojure.core.logic.fd :as fd]
