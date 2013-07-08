@@ -61,20 +61,28 @@
                         ((== res# tmp#)))))))))
 
 (defmacro transrel [args & code]
-  `(project ~(vec (butlast args))
-            (fresh []
-                   ~@code)))
+  (let [args (revert-back-lvars args)
+        code (revert-back-lvars code)]
+    `(fn ~(vec (butlast args))
+       (fn [~(last args)]
+         (project ~(vec (butlast args))
+                  (fresh []
+                         ~@code))))))
 
 (defmacro guardfn [args & code]
+  (let [args (revert-back-lvars args)
+        code (revert-back-lvars code)]
   `(fn ~args
      (project ~args
-              (== true (do ~@code)))))
+              (== true (do ~@code))))))
 
 (defmacro guardrel [args & code]
-  `(fn ~(vec (butlast args))
-     (project ~(vec (butlast args))
-              (fresh [] ~@code))))
-
+  (let [args (revert-back-lvars args)
+        code (revert-back-lvars code)]
+    `(fn ~(vec args)
+       (project ~(vec args)
+                (fresh [] ~@code)))))
+  
 #_(defn lvars-in-code [transcode]
   (let [matches (re-seq #"<lvar:(\?(?:\&[\+\*])?\w*)>" (str transcode))
                                         ;symb-matches (map (fn [v] [(symbol (first v)) (symbol (second v))]) matches)
@@ -85,11 +93,14 @@
   (let [lv (filter #(.startsWith (str %) "?") (flatten transcode))]
     (into [] (into #{} lv))))
 
-#_(defn reconstruct [lvars]
-  (map (fn [lvar]
-         (let [[lv name] (re-find #"<lvar:(\?(?:\&[\+\*])?\w*)>" (str lvar))
-               name (symbol name)]
-           `(lvar ~(list 'quote name) false))) lvars))
+(defn replace-back [transcode]
+  (let [matches (re-seq #"<lvar:(\?(?:\&[\+\*])?\w*)>" (str transcode))
+        symb-matches (map (fn [v] [(symbol (first v)) (symbol (second v))]) matches)
+        replacement-map (into {} matches)
+        erg (walk/postwalk #(do 
+                                (if-let [r (get replacement-map (str %) nil)]
+                                  (symbol r)  %)) transcode)]
+    erg))
 
 (defn reconstruct [lvars]
   (map replace-?-with-lvar lvars))
@@ -98,6 +109,17 @@
   (let [lvars (lvars-in-code transcode)]
     `((transfn ~lvars ~transcode) ~@lvars)))
     
+(defmacro trans [transcode]
+  (let [res (?-to-lvar (make-inline-trans (replace-back transcode)))]
+    res))
+
+(defn make-inline-guard [guardcode]
+  (let [lvars (lvars-in-code guardcode)]
+    `((guardfn ~lvars ~guardcode) ~@lvars)))
+
+(defmacro guard [guardcode]
+  (let [res (?-to-lvar (make-inline-guard (replace-back guardcode)))]
+    res))
 
 (defmacro rule
   "constructs an rule. Syntax is (rule pat :=> trans) or \n

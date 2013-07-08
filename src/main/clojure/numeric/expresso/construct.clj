@@ -27,7 +27,10 @@
   [::seq-match data])
 
 (defn matcher-args [seq-matcher]
-  (second seq-matcher))
+  (if (sequential? seq-matcher)
+    (second seq-matcher)
+    [seq-matcher]))
+    
 
 (defn extract [c]
   (mapcat #(if (and (coll? %) (= (first %) ::seq-match)) (second %) [%]) c))

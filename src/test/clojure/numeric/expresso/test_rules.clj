@@ -78,3 +78,34 @@
 (deftest test-seq-matcher-in-associative-rule
   (is (= '(numeric.expresso.construct/° 9 8 7 6 5 4 4 3 2 1)
          (transform-with-rules [sort-rule] (° 1 4 2 6 5 4 3 7 8 9))))))
+
+(def inline-trans
+  (rule (ex (- ?a ?&+)) :==>
+        (ex (+ ~?a ~(seq-matcher (map #(ex (- ~%))
+                                          (matcher-args ?&+)))))))
+
+(deftest test-inline-trans
+  (is (= '(clojure.core/+ 3 (clojure.core/- 4)) (apply-rule inline-trans
+                                                            (ex (- 3 4)))))
+  (is (= '(clojure.core/+ 3 (clojure.core/- 4) (clojure.core/- 5))
+         (apply-rule inline-trans (ex (- 3 4 5))))))
+
+(def inline-guard
+  (rule (ex (/ ?x ?x)) :=> 1 :if (guard (not= 0 ?x))))
+
+(deftest test-inline-guard
+  (is (= 1 (apply-rule inline-guard (ex (/ 3 3)))))
+  (is (= nil (apply-rule inline-guard (ex (/ 0 0))))))
+
+(def guardr (guardrel [x] (nilo x)))
+
+(def tgr (rule ?x :=> 0 :if (guardr ?x)))
+
+(def ttr (transrel [x res] (== res (+ x 1))))
+
+(def rttr  (rule ?x :=> (ttr ?x)))
+
+(deftest test-convenience-macros
+  (is (= 0 (apply-rule tgr nil)))
+  (is (= nil (apply-rule tgr 0)))
+  (is (= 1 (apply-rule rttr 0))))
