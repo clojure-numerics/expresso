@@ -30,6 +30,9 @@
   (if (sequential? seq-matcher)
     (second seq-matcher)
     [seq-matcher]))
+
+(defn map-sm [func & sm]
+  (->> sm (map matcher-args) (apply (partial map func)) seq-matcher))
     
 
 (defn extract [c]

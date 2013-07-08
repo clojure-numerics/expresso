@@ -196,6 +196,10 @@
    (rule (diff (** 'e ?u) ?x) :=> (* (** 'e ?u) (diff ?u ?x)))
    (rule (diff ?u ?x) :=> 0)
    ])
+
+(defn simplify [expr]
+  (transform-expression simp-rules expr))
+
 (comment
   "a view examples of using the expresso rule based translator"
 (transform-with-rules simp-rules (+ 2 2))
@@ -215,3 +219,28 @@
 
 (transform-expression simp-rules (sin (diff (* (** 'x 4) (/ (* 3 'x) 'x)) 'x)))
 ))
+
+(with-expresso [+ - * / **]
+(def normal-form-rules
+  [(rule (+) :=> 0)
+   (rule (*) :=> 1)
+   (rule (+ ?x) :=> ?x)
+   (rule (* ?x) :=> ?x)
+   (rule (+ 0 ?&*) :=> (+ ?&*))
+   (rule (* 0 ?&*) :=> 0)
+   (rule (* (* ?&*) ?&*r) :=> (* ?&* ?&*r))
+   (rule (+ (+ ?&*) ?&*r) :=> (* ?&* ?&*r))
+   (rule (* ?x ?x ?&*) :=> (* (** ?x 2) ?&*))
+   (rule (* ?x (/ ?x) ?&*) :=> (* ?&*))
+   (rule (+ (* ?x ?n1) (* ?x ?n2) ?&*) :==>
+         (+ (* ?x (clojure.core/+ ?n1 ?n2)) ?&*) :if
+         (guard (and (number? ?n1) (number? ?n2))))
+   (rule (- ?x ?&+) :=> (trans (+ ?x (map-sm #(- %) ?&+))))
+   (rule (/ ?x ?&+) :=> (trans (* ?x (map-sm #(/ %) ?&+))))
+   (rule (* (+ ?&+1) (+ ?&+2) ?&*) :==>
+         (let [args1 (matcher-args ?&+1)
+               args2 (matcher-args ?&+2)]
+           (* ?&* (+ (seq-matcher (for [a args1 b args2] (* a b)))))))
+   (rule (* (+ ?&+) ?x ?&*) :==>
+         (* (+ (seq-matcher (for [a (matcher-args ?&+)] (* a ?x)))) ?&*))
+   ]))

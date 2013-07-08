@@ -93,12 +93,20 @@
   (let [lv (filter #(.startsWith (str %) "?") (flatten transcode))]
     (into [] (into #{} lv))))
 
+(defn str-seq [s]
+  (if (sequential? s)
+    (apply str (map str-seq s))
+    (str s)))
+    
+
 (defn replace-back [transcode]
-  (let [matches (re-seq #"<lvar:(\?(?:\&[\+\*])?\w*)>" (str transcode))
+  (let [_ (prn "str transcode " (str-seq transcode))
+        matches (re-seq #"<lvar:(\?(?:\&[\+\*])?\w*)>" (str-seq transcode))
+        _ (prn "matches " matches)
         symb-matches (map (fn [v] [(symbol (first v)) (symbol (second v))]) matches)
         replacement-map (into {} matches)
         erg (walk/postwalk #(do 
-                                (if-let [r (get replacement-map (str %) nil)]
+                              (if-let [r (get replacement-map (str %) nil)]
                                   (symbol r)  %)) transcode)]
     erg))
 
@@ -110,7 +118,9 @@
     `((transfn ~lvars ~transcode) ~@lvars)))
     
 (defmacro trans [transcode]
-  (let [res (?-to-lvar (make-inline-trans (replace-back transcode)))]
+  (let [_ (prn "transcode " transcode)
+        res (?-to-lvar (make-inline-trans (replace-back transcode)))
+        _ (prn "res " res)]
     res))
 
 (defn make-inline-guard [guardcode]
@@ -180,7 +190,7 @@
 
 #_(defn apply-ruleso
   "non-relational core.logic equivalent of apply-rules"
-  [rules expr nexpr]
+[expr nexpr]
   (matche [rules]
           ([[?r . ?rs]] (conda
                          ((apply-ruleo ?r expr nexpr))
