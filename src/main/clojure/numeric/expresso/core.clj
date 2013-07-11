@@ -31,44 +31,8 @@
 
 
 
-(defn minus-to-pluso [?a ?&+]
-  (fn [res]
-    (project [?a ?&+]
-             (let [nargs [(first ?&+) (map (fn [a] (ce `* -1  a)) (second ?&+))]]
-             (== res (ce `+ ?a nargs))))))
-
-(defn multiply-outo [?&+a ?&+b ?&*]
-  (fn [res]
-    (project [?&+a ?&+b ?&*]
-             (let [aargs (second ?&+a)
-                   bargs (second ?&+b)]
-               (== res (ce `+ [(first ?&+a) (map (fn [[a b]] (ce `* a b)) 
-                                                 (for [a aargs b bargs] [a b]))]
-                           ?&*))))))
-
 (with-expresso [+ - * / ** ln diff sin cos]
-(def expand-brackets)
 
-(def concat-similar)
-
-
-;; start example of using the rule based translator to simplify and transform
-;; a polynomial input to standart form. start with variable 'x
-
-
-
-(def normal-form-rules
-  [(rule (+) :=> 0)
-   (rule (*) :=> 1)
-   (rule (+ 0 ?&*) :=> (+ ?&*))
-   (rule (* 0 ?&*) :=> 0)
-   (rule (- ?a ?&+) :=> (minus-to-pluso ?a ?&+))
-   (rule (* (+ ?&+a) (+ ?&+b) ?&*) :=> (multiply-outo ?&+a ?&+b ?&*))
-   ])
-
-(apply-rule (last normal-form-rules) (* (+ 'a 'b) (+ 'c 'd)))
-
-(transform-with-rules normal-form-rules (- 3 4 0 5))
 
 (defn not-nullo [x]
   (project [x] (== true (!= x 0))))
@@ -80,8 +44,9 @@
              (== (eval x) res))))
 
 (defn no-symbol [x]
-  (if (coll? x)
-    (not (some #(and (symbol? %) (not (resolve %))) (flatten x)))))
+  (if (and (sequential? x) (symbol? (first x)))
+    (and (resolve (first x)) (every? no-symbol (rest x)))
+    (not (symbol? x))))
 
 (defn no-symbolso [x]
   (project [x]
@@ -90,7 +55,9 @@
 (defn zip [& colls]
   (apply (partial map (fn [& a] a)) colls))
 
-(defn contains-no-var? [x] (and (not (symbol? x)) (no-symbol x)))
+(defn contains-no-var? [x]
+  (let [res (if (and (not (symbol? x)) (no-symbol x)) true false)]
+    res))
 
 (defn collabse-arguments-commutative [xs args]
   (let [gb (group-by contains-no-var? args)
@@ -196,32 +163,14 @@
    (rule (diff (** 'e ?u) ?x) :=> (* (** 'e ?u) (diff ?u ?x)))
    (rule (diff ?u ?x) :=> 0)
    ])
-
+)
 (defn simplify [expr]
   (transform-expression simp-rules expr))
 
-(comment
-  "a view examples of using the expresso rule based translator"
-(transform-with-rules simp-rules (+ 2 2))
-(transform-with-rules simp-rules (+ (* 5 20) 30 7))
-
-(transform-with-rules simp-rules (- (* 5 'x) (* (+ 4 1) 'x)))
-
-(transform-with-rules simp-rules (* (/ 'y 'z) (- (* 5 'x) (* (+ 4 1) 'x))))
-
-(transform-with-rules simp-rules (* 3 2 'x))
-
-(transform-with-rules simp-rules (* 2 'x 3 'y 4 'z 5 6))
-
-(transform-with-rules simp-rules (+ 'x 3 4 (- 'x)))
-
-(transform-with-rules simp-rules (** 'e (ln (+ 3 0 (* 0 42)))))
-
-(transform-expression simp-rules (sin (diff (* (** 'x 4) (/ (* 3 'x) 'x)) 'x)))
-))
 
 (with-expresso [+ - * / **]
-(def normal-form-rules
+
+(def universal-rules
   [(rule (+) :=> 0)
    (rule (*) :=> 1)
    (rule (+ ?x) :=> ?x)
@@ -229,8 +178,15 @@
    (rule (+ 0 ?&*) :=> (+ ?&*))
    (rule (* 0 ?&*) :=> 0)
    (rule (* (* ?&*) ?&*r) :=> (* ?&* ?&*r))
-   (rule (+ (+ ?&*) ?&*r) :=> (* ?&* ?&*r))
-   (rule (* ?x ?x ?&*) :=> (* (** ?x 2) ?&*))
+   (rule (+ (+ ?&*) ?&*r) :=> (+ ?&* ?&*r))])
+
+(def eval-rules
+  [(rule ?x :=> (calc-reso ?x) :if (no-symbolso ?x))
+   (rule ?x :=> (compute-subexpressiono ?x))])
+  
+(def normal-form-rules
+  (concat universal-rules
+   [(rule (* ?x ?x ?&*) :=> (* (** ?x 2) ?&*))
    (rule (* ?x (/ ?x) ?&*) :=> (* ?&*))
    (rule (+ (* ?x ?n1) (* ?x ?n2) ?&*) :==>
          (+ (* ?x (clojure.core/+ ?n1 ?n2)) ?&*) :if
@@ -242,5 +198,155 @@
                args2 (matcher-args ?&+2)]
            (* ?&* (+ (seq-matcher (for [a args1 b args2] (* a b)))))))
    (rule (* (+ ?&+) ?x ?&*) :==>
+         (* (+ (seq-matcher (for [a (matcher-args ?&+)] (* a ?x)))) ?&*))]))
+
+(def to-inverses-rules
+  [(rule (- ?x ?&+) :=> (trans (+ ?x (map-sm #(- %) ?&+))))
+   (rule (/ ?x ?&+) :=> (trans (* ?x (map-sm #(/ %) ?&+))))])
+
+(declare multinomial)
+(def multiply-out-rules
+  [(rule (* (+ ?&+1) (+ ?&+2) ?&*) :==>
+         (let [args1 (matcher-args ?&+1)
+               args2 (matcher-args ?&+2)]
+           (* ?&* (+ (seq-matcher (for [a args1 b args2] (* a b)))))))
+   (rule (* (+ ?&+) ?x ?&*) :==>
          (* (+ (seq-matcher (for [a (matcher-args ?&+)] (* a ?x)))) ?&*))
-   ]))
+   (rule (** (* ?&+) ?n) :==> (* (map-sm #(** % ?n) ?&+)))
+   (rule (** (** ?x ?n1) ?n2) :==> (** ?x (clojure.core/* ?n1 ?n2)))
+   (rule (** (+ ?&+) ?n) :==> (multinomial ?n (matcher-args ?&+)))]))
+
+(defn- binom [n k]
+  (let [rprod (fn [a b] (reduce * (range a (inc b))))]
+    (/ (rprod (- n k -1) n) (rprod 1 k))))
+
+(defn factorial [n]
+  (loop [n (long n) acc (long 1)]
+    (if (<= n 1)
+      acc
+      (recur (- n 1) (* acc n)))))
+
+(defn- multinomial-indices [m n]
+  (if (= n 0)
+    (list (repeat m 0))
+    (if (= m 1)
+      (list (list n))
+      (for [i (range (inc n))
+            j (multinomial-indices (- m 1) (- n i)) ]
+        (list* i j)))))
+
+(defn multinomial-coeff [n indices]
+  (quot (factorial n) (reduce * (map factorial indices))))
+
+(defn to-factors [args index]
+  (loop [i 0 index index ret []]
+    (if (= i (count args))
+      ret
+      (recur (inc i) (rest index)
+             (cond
+              (= (first index) 0) ret
+              (= (first index) 1) (conj ret (nth args i))
+               :else (conj ret (ex' (** ~(nth args i) ~(first index)))))))))
+
+(defn multinomial [n args]
+  (let [args (vec args)
+        m (count args)
+        indices (multinomial-indices m n)]
+    (ce `+ (seq-matcher (for [index indices]
+                          (let [factors (seq-matcher (to-factors args index))
+                                coeff (multinomial-coeff n index)]
+                            (if (= 1 coeff)
+                              factors
+                              (ex' (* coeff factors)))))))))
+    
+
+(with-expresso [+ - * / **]
+  (def transform-to-polynomial-normal-form-rules
+    (concat universal-rules
+            [(rule (+ [?x ?y] [?z ?y] ?&*)
+                   :==> (+ [(clojure.core/+ ?x ?z) ?y] ?&*)
+                   :if (guard (and (number? ?x) (number? ?y))))
+             (rule (* [?x ?y] [?z ?a] ?&*)
+                   :==>  (* [(clojure.core/* ?x ?z) (clojure.core/+ ?y ?a)] ?&*)
+                   :if (guard (and (number? ?x) (number? ?y)
+                                   (number? ?z) (number? ?a))))
+             (rule (- [?x ?y]) :==> [(clojure.core/- ?x) ?y]
+                   :if (guard (and (number? ?x) (number? ?y))))
+             (rule (/ [?x ?y]) :==>[(clojure.core// ?x) ?y]
+                   :if (guard (and (number? ?x) (number? ?y))))])))
+
+(defn- transform-to-coefficients-form [v expr]
+  (if (sequential? expr)
+    (if (= (first expr) `**)
+      [1 (second (rest  expr))]
+      (apply (partial ce (first expr)) (map (partial transform-to-coefficients-form v) (rest expr))))
+    (if (= v expr) [1 1] [expr 0])))
+
+
+
+(defn translate-back [v expr]
+  (list* (first expr)
+         (walk/postwalk #(if (and (sequential? %) (= (count %) 2) (number? (first %)))
+                           (if (= 0 (second %)) (first %)
+                               (ex' (* ~(first %) (** v ~(second %)))))
+                           %) (sort #(> (second %1) (second %2)) (rest expr)))))
+  
+(defn to-polynomial-normal-form [expr v]
+  (->> expr
+       (transform-expression (concat eval-rules
+                                     universal-rules
+                                     to-inverses-rules
+                                     multiply-out-rules))
+       (transform-to-coefficients-form v)
+       (transform-expression transform-to-polynomial-normal-form-rules)
+       (translate-back v)
+       (transform-expression universal-rules)))
+
+(defn only-one-occurrence-of [v expr]
+  (= (count (filter #{v} (flatten expr))) 1))
+
+(def c= =)
+
+(with-expresso [+ cons? nth-arg? = - / * ]
+(def rearrange-rules
+  [(rule [(cons? ?p ?ps) (= (+ ?&+) ?rhs)]
+         :==> (let [[left x right] (split-in-pos-sm ?&+ ?p)]
+                [?ps (= x (- ?rhs left right))]))
+   (rule [(cons? ?p ?ps) (= (* ?&+) ?rhs)]
+         :==> (let [[left x right] (split-in-pos-sm ?&+ ?p)]
+                [?ps (= x (/ ?rhs (* left right)))]))
+   (rule [(cons? ?p ?ps) (= (- ?&+) ?rhs)]
+         :==> (let [[left x right] (split-in-pos-sm ?&+ ?p)]
+                [?ps (= x (if (c= ?p 0)
+                            (+ ?rhs right)
+                            (- (+ (- ?rhs (first-sm left))
+                                  (rest-sm left) right))))]))
+   (rule [(cons? ?p ?ps) (= (/ ?&+) ?rhs)]
+         :==> (let [[left x right] (split-in-pos-sm ?&+ ?p)]
+                [?ps (= x (if (c= ?p 0)
+                            (* ?rhs right)
+                            (/ (* (/ ?rhs (first-sm left))
+                                  (rest-sm left) right))))]))]))
+                  
+(defn position-in-equation
+  ([v equation] (position-in-equation v equation []))
+  ([v equation pos]
+     (if (and (sequential? equation) (symbol? (first equation)))
+       (some identity (map #(position-in-equation v %1 (conj pos %2))
+                           (rest equation) (range)))
+       (if (= v equation) pos nil))))
+
+(defn swap-sides [[eq lhs rhs]]
+  (list eq rhs lhs))
+
+(defn rearrange [v equation]
+  (let [pos (position-in-equation v equation)]
+    (->> (apply-to-end rearrange-rules
+                      [(subvec pos 1) (if (= (first pos) 1)
+                                        (swap-sides equation)
+                                        equation)])
+        second
+)))
+
+(defn substitute [repl-map expr]
+  (walk/postwalk-replace repl-map expr))

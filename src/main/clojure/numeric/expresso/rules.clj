@@ -82,12 +82,7 @@
     `(fn ~(vec args)
        (project ~(vec args)
                 (fresh [] ~@code)))))
-  
-#_(defn lvars-in-code [transcode]
-  (let [matches (re-seq #"<lvar:(\?(?:\&[\+\*])?\w*)>" (str transcode))
-                                        ;symb-matches (map (fn [v] [(symbol (first v)) (symbol (second v))]) matches)
-        ret (into [] (into #{} (map (comp symbol first) matches)))]
-    ret))
+
 
 (defn lvars-in-code [transcode]
   (let [lv (filter #(.startsWith (str %) "?") (flatten transcode))]
@@ -100,9 +95,7 @@
     
 
 (defn replace-back [transcode]
-  (let [_ (prn "str transcode " (str-seq transcode))
-        matches (re-seq #"<lvar:(\?(?:\&[\+\*])?\w*)>" (str-seq transcode))
-        _ (prn "matches " matches)
+  (let [matches (re-seq #"<lvar:(\?(?:\&[\+\*])?\w*)>" (str-seq transcode))
         symb-matches (map (fn [v] [(symbol (first v)) (symbol (second v))]) matches)
         replacement-map (into {} matches)
         erg (walk/postwalk #(do 
@@ -118,9 +111,7 @@
     `((transfn ~lvars ~transcode) ~@lvars)))
     
 (defmacro trans [transcode]
-  (let [_ (prn "transcode " transcode)
-        res (?-to-lvar (make-inline-trans (replace-back transcode)))
-        _ (prn "res " res)]
+  (let [res (?-to-lvar (make-inline-trans (replace-back transcode)))]
     res))
 
 (defn make-inline-guard [guardcode]
@@ -262,3 +253,5 @@
       (apply-to-end rules (list* (first expr) transformed)))
     (apply-to-end rules expr)))
 
+;;See if it is possible to reinstantiate rules so that they can be applied all
+;;in the core.logic context

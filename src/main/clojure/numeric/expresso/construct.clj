@@ -27,13 +27,25 @@
   [::seq-match data])
 
 (defn matcher-args [seq-matcher]
-  (if (sequential? seq-matcher)
+  (if (and (sequential? seq-matcher) (= (first seq-matcher) ::seq-match))
     (second seq-matcher)
     [seq-matcher]))
 
+(defn zip-sm
+  [sm & colls]
+  (apply (partial map (fn [& a] a) (matcher-args sm)) colls))
+
 (defn map-sm [func & sm]
   (->> sm (map matcher-args) (apply (partial map func)) seq-matcher))
-    
+
+(defn first-sm [sm] (first (matcher-args sm)))
+(defn rest-sm [sm] (seq-matcher (rest (matcher-args sm))))
+
+(defn split-in-pos-sm [sm pos]
+  (let [args (vec (matcher-args sm))]
+    [(seq-matcher (subvec args 0 pos))
+     (nth args pos)
+     (seq-matcher (subvec args (+ pos 1) (count args)))]))
 
 (defn extract [c]
   (mapcat #(if (and (coll? %) (= (first %) ::seq-match)) (second %) [%]) c))

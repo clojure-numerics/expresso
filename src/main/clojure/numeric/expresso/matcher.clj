@@ -386,6 +386,23 @@
   get-symbol)
 
 
+(defn extract-is [pargs expr]
+  (project [pargs]
+           (let [[lv pred] pargs]                   
+             (if (pred expr)
+               (== lv expr)
+               fail))))
+
+(defn extract-cons [pargs expr]
+  (project [pargs]
+           (let [[p ps] pargs]
+             (conso p ps expr))))
+
+(defmethod extractor 'is? [_] extract-is)
+
+(defmethod extractor 'cons? [_] extract-cons)
+
+(defmethod extractor :default [_] (fn [a b] fail))
 
 (defn replace-symbolso
   "replaces the symbols in old wich were replaced during the last match with
@@ -414,7 +431,7 @@
   (conde
    ((== pat exp))
    ((conda
-     ((is-expro pat) (is-expro exp)
+     ((is-expro exp) (is-expro pat)
       (fresh [ps es pargs eargs]
              (c/expo ps pargs pat)
              (c/expo es eargs exp)
@@ -428,5 +445,5 @@
              (c/expo ps pargs pat)
              (project [ps pargs exp]
                       (let [f (extractor ps)]
-                        (f ps exp)))))
+                        (f pargs exp)))))
      ((expression-matcho pat exp))))))
