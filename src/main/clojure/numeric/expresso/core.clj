@@ -177,8 +177,14 @@
    (rule (* ?x) :=> ?x)
    (rule (+ 0 ?&*) :=> (+ ?&*))
    (rule (* 0 ?&*) :=> 0)
+   (rule (* 1 ?&*) :=> (* ?&*))
+   (rule (** ?x 1) :=> ?x)
    (rule (* (* ?&*) ?&*r) :=> (* ?&* ?&*r))
-   (rule (+ (+ ?&*) ?&*r) :=> (+ ?&* ?&*r))])
+   (rule (+ (+ ?&*) ?&*r) :=> (+ ?&* ?&*r))
+   (rule (- 0 ?&+) :=> (- ?&+))
+   (rule (+ (* ?x ?y) (* ?z ?y) ?&*) :=> (+ (* (+ ?x ?z) ?y) ?&*)
+         :if (guard (and (number? ?x) (number? ?z))))
+   ])
 
 (def eval-rules
   [(rule ?x :=> (calc-reso ?x) :if (no-symbolso ?x))
@@ -202,6 +208,7 @@
 
 (def to-inverses-rules
   [(rule (- ?x ?&+) :=> (trans (+ ?x (map-sm #(- %) ?&+))))
+   (rule (- (+ ?&+)) :==> (+ (map-sm #(- %) ?&+)))
    (rule (/ ?x ?&+) :=> (trans (* ?x (map-sm #(/ %) ?&+))))])
 
 (declare multinomial)
@@ -264,16 +271,17 @@
   (def transform-to-polynomial-normal-form-rules
     (concat universal-rules
             [(rule (+ [?x ?y] [?z ?y] ?&*)
-                   :==> (+ [(clojure.core/+ ?x ?z) ?y] ?&*)
-                   :if (guard (and (number? ?x) (number? ?y))))
+                   :==> (+ [(+ ?x ?z) ?y] ?&*)
+                   :if (guard (and  (number? ?y))))
              (rule (* [?x ?y] [?z ?a] ?&*)
-                   :==>  (* [(clojure.core/* ?x ?z) (clojure.core/+ ?y ?a)] ?&*)
-                   :if (guard (and (number? ?x) (number? ?y)
-                                   (number? ?z) (number? ?a))))
-             (rule (- [?x ?y]) :==> [(clojure.core/- ?x) ?y]
-                   :if (guard (and (number? ?x) (number? ?y))))
-             (rule (/ [?x ?y]) :==>[(clojure.core// ?x) ?y]
-                   :if (guard (and (number? ?x) (number? ?y))))])))
+                   :==>  (* [(* ?x ?z) (clojure.core/+ ?y ?a)] ?&*)
+                   :if (guard (and (number? ?y)
+                                    (number? ?a))))
+             (rule (- [?x ?y]) :==> [(- ?x) ?y]
+                   :if (guard (and (number? ?y))))
+             (rule (/ [?x ?y]) :==>[(/ ?x) ?y]
+                   :if (guard (and  (number? ?y))))
+             (rule (ce ?op [?x 0]) :=> [(ce ?op ?x) 0])])))
 
 (defn- transform-to-coefficients-form [v expr]
   (if (sequential? expr)
@@ -282,16 +290,21 @@
       (apply (partial ce (first expr)) (map (partial transform-to-coefficients-form v) (rest expr))))
     (if (= v expr) [1 1] [expr 0])))
 
+(defn expression? [exp]
+  (or (and (sequential? exp) (symbol? (first exp))) (number? exp)))
 
 
 (defn translate-back [v expr]
   (list* (first expr)
-         (walk/postwalk #(if (and (sequential? %) (= (count %) 2) (number? (first %)))
+         (walk/postwalk #(if (and (sequential? %) (= (count %) 2) (expression? (first %)) (number? (second %)))
                            (if (= 0 (second %)) (first %)
                                (ex' (* ~(first %) (** v ~(second %)))))
                            %) (sort #(> (second %1) (second %2)) (rest expr)))))
-  
-(defn to-polynomial-normal-form [expr v]
+
+
+
+
+(defn to-polynomial-normal-form [v expr]
   (->> expr
        (transform-expression (concat eval-rules
                                      universal-rules
@@ -300,7 +313,10 @@
        (transform-to-coefficients-form v)
        (transform-expression transform-to-polynomial-normal-form-rules)
        (translate-back v)
-       (transform-expression universal-rules)))
+       (transform-expression (concat eval-rules
+                                     universal-rules
+                                     to-inverses-rules
+                                     multiply-out-rules))))
 
 (defn only-one-occurrence-of [v expr]
   (= (count (filter #{v} (flatten expr))) 1))
@@ -348,5 +364,24 @@
         second
 )))
 
+(def simplify-eq (fn [eq] (ce `= (simplify (nth eq 1)) (simplify (nth eq 2)))))
+
+(def simplify-rhs (fn [eq] (ce `= (nth eq 1) (transform-expression (concat universal-rules eval-rules) (nth eq 2)))))
+
+
 (defn substitute [repl-map expr]
   (walk/postwalk-replace repl-map expr))
+
+(defn lhs-rhs=0 [equation]
+  (ce `= (ce `+ (nth equation 1) (ce `- (nth equation 2))) 0))
+
+(defn to-poly-nf [v equation]
+  (ce `= (to-polynomial-normal-form v (nth equation 1)) (nth equation 2)))
+
+(defn solve [v equation]
+  (->> equation
+       lhs-rhs=0
+       (to-poly-nf v)
+ ;      simplify-eq
+       (rearrange v)
+       simplify-rhs))

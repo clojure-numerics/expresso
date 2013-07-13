@@ -409,7 +409,8 @@
    the replacements - method will change"
   [old new]
   (project [old]
-           (let [res (walk/prewalk-replace @replacements old)
+           (let [
+                 res (walk/prewalk-replace @replacements old)
                  res (c/splice-in-seq-matchers res)]
              (do (reset! replacements {})
                  (== res new)))))
