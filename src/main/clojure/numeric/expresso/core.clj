@@ -168,7 +168,7 @@
   (transform-expression simp-rules expr))
 
 
-(with-expresso [+ - * / **]
+(with-expresso [+ - * / ** diff ln sin cos]
 
 (def universal-rules
   [(rule (+) :=> 0)
@@ -221,8 +221,26 @@
          (* (+ (seq-matcher (for [a (matcher-args ?&+)] (* a ?x)))) ?&*))
    (rule (** (* ?&+) ?n) :==> (* (map-sm #(** % ?n) ?&+)))
    (rule (** (** ?x ?n1) ?n2) :==> (** ?x (clojure.core/* ?n1 ?n2)))
-   (rule (** (+ ?&+) ?n) :==> (multinomial ?n (matcher-args ?&+)))]))
+   (rule (** (+ ?&+) ?n) :==> (multinomial ?n (matcher-args ?&+)))
+   (rule (* ?x (/ ?x) ?&*) :=> (* ?&*))])
 
+(def diff-rules
+  [(rule (diff ?x ?x) :=> 1)
+   (rule (diff (+ ?&+) ?x) :==> (+ (map-sm #(diff % ?x) ?&+)))
+   (rule (diff (* ?&+) ?x) :==>
+         (+ (seq-matcher
+             (for [i (range (count-sm ?&+)) :let [[bv ith af] (split-in-pos-sm ?&+ i)]]
+               (* (diff ith ?x) bv af)))))
+   (rule (diff (- ?a) ?x) :=> (- (diff ?a ?x)))
+   (rule (diff (/ ?a) ?x) :=> (- (* (diff ?a ?x) (/ (** ?a 2)))))
+   (rule (diff (** ?a ?n) ?x) :==> (* ?n (** ?a (clojure.core/- ?n 1)) (diff ?a ?x))
+         :if (guard (number? ?n)))
+   (rule (diff (ln ?a) ?x) :=> (* (diff ?a ?x) (/ ?a)))
+   (rule (diff (sin ?a) ?x) :=> (* (cos ?a) (diff ?a ?x)))
+   (rule (diff (cos ?a) ?x) :=> (* (- (sin ?a)) (diff ?a ?x)))
+   (rule (diff (** 'e ?n) ?x) :=> (* (** 'e ?n) (diff ?n ?x)))
+   (rule (diff ?u ?x) :=> 0)])
+)
 (defn- binom [n k]
   (let [rprod (fn [a b] (reduce * (range a (inc b))))]
     (/ (rprod (- n k -1) n) (rprod 1 k))))
@@ -303,6 +321,10 @@
 
 
 
+(defn dbg
+  ([x] (prn x) x)
+  ([m x] (prn m x) x))
+
 
 (defn to-polynomial-normal-form [v expr]
   (->> expr
@@ -310,9 +332,14 @@
                                      universal-rules
                                      to-inverses-rules
                                      multiply-out-rules))
+ ;      (dbg "simplified")
        (transform-to-coefficients-form v)
        (transform-expression transform-to-polynomial-normal-form-rules)
+  ;     (dbg "poly-form")
+       (#(ce `+ %))
+       (apply-rules [(rule (ex (+ (+ ?&*) ?&*r)) :=> (ex (+ ?&* ?&*r)))])
        (translate-back v)
+   ;    (dbg "translate-back")
        (transform-expression (concat eval-rules
                                      universal-rules
                                      to-inverses-rules
@@ -385,3 +412,12 @@
  ;      simplify-eq
        (rearrange v)
        simplify-rhs))
+
+(defn differentiate [v expr]
+  (->> expr
+       (transform-expression (concat eval-rules universal-rules to-inverses-rules multiply-out-rules))
+       (dbg "simplified")
+       (#(ce 'diff % v))
+       (transform-expression diff-rules)
+       (dbg "derivatived")
+       (transform-expression (concat eval-rules universal-rules))))

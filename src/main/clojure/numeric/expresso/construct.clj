@@ -41,6 +41,7 @@
 (defn first-sm [sm] (first (matcher-args sm)))
 (defn rest-sm [sm] (seq-matcher (rest (matcher-args sm))))
 
+(defn count-sm [sm] (count (vec (matcher-args sm))))
 (defn split-in-pos-sm [sm pos]
   (let [args (vec (matcher-args sm))]
     [(seq-matcher (subvec args 0 pos))
