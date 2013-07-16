@@ -29,7 +29,8 @@
 (declare value) 
 (deftype Expression [op args]
   clojure.lang.Sequential
-
+  clojure.lang.Counted
+  (count [this] (+ 1 (count args)))
   clojure.lang.Seqable
   (seq [this] (seq (list* op (map value args))))
   java.lang.Object

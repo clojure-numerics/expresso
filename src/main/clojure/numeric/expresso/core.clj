@@ -4,6 +4,7 @@
         [clojure.core.logic :exclude [is] :as l]
         [numeric.expresso.construct]
         [numeric.expresso.rules]
+        [numeric.expresso.protocols]
         [clojure.test])
   (:require [clojure.core.logic.fd :as fd]
             [clojure.walk :as walk]
@@ -308,7 +309,7 @@
       (apply (partial ce (first expr)) (map (partial transform-to-coefficients-form v) (rest expr))))
     (if (= v expr) [1 1] [expr 0])))
 
-(defn expression? [exp]
+#_(defn expression? [exp]
   (or (and (sequential? exp) (symbol? (first exp))) (number? exp)))
 
 
