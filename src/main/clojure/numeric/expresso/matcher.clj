@@ -23,14 +23,13 @@
   "succeeds if v is an expression"
   [v]
   (project [v]
-           (== true (and (coll? v) (symbol? (first v))))))
+           (== true (and (sequential? v) (symbol? (first v))))))
 
 (defn- memberposo
   "like membero l (zip x (range))"
   [l x]
   (project [x]
            (membero l (map (fn [& a] a) x (range)))))
-
 
 (defn- removeo
   "binds xr to x with element at position i removed"

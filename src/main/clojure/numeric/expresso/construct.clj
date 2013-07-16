@@ -3,6 +3,7 @@
   (:use [clojure.core.logic.protocols]
         [clojure.core.logic :exclude [is] :as l]
         [clojure.test])
+  (:import [numeric.expresso.protocols Expression AtomicExpression])
   (:require [clojure.core.logic.fd :as fd]
             [clojure.walk :as walk]
             [clojure.core.logic.unifier :as u]
@@ -56,7 +57,7 @@
   (walk/postwalk (fn [expr] (if (coll? expr) (extract expr) expr)) expr))
 
 (defn ce [symb & args]
-  (list* (with-meta symb {:properties (props symb)}) args))
+  (Expression. (with-meta symb {:properties (props symb)}) args))
 
 (def °)
 

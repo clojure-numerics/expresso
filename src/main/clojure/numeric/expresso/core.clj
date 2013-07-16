@@ -408,8 +408,8 @@
 (defn solve [v equation]
   (->> equation
        lhs-rhs=0
-       (to-poly-nf v)
- ;      simplify-eq
+;       (to-poly-nf v)
+       simplify-eq
        (rearrange v)
        simplify-rhs))
 

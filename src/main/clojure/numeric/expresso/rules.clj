@@ -253,5 +253,7 @@
       (apply-to-end rules (list* (first expr) transformed)))
     (apply-to-end rules expr)))
 
+
+
 ;;See if it is possible to reinstantiate rules so that they can be applied all
 ;;in the core.logic context

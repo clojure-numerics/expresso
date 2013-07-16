@@ -4,6 +4,7 @@
         [clojure.core.logic.protocols]
         [clojure.core.logic :exclude [is]])
   (:require [numeric.expresso.utils :as utils]
+            [clojure.set :as set]
             [clojure.walk :as walk]))
 
 (defprotocol PExpression
@@ -13,7 +14,7 @@
 
 (defprotocol PProps
   "The abstraction to query properties of an Expression or Atom"
-  (contains-var? [expr var])
+  (vars [expr])
   (properties [expr]))
 
 (defprotocol PExprToSexp
@@ -41,7 +42,9 @@
          (= args (expr-args that))))
   PExpression
   (expr-op [this] op)
-  (expr-args [this] args))
+  (expr-args [this] args)
+  PProps
+  (properties [this] (when-let [m (meta op)] (:properties m))))
 
 (deftype PolynomialExpression [v coeffs]
   PExpression
@@ -75,7 +78,7 @@
   (value [this] val)
   (type-of [this] (type val))
   PProps
-  (contains-var? [this var] false)
+  (vars [this] #{})
   (properties [this] nil))
 
 (extend-protocol PAtom
@@ -113,6 +116,15 @@
             (throw (Exception. (str "No value specified for symbol " val))))
           val)))))
 
+(extend-protocol PProps
+  java.lang.Object
+  (vars [expr]
+    (if-let [op (expr-op expr)]
+      (apply set/union (map vars (expr-args expr)))
+      (if (symbol? (value expr))
+        #{(value expr)}
+        #{}))))
+
 (defn expression? [exp] (not (nil? (expr-op exp))))
 
 
@@ -134,4 +146,21 @@
   AtomicExpression
   (unify-terms [u v s]
     (unify-with-expression* u v s)))
+
+(defn expand-seq-matchers [args]
+  (vec (mapcat #(if (and (sequential? %) (= (first %) :numeric.expresso.construct/seq-match))
+                  (vec (second %))
+                  [%]) args)))
+
+(defn walk-expresso-expression* [v f]
+  (Expression. (walk-term (f (.-op v)) f)
+                 (expand-seq-matchers (mapv #(walk-term (f %) f) (.-args v)))))
+
+(extend-protocol IWalkTerm
+  AtomicExpression
+  (walk-term [v f] (AtomicExpression. (walk-term (f (value v)) f)))
+  Expression
+  (walk-term [v f]
+    (let [res (walk-expresso-expression* v f)]
+      res)))
 
