@@ -1,6 +1,8 @@
 (ns numeric.expresso.protocols
   (:refer-clojure :exclude [==])
-  (:use [clojure.test])
+  (:use [clojure.test]
+        [clojure.core.logic.protocols]
+        [clojure.core.logic :exclude [is]])
   (:require [numeric.expresso.utils :as utils]))
 
 (defprotocol PExpression
@@ -23,6 +25,18 @@
   (evaluate [expr sm]))
 
 (deftype Expression [op args]
+  clojure.lang.Sequential
+
+  clojure.lang.Seqable
+  (seq [this] (seq (list* op args)))
+  java.lang.Object
+  (hashCode [a]
+    (.hashCode args))
+  (toString [expr]
+    (str (to-sexp expr)))
+  (equals [this that]
+    (and (= op (expr-op that))
+         (= args (expr-args that))))
   PExpression
   (expr-op [this] op)
   (expr-args [this] args))
@@ -51,10 +65,13 @@
   (type-of [atom]))
 
 
-(deftype AtomicExpression [^double value]
+(deftype AtomicExpression [ val]
+  java.lang.Object
+  (equals [this that]
+    (= val (value that)))
   PAtom
-  (value [this] value)
-  (type-of [this] (type value))
+  (value [this] val)
+  (type-of [this] (type val))
   PProps
   (contains-var? [this var] false)
   (properties [this] nil))
@@ -93,3 +110,30 @@
             evaled
             (throw (Exception. (str "No value specified for symbol " val))))
           val)))))
+
+(defn expression? [exp] (not (nil? (expr-op exp))))
+
+
+(defn unify-with-expression* [u v s]
+  (let [uop (expr-op u) vop (expr-op v)]
+    (if uop
+      (if vop
+        ;;we have two expressions unify op and args
+        (if-let [s (unify s uop vop)]
+          (unify s (expr-args u) (expr-args v)))
+        (unify s u (value v)))
+      (unify s (value u) (value v)))))
+
+
+
+(extend-protocol IUnifyTerms
+  Expression
+  (unify-terms [u v s]
+    (unify-with-expression* u v s))
+  AtomicExpression
+  (unify-terms [u v s]
+    (unify-with-expression* u v s))
+  java.lang.Number
+  (unify-terms [u v s]
+    (unify-with-expression* u v s)))
+
