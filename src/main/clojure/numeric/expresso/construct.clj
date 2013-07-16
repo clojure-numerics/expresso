@@ -9,10 +9,10 @@
             [numeric.expresso.utils :as utils]))
 
 
-(defn properties [s-exp]
+#_(defn properties [s-exp]
   (:properties (meta (first s-exp))))
 
-(defn propertieso [s-exp q]
+#_(defn propertieso [s-exp q]
   (project [s-exp]
            (== q (properties s-exp))))
 

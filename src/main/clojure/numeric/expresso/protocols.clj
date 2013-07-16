@@ -3,7 +3,8 @@
   (:use [clojure.test]
         [clojure.core.logic.protocols]
         [clojure.core.logic :exclude [is]])
-  (:require [numeric.expresso.utils :as utils]))
+  (:require [numeric.expresso.utils :as utils]
+            [clojure.walk :as walk]))
 
 (defprotocol PExpression
   "The abstraction for an expresso Expression"
@@ -24,11 +25,12 @@
 (defprotocol PExprEvaluate
   (evaluate [expr sm]))
 
+(declare value) 
 (deftype Expression [op args]
   clojure.lang.Sequential
 
   clojure.lang.Seqable
-  (seq [this] (seq (list* op args)))
+  (seq [this] (seq (list* op (map value args))))
   java.lang.Object
   (hashCode [a]
     (.hashCode args))
@@ -118,10 +120,9 @@
   (let [uop (expr-op u) vop (expr-op v)]
     (if uop
       (if vop
-        ;;we have two expressions unify op and args
         (if-let [s (unify s uop vop)]
           (unify s (expr-args u) (expr-args v)))
-        (unify s u (value v)))
+        (unify s (value v) u))
       (unify s (value u) (value v)))))
 
 
@@ -131,9 +132,6 @@
   (unify-terms [u v s]
     (unify-with-expression* u v s))
   AtomicExpression
-  (unify-terms [u v s]
-    (unify-with-expression* u v s))
-  java.lang.Number
   (unify-terms [u v s]
     (unify-with-expression* u v s)))
 
