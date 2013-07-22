@@ -3,6 +3,7 @@
   (:use [clojure.core.logic.protocols]
         [clojure.core.logic :exclude [is]]
         [numeric.expresso.matcher]
+        [numeric.expresso.protocols]
         clojure.test)
   (:require [clojure.core.logic.fd :as fd]
             [clojure.walk :as walk]
@@ -247,8 +248,8 @@
 
 
 (defn transform-expression [rules expr]
-  (if (and (sequential? expr) (symbol? (first expr)))
-    (let [transformed (map (partial transform-expression rules) (rest expr))
+  (if-let [op (expr-op expr)]
+    (let [transformed (map (partial transform-expression rules) (expr-args expr))
          ]
       (apply-to-end rules (list* (first expr) transformed)))
     (apply-to-end rules expr)))

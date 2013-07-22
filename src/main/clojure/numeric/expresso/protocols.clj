@@ -105,6 +105,8 @@
   (type-of [this] (type this)))
 
 (extend-protocol PExpression
+  nil
+  (expr-op [obj] nil)
   java.lang.Object
   (expr-op [obj] nil)
   clojure.lang.ISeq

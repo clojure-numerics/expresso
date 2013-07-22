@@ -46,11 +46,15 @@
    ((project [a b]
              (== true (isa? a b))))))
 
-(defn is-expro
+#_(defn is-expro
   "succeeds if v is an expression"
   [v]
   (project [v]
            (== true (and (coll? v) (symbol? (first v))))))
+
+(defn is-expro [v]
+  (project [v]
+           (== true (boolean (expr-op v)))))
 
 (defn- memberposo
   "like membero l (zip x (range))"
