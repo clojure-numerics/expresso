@@ -4,86 +4,30 @@
   (:refer-clojure :exclude [==])
   (:use [clojure.core.logic.protocols]
         [clojure.core.logic :exclude [is] :as l]
+        [numeric.expresso.rules]
+        [numeric.expresso.construct]
         clojure.test)
   (:require [clojure.core.logic.fd :as fd])
   (:require [clojure.core.logic.unifier :as u]))
 
-
-(deftest test-unify
-  (let [ex1 (ex (+ 1 X))]
-    ;;(is (= [(ex X)] (run* [q] (fresh [op p] (== [op p q] ex1)))))
-    (is (= [(ex X)] (run* [q] (fresh [op p] (== ex1 [op p q])))))
-    (is (= [(ex (+ 1 X))] (run* [q] (== ex1 q))))
-    
-    ))
-
-(deftest test-constant
-  (is (= 10 (ex 10)))
-  (is (constant? (ex 1)))
-  (is (not (constant? (ex (+ 1 X))))))
-
-(deftest test-without-symbol
-  (is (without-symbol? 'X (ex Y)))
-  (is (without-symbol? 'X (ex (+ 1 Y))))
-  (is (not (without-symbol? 'X (ex X))))
-  (is (not (without-symbol? 'X (ex (+ 1 X))))))
-
-(deftest test-lifto
-  (is (= [3] (run* [q] ((lifto inc) 2 q)))))
-
-(deftest test-lifto-with-inverse
-  (let [inco (lifto-with-inverse inc dec)]
-    (is (= [3] (run* [q] (inco 2 q))))
-    (is (= [2] (run* [q] (inco q 3))))))
-
-(deftest test-resolve-opo
-  (is (= [clojure.core/+] (run* [q] (resolve-opo '+ q)))))
-
-(deftest test-expo 
-  (is (= [1] (run* [q] (expo '+ [q 2]  (ex (+ 1 2))))))
-  (is (= [] (run* [q] (expo '- [q 2]  (ex (+ 1 2))))))
-  (is (= [[1 2]] (run* [q] (fresh [ex op lhs rhs]
-                                  (expo '+ [1 2] ex)
-                                  (expo op [lhs rhs] ex)
-                                  (== q [lhs rhs]))))))
+(deftest test-simplify
+  (is (= 4 (simplify (ex (+ 2 2)))))
+  (is (= 137 (simplify (ex (+ (* 5 20) 30 7)))))
+  (is (= 0 (simplify (ex (- (* 5 x) (* (+ 4 1) x))))))
+  (is (= 0 (simplify (ex (* (/ y z) (- (* 5 x) (* (+ 4 1) x)))))))
+  (is (= '(clojure.core/* 6 x) (simplify (ex (* 3 2 x)))))
+  (is (= '(clojure.core/* 720 x y z) (simplify (ex (* 2 x 3 y 4 z 5 6)))))
+  (is (= 7 (simplify (ex (+ x 3 4 (- x))))))
+  (is (= 3 (simplify (ex (** e (ln (+ 3 0 (* 0 42))))))))
+  (is (= '(sin (clojure.core/* 12 (numeric.expresso.core/** x 3)))
+         (simplify (ex (sin (diff (* (** x 4) (/ (* 3 x) x)) x)))))))
 
 
-(deftest test-mapo 
-  (is (= [[2 3 4]] (run* [q] (mapo (lifto inc) [1 2 3] q))))
-  (is (= [2] (run* [q] (mapo (lifto-with-inverse inc dec) [1 q 3] [2 3 4])))))
+(deftest test-transform-to-polynomial-normal-form
+  (is (= '(numeric.expresso.core/** x 3)
+         (to-polynomial-normal-form 'x (ex (+ (** x 3) (* 3 (** x 2))
+                                           (- (* 2 (** x 2))
+                                              (* 5 (** x 2))))) )))
+  (is (= '(clojure.core/+ (clojure.core/* 243.0 (numeric.expresso.core/** x 10)) (clojure.core/* 1215.0 (numeric.expresso.core/** x 9)) (clojure.core/* 4050.0 (numeric.expresso.core/** x 8)) (clojure.core/* 8910.0 (numeric.expresso.core/** x 7)) (clojure.core/* 15255.0 (numeric.expresso.core/** x 6)) (clojure.core/* 19683.0 (numeric.expresso.core/** x 5)) (clojure.core/* 20340.0 (numeric.expresso.core/** x 4)) (clojure.core/* 15840.0 (numeric.expresso.core/** x 3)) (clojure.core/* 9600.0 (numeric.expresso.core/** x 2)) (clojure.core/* 3840.0 x) 1024.0)
+         (to-polynomial-normal-form 'x (ex (** (+ (* 3 x) 4 (* 3 (** x 2))) 5))))))
 
-(deftest test-applyo 
-  (is (= [[1 2 3 4]] (run* [q] (applyo conso [1 [2 3 4]] q))))
-  (is (= [3] (run* [q] (applyo conso [1 [2 q 4]] [1 2 3 4])))))
-
-(deftest test-resulto
-  (is (= [2] (run* [q] (resulto (ex 2) q))))
-  (is (= [6] (run* [q] (resulto (ex (+ 2 4)) q)))))
-
-(deftest test-simplifico
-  (is (= [3] (run* [q] (simplifico (ex (+ 1 2)) q))))
-  (is (= [10] (run* [q] (simplifico (ex (+ 1 2 3 4)) q))))
-  ;; (is (= [3] (run* [q] (simplifico (ex (+ 1 2 q 4)) 10)))) reverse simplification not impl.
-  )
-
-(deftest test-rearrangeo
-  (is (= [['= 'X 3]] (run* [q] (rearrangeo (ex (= X (+ 1 2))) q))))
-  )
-
-(deftest test-expresso
-  (is (= [3] (run* [q] (expresso 'X (ex (= X 3)) q))))
-  (is (= [3] (run* [q] (expresso 'X (ex (= X (+ 1 2))) q)))))
-
-
-(deftest test-apply-ruleo
-  (is (= ['x] (run* [q] (apply-ruleo (rule ['+ 0 x] :=> x) '(+ 0 x) q))))
-  (is (= [0] (run* [q] (apply-ruleo (rule ['* x 0] :=> 0) '(* x 0) q))))
-  (is (= ['(+ 0 (+ 0 x))] (run* [q] (apply-ruleo (rule ['+ 0 x] :=> x) q '(+ 0 x)))))
-  (is (= [7] (run* [q] (apply-ruleo calculo '(+ 1 (* 2 3)) q)))))
-
-(deftest test-simplifyo
-  (is (= [0] (run* [q] (simplifyo '(* x (+ 0 (* 3 (* x 0)))) q)))))
-
-(deftest test-solveo
-  (is (= ['(= x 7/3)] (run* [q] (solveo '(= (- (* x 3) 3) 4) 'x q))))
-  (is (= ['(= x 4) ] (run* [q] (solveo '(= (+ (* 3 (+ (* x 4) (* x 3))) 5) 89) 'x  q)))))
