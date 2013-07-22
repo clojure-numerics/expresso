@@ -5,6 +5,9 @@ Experimental combination of core.logic and core.matrix to allow reasoning with v
 
 WORK IN PROGRESS: not much to see here yet!
 
+[![Build Status](https://travis-ci.org/clojure-numerics/expresso.png?branch=master)](https://travis-ci.org/clojure-numerics/expresso)
+
+
 ### Objectives
 
 expresso aims to be a general library for manipulating mathematical expressions.
