@@ -168,6 +168,7 @@
   (transform-expression simp-rules expr))
 
 
+
 (with-expresso [+ - * / ** diff ln sin cos]
 
 (def universal-rules
@@ -181,7 +182,7 @@
    (rule (** ?x 1) :=> ?x)
    (rule (* (* ?&*) ?&*r) :=> (* ?&* ?&*r))
    (rule (+ (+ ?&*) ?&*r) :=> (+ ?&* ?&*r))
-   (rule (- 0 ?&+) :=> (- ?&+))
+   (rule (- 0 ?x) :=> (- ?x))
    (rule (+ (* ?x ?y) (* ?z ?y) ?&*) :=> (+ (* (+ ?x ?z) ?y) ?&*)
          :if (guard (and (number? ?x) (number? ?z))))
    ])
@@ -206,9 +207,15 @@
    (rule (* (+ ?&+) ?x ?&*) :==>
          (* (+ (seq-matcher (for [a (matcher-args ?&+)] (* a ?x)))) ?&*))]))
 
+(def simplify-rules
+  [(rule (* ?x ?x ?&*) :=> (* (** ?x 2) ?&*))
+   (rule (* ?x (/ ?x) ?&*) :=> (* ?&*))
+   (rule (+ ?x (- ?x) ?&*) :=> (+ ?&*))])
+
 (def to-inverses-rules
   [(rule (- ?x ?&+) :=> (trans (+ ?x (map-sm #(- %) ?&+))))
    (rule (- (+ ?&+)) :==> (+ (map-sm #(- %) ?&+)))
+   (rule (- (* ?&+)) :=> (* -1 ?&+))
    (rule (/ ?x ?&+) :=> (trans (* ?x (map-sm #(/ %) ?&+))))])
 
 (declare multinomial)
@@ -222,8 +229,8 @@
    (rule (** (* ?&+) ?n) :==> (* (map-sm #(** % ?n) ?&+)))
    (rule (** (** ?x ?n1) ?n2) :==> (** ?x (clojure.core/* ?n1 ?n2)))
    (rule (** (+ ?&+) ?n) :==> (multinomial ?n (matcher-args ?&+)))
-   (rule (* ?x (/ ?x) ?&*) :=> (* ?&*))])
-
+   (rule (* ?x (/ ?x) ?&*) :=> (* ?&*))]
+)
 (def diff-rules
   [(rule (diff ?x ?x) :=> 1)
    (rule (diff (+ ?&+) ?x) :==> (+ (map-sm #(diff % ?x) ?&+)))
@@ -383,15 +390,22 @@
   (list eq rhs lhs))
 
 (defn rearrange [v equation]
-  (let [pos (position-in-equation v equation)]
+  (if-let [pos (position-in-equation v equation)]
     (->> (apply-to-end rearrange-rules
                       [(subvec pos 1) (if (= (first pos) 1)
                                         (swap-sides equation)
                                         equation)])
-        second
-)))
+         second)
+    equation))
 
-(def simplify-eq (fn [eq] (ce `= (simplify (nth eq 1)) (simplify (nth eq 2)))))
+(defn simp-expr [expr]
+  (prn "simp-expr " expr)
+  (transform-expression
+   (concat eval-rules universal-rules to-inverses-rules
+           multiply-out-rules simplify-rules)
+   expr))
+
+(def simplify-eq (fn [eq] (ce `= (simp-expr (nth eq 1))  (nth eq 2))))
 
 (def simplify-rhs (fn [eq] (ce `= (nth eq 1) (transform-expression (concat universal-rules eval-rules) (nth eq 2)))))
 
@@ -400,18 +414,31 @@
   (walk/postwalk-replace repl-map expr))
 
 (defn lhs-rhs=0 [equation]
-  (ce `= (ce `+ (nth equation 1) (ce `- (nth equation 2))) 0))
+  (ce `= (ce `- (nth equation 1) (nth equation 2)) 0))
 
 (defn to-poly-nf [v equation]
   (ce `= (to-polynomial-normal-form v (nth equation 1)) (nth equation 2)))
 
+(defn report-res [v eq]
+  (if (= (nth eq 1) v)
+    eq
+    (if (and (no-symbol (nth eq 1)) (no-symbol (nth eq 2)))
+      (if (= (eval (nth eq 1)) (eval (nth eq 2)))
+        '_0
+        '())
+      eq)))
+
 (defn solve [v equation]
   (->> equation
        lhs-rhs=0
-       (to-poly-nf v)
- ;      simplify-eq
+       (dbg "lhs-rhs=0")
+   ;    (to-poly-nf v)
+       (dbg "poly-nf ")
+       simplify-eq
+       (dbg "simpl")
        (rearrange v)
-       simplify-rhs))
+       simplify-rhs
+       (report-res v)))
 
 (defn differentiate [v expr]
   (->> expr
