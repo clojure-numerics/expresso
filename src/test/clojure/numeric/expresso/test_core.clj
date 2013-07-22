@@ -31,3 +31,7 @@
   (is (= '(clojure.core/+ (clojure.core/* 243.0 (numeric.expresso.core/** x 10)) (clojure.core/* 1215.0 (numeric.expresso.core/** x 9)) (clojure.core/* 4050.0 (numeric.expresso.core/** x 8)) (clojure.core/* 8910.0 (numeric.expresso.core/** x 7)) (clojure.core/* 15255.0 (numeric.expresso.core/** x 6)) (clojure.core/* 19683.0 (numeric.expresso.core/** x 5)) (clojure.core/* 20340.0 (numeric.expresso.core/** x 4)) (clojure.core/* 15840.0 (numeric.expresso.core/** x 3)) (clojure.core/* 9600.0 (numeric.expresso.core/** x 2)) (clojure.core/* 3840.0 x) 1024.0)
          (to-polynomial-normal-form 'x (ex (** (+ (* 3 x) 4 (* 3 (** x 2))) 5))))))
 
+(deftest test-rearrange
+  (is (= '(clojure.core/= x (clojure.core/- 4 1))
+          (rearrange 'x (ex (= (+ 1 x) 4))))))
+         

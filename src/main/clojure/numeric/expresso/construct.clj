@@ -2,26 +2,24 @@
   (:refer-clojure :exclude [==])
   (:use [clojure.core.logic.protocols]
         [clojure.core.logic :exclude [is] :as l]
+        [numeric.expresso.properties]
         [clojure.test])
   (:require [clojure.core.logic.fd :as fd]
             [clojure.walk :as walk]
             [clojure.core.logic.unifier :as u]
             [numeric.expresso.utils :as utils]))
+(defmulti create-special-expression first)
+(defmethod create-special-expression :default [_] nil)
 
 
-(defn properties [s-exp]
+
+(defn expr-properties [s-exp]
   (:properties (meta (first s-exp))))
 
-(defn propertieso [s-exp q]
+(defn expr-propertieso [s-exp q]
   (project [s-exp]
-           (== q (properties s-exp))))
+           (== q (expr-properties s-exp))))
 
-(defmulti props identity)
-(defmethod props :default [_] nil)
-(defmethod props 'clojure.core/* [_] [:associative :commutative :n-ary])
-(defmethod props 'clojure.core/+ [_] [:associative :commutative :n-ary])
-(defmethod props 'clojure.core/- [_] [:n-ary [:inverse-of 'clojure.core/+]])
-(defmethod props 'clojure.core// [_] [:n-ary [:inverse-of 'clojure.core/*]])
 
 (defn seq-matcher [data]
   [::seq-match data])
@@ -57,6 +55,18 @@
 
 (defn ce [symb & args]
   (list* (with-meta symb {:properties (props symb)}) args))
+#_(defn create-expression [symbol args]
+  (numeric.expresso.protocols.Expression. symbol (vec args)))
+
+(defn create-extractor [symb args]
+  (when-let [rel (extractor-rel symb)]
+    (numeric.expresso.protocols.BasicExtractor. symb args rel)))
+
+(defn ce [symb & args]
+  (or (create-special-expression [symb args])
+      ;(create-extractor symb args)
+      (list* (with-meta symb (add-information symb)) args)))
+
 
 (def °)
 

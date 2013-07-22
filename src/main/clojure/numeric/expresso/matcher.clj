@@ -1,14 +1,41 @@
 (ns numeric.expresso.matcher
   (:refer-clojure :exclude [==])
   (:use [clojure.core.logic.protocols]
+        [numeric.expresso.protocols]
         [clojure.core.logic :exclude [is] ]
         clojure.test)
   (:require [clojure.core.logic.fd :as fd]
             [clojure.walk :as walk]
-            [numeric.expresso.utils :as utils]
-            [numeric.expresso.construct :as c]))
+            [numeric.expresso.utils :as utils]))
 (declare match-expressiono)
+(declare expression-matcho)
 
+(extend-protocol PMatch
+  numeric.expresso.protocols.Expression
+  (match [this that]
+    (if-let [m (and (expr-op that) (meta (expr-op this)))]
+        (fresh []
+               (match-expressiono (expr-op this) (expr-op that))
+               ((:match-rel m) (expr-args this) (expr-args that)))
+        fail))
+  numeric.expresso.protocols.BasicExtractor
+  (match [this that]
+    (let [args (.args this)
+          rel (.rel this)]
+      (rel args that)))
+  clojure.lang.ISeq
+  (match [this that]
+    (prn "hi")
+    (if-let [m (and (expr-op this) (expr-op that) (meta (expr-op this)))]
+      (fresh []
+             (match-expressiono (expr-op this) (expr-op that))
+             ((:match-rel m) (expr-args this) (expr-args that)))
+      fail))
+  java.lang.Object
+  (match [this that]
+    (expression-matcho this that)))
+    
+  
 
 (defn isao
   "succeeds if a isa? b or if any argument is unbound - in this case
@@ -411,7 +438,7 @@
   (project [old]
            (let [
                  res (walk/prewalk-replace @replacements old)
-                 res (c/splice-in-seq-matchers res)]
+                 res (utils/splice-in-seq-matchers res)]
              (do (reset! replacements {})
                  (== res new)))))
 
@@ -434,8 +461,8 @@
    ((conda
      ((is-expro exp) (is-expro pat)
       (fresh [ps es pargs eargs]
-             (c/expo ps pargs pat)
-             (c/expo es eargs exp)
+             (utils/expo ps pargs pat)
+             (utils/expo es eargs exp)
              (isao es ps)
              (add-replacemento es ps)
              (project [ps pargs eargs pat exp]
@@ -443,7 +470,7 @@
                         (f pargs eargs)))))
      ((is-expro pat)
       (fresh [ps pargs]
-             (c/expo ps pargs pat)
+             (utils/expo ps pargs pat)
              (project [ps pargs exp]
                       (let [f (extractor ps)]
                         (f pargs exp)))))

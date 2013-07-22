@@ -4,6 +4,7 @@
         [clojure.core.logic :exclude [is] :as l]
         clojure.test)
   (:require [clojure.core.logic.fd :as fd])
+  (:require [clojure.walk :as walk])
   (:require [clojure.core.logic.unifier :as u]))
 
 (def debug-mode true)
@@ -66,3 +67,29 @@
     (and (symbol? expr) (= sym expr)) false
     (sequential? expr) (every? #(without-symbol? sym %) expr)
     :else true))
+
+
+(defn expo 
+  "Creates an expression with the given operator and parameters"
+  ([op params exp]
+     (conso op params exp)))
+
+
+(defn extract [c]
+  (mapcat #(if (and (coll? %) (= (first %) :numeric.expresso.construct/seq-match)) (second %) [%]) c))
+
+
+(defn splice-in-seq-matchers [expr]
+  (walk/postwalk (fn [expr] (if (coll? expr) (extract expr) expr)) expr))
+(defn expo 
+  "Creates an expression with the given operator and parameters"
+  ([op params exp]
+     (conso op params exp)))
+
+
+(defn extract [c]
+  (mapcat #(if (and (coll? %) (= (first %) :numeric.expresso.construct/seq-match)) (second %) [%]) c))
+
+
+(defn splice-in-seq-matchers [expr]
+  (walk/postwalk (fn [expr] (if (coll? expr) (extract expr) expr)) expr))
