@@ -9,12 +9,17 @@
             [numeric.expresso.utils :as utils]))
 (declare match-expressiono)
 (declare expression-matcho)
+(declare isao)
+(declare add-replacemento)
 
-(extend-protocol PMatch
+
+
+#_(extend-protocol PMatch
   numeric.expresso.protocols.Expression
   (match [this that]
     (if-let [m (and (expr-op that) (meta (expr-op this)))]
-        (fresh []
+      (fresh []
+             
                (match-expressiono (expr-op this) (expr-op that))
                ((:match-rel m) (expr-args this) (expr-args that)))
         fail))
@@ -35,7 +40,27 @@
   (match [this that]
     (expression-matcho this that)))
     
-  
+(extend-protocol PMatch
+  numeric.expresso.protocols.Expression
+  (match [this that]
+    (if-let [m (and (expr-op that) (meta (expr-op this)))]
+      (fresh [ps es pargs eargs]
+             (utils/expo ps pargs this)
+             (utils/expo es eargs that)
+             (isao es ps)
+             (add-replacemento es ps)
+             ((:match-rel m) (expr-args this) (expr-args that)))
+      fail))
+  clojure.lang.ISeq
+    (match [this that]
+      (if-let [m (and (expr-op that) (meta (expr-op this)))]
+        (fresh [ps es pargs eargs]
+               (utils/expo ps pargs this)
+               (utils/expo es eargs that)
+               (isao es ps)
+               (add-replacemento es ps)
+               ((:match-rel m) (expr-args this) (expr-args that)))
+        fail)))
 
 (defn isao
   "succeeds if a isa? b or if any argument is unbound - in this case
@@ -469,9 +494,11 @@
              (utils/expo es eargs exp)
              (isao es ps)
              (add-replacemento es ps)
-             (project [ps pargs eargs pat exp]
-                      (let [f (matcher ps)]
-                        (f pargs eargs)))))
+             (project [pat exp]
+                      (match pat exp))))
+             ;;(project [ps pargs eargs pat exp]
+             ;;         (let [f (matcher ps)]
+             ;;           (f pargs eargs)))))
      ((is-expro pat)
       (fresh [ps pargs]
              (utils/expo ps pargs pat)

@@ -40,5 +40,5 @@
   (is (= '(clojure.core/= x 2) (solve 'x (ex (= (+ 1 x) 3)))))
   (is (= '() (solve 'x (ex (= x (+ x 1))))))
   (is (= '_0 (solve 'x (ex (= x x)))))
-  (is (= (ex (= x (/ 4 -1)))
+  (is (= (ex (= x -4))
          (solve 'x (ex (= (* 3 x) (+ (* 4 x) 4)))))))

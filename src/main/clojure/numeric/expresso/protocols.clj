@@ -125,10 +125,15 @@
       (value expr))))
 
 (extend-protocol PExprExecFunc
+  clojure.lang.ISeq
+  (exec-func [expr]
+    (if-let [op (expr-op expr)]
+      (or (and (meta op) (:exec-func (meta op))) (resolve op))
+      (throw (Exception. (str "no excecution function found for " expr)))))
   java.lang.Object
   (exec-func [expr]
     (if-let [op (expr-op expr)]
-      (resolve op)
+      (or (and (meta op) (:exec-func (meta op))) (resolve op))
       (throw (Exception. (str "no excecution function found for " expr))))))
 
 (extend-protocol PExprEvaluate

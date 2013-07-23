@@ -53,9 +53,9 @@
 (defn splice-in-seq-matchers [expr]
   (walk/postwalk (fn [expr] (if (coll? expr) (extract expr) expr)) expr))
 
-(defn ce [symb & args]
+#_(defn ce [symb & args]
   (list* (with-meta symb {:properties (props symb)}) args))
-#_(defn create-expression [symbol args]
+(defn create-expression [symbol args]
   (numeric.expresso.protocols.Expression. symbol (vec args)))
 
 (defn create-extractor [symb args]
@@ -65,7 +65,7 @@
 (defn ce [symb & args]
   (or (create-special-expression [symb args])
       ;(create-extractor symb args)
-      (list* (with-meta symb (add-information symb)) args)))
+      (create-expression (with-meta symb (add-information symb)) args)))
 
 
 (def °)

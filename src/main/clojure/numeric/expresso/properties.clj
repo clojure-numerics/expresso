@@ -11,11 +11,22 @@
             [numeric.expresso.matcher :as match]))
 
 (defmulti props identity)
-(defmethod props :default [_] {})
-(defmethod props 'clojure.core/* [_] {:properies [:associative :commutative :n-ary]})
-(defmethod props 'clojure.core/+ [_] {:properties [:associative :commutative :n-ary]})
-(defmethod props 'clojure.core/- [_] {:properties [:n-ary [:inverse-of 'clojure.core/+]]})
-(defmethod props 'clojure.core// [_] {:properties [:n-ary [:inverse-of 'clojure.core/*]]})
+(defmethod props :default [_]
+  (if (= (str _) "clojure.core//") {:exec-func /
+                                    :properties #{:n-ary}
+                                    :inverse-op 'clojure.core/* }
+      {}))
+(defmethod props 'clojure.core/* [_] {:exec-func *
+                                      :properies #{:associative
+                                                   :commutative
+                                                   :n-ary}
+                                      })
+(defmethod props 'clojure.core/+ [_] {:exec-func +
+                                      :properties #{:associative :commutative :n-ary}})
+(defmethod props 'clojure.core/- [_] {:exec-func -
+                                      :properties [:n-ary [:inverse-of 'clojure.core/+]]})
+(defmethod props 'clojure.core// [_] {:exec-func /
+                                      :properties #{:n-ary} :inverse-of 'clojure.core/*})
 (defmethod props 'e/ca-op [_] {:properties [:commutative]})
 (defmulti matcher identity)
 (defmethod matcher :default [_] {:match-rel match/expression-matcho})

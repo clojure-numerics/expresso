@@ -3,6 +3,7 @@
   (:use [clojure.core.logic.protocols]
         [clojure.core.logic :exclude [is] :as l]
         [numeric.expresso.construct]
+        [numeric.expresso.protocols]
         [numeric.expresso.rules]
         [clojure.test])
   (:require [clojure.core.logic.fd :as fd]
@@ -41,13 +42,14 @@
 (defn calc-reso [x]
   (fn [res]
     (project [x]
-             (== (eval x) res))))
+             (== (evaluate x nil) res))))
 
 (defn no-symbol [x]
-  (if (and (sequential? x) (symbol? (first x)))
-    (and (resolve (first x)) (every? no-symbol (rest x)))
-    (not (symbol? x))))
-
+  (let [res (if (and (sequential? x) (symbol? (first x)))
+              (and (exec-func x) (every? no-symbol (rest x)))
+              (not (symbol? x)))]
+    res))
+    
 (defn no-symbolso [x]
   (project [x]
            (== true (no-symbol x))))
@@ -315,7 +317,7 @@
       (apply (partial ce (first expr)) (map (partial transform-to-coefficients-form v) (rest expr))))
     (if (= v expr) [1 1] [expr 0])))
 
-(defn expression? [exp]
+#_(defn expression? [exp]
   (or (and (sequential? exp) (symbol? (first exp))) (number? exp)))
 
 
@@ -339,14 +341,11 @@
                                      universal-rules
                                      to-inverses-rules
                                      multiply-out-rules))
- ;      (dbg "simplified")
        (transform-to-coefficients-form v)
        (transform-expression transform-to-polynomial-normal-form-rules)
-  ;     (dbg "poly-form")
        (#(ce `+ %))
        (apply-rules [(rule (ex (+ (+ ?&*) ?&*r)) :=> (ex (+ ?&* ?&*r)))])
        (translate-back v)
-   ;    (dbg "translate-back")
        (transform-expression (concat eval-rules
                                      universal-rules
                                      to-inverses-rules
@@ -399,7 +398,6 @@
     equation))
 
 (defn simp-expr [expr]
-  (prn "simp-expr " expr)
   (transform-expression
    (concat eval-rules universal-rules to-inverses-rules
            multiply-out-rules simplify-rules)
@@ -431,11 +429,7 @@
 (defn solve [v equation]
   (->> equation
        lhs-rhs=0
-       (dbg "lhs-rhs=0")
-   ;    (to-poly-nf v)
-       (dbg "poly-nf ")
        simplify-eq
-       (dbg "simpl")
        (rearrange v)
        simplify-rhs
        (report-res v)))
@@ -443,8 +437,10 @@
 (defn differentiate [v expr]
   (->> expr
        (transform-expression (concat eval-rules universal-rules to-inverses-rules multiply-out-rules))
-       (dbg "simplified")
        (#(ce 'diff % v))
        (transform-expression diff-rules)
-       (dbg "derivatived")
        (transform-expression (concat eval-rules universal-rules))))
+
+
+(defn subexpressions [expr]
+  (filter expr-op (rest (tree-seq expr-op expr-args expr))))
