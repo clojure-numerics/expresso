@@ -494,23 +494,9 @@
    ((== pat exp))
    ((conda
      ((is-expro exp) (is-expro pat)
-      (fresh [ps es pargs eargs]
              (project [pat exp]
-                      (match pat exp))))
-             ;;(project [ps pargs eargs pat exp]
-             ;;         (let [f (matcher ps)]
-             ;;           (f pargs eargs)))))
+                      (match pat exp)))
      ((is-expro pat)
-      (fresh [ps pargs]
-;             (utils/debug [pat exp] "check extractor " pat exp)
-            ; (utils/expo ps pargs pat)
              (project [pat exp]
-                      (match pat exp))))
-                      ;;(if (instance?
-                      ;;     numeric.expresso.protocols.BasicExtractor pat)
-                      ;;  (let [ps (.name pat)
-                      ;;        pargs (.args pat)
-                      ;;        f (extractor ps)]
-                      ;;    (f pargs exp))
-                      ;;  fail))))
+                      (match pat exp)))
      ((expression-matcho pat exp))))))
