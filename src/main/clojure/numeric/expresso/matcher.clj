@@ -44,21 +44,17 @@
   numeric.expresso.protocols.Expression
   (match [this that]
     (if-let [m (and (expr-op that) (meta (expr-op this)))]
-      (fresh [ps es pargs eargs]
-             (utils/expo ps pargs this)
-             (utils/expo es eargs that)
-             (isao es ps)
-             (add-replacemento es ps)
+      (fresh []
+             (isao (expr-op that) (expr-op this))
+             (add-replacemento (expr-op that) (expr-op this))
              ((:match-rel m) (expr-args this) (expr-args that)))
       fail))
   clojure.lang.ISeq
     (match [this that]
       (if-let [m (and (expr-op that) (meta (expr-op this)))]
-        (fresh [ps es pargs eargs]
-               (utils/expo ps pargs this)
-               (utils/expo es eargs that)
-               (isao es ps)
-               (add-replacemento es ps)
+        (fresh []
+               (isao (expr-op that)  (expr-op this))
+               (add-replacemento (expr-op that) (expr-op this))
                ((:match-rel m) (expr-args this) (expr-args that)))
         fail))
     numeric.expresso.protocols.BasicExtractor
