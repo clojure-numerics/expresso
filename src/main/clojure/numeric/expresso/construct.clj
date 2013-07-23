@@ -154,3 +154,6 @@
       (apply (partial ce (resolve-op (first expr)))
              (map exn*right (rest expr))))
     (list 'quote expr)))
+
+(defn let-expr [bindings code]
+  (numeric.expresso.protocols.LetExpression. bindings code))

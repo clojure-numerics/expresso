@@ -42,3 +42,11 @@
   (is (= '_0 (solve 'x (ex (= x x)))))
   (is (= (ex (= x -4))
          (solve 'x (ex (= (* 3 x) (+ (* 4 x) 4)))))))
+
+(deftest test-common-subexpressions
+  (is (= [#{(ex (* 1 (* 2 3)))} #{(ex (* 2 3))}]
+         (common-subexpressions (ex (+ (* 1 (* 2 3))  (+ (* 1 (* 2 3))))))))
+  (is (= [] (common-subexpressions (ex (+ 3 4 (+ 1 2))))))
+  (is (= [#{(ex (* 2 1)) (ex (* 1 2))}]
+         (common-subexpressions (ex (+ (* 1 2) (* 2 1)))))))
+

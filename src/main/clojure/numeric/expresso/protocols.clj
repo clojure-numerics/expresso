@@ -26,6 +26,9 @@
 (defprotocol PExprEvaluate
   (evaluate [expr sm]))
 
+(defprotocol PSubstitute
+  (substitute-expr [expr sm]))
+
 (declare value) 
 (deftype Expression [op args]
   clojure.lang.Sequential
@@ -98,6 +101,31 @@
   PExpression
   (expr-op [this] name)
   (expr-args [this] args))
+
+(deftype LetExpression [bindings code]
+  java.lang.Object
+  (toString [this] (str `(let ~bindings ~@code)))
+  PExpression
+  (expr-op [this] 'let)
+  (expr-args [this] code)
+    clojure.lang.Sequential
+  clojure.lang.Counted
+  (count [this] (+ 1 (count code)))
+  clojure.lang.ISeq
+  (next [this] (next `(let ~bindings ~@code)))
+  (first [this] 'let)
+  (more [this] (.more `(let ~bindings ~@code)))
+  (cons [this obj] (cons obj `(let ~bindings ~@code)))
+  (equiv [this that] (= `(let ~bindings ~@code) that))
+  (empty [this] false)
+  clojure.lang.Seqable
+  (seq [this] this)
+  PExprEvaluate
+  (evaluate [this sm]
+    (let [nsm (->> bindings (partition 2)
+                   (map (fn [[a b]] [a (evaluate b sm)])) (into {}))
+          sm (merge sm nsm)]
+      (last (map #(evaluate % sm) code)))))
 
 (extend-protocol PAtom
   java.lang.Object
@@ -225,3 +253,19 @@
     (let [res (walk-expresso-expression* v f)]
       res)))
 
+
+(defn substitute-expr* [expr repl]
+  (if-let [sub (get repl expr)]
+    sub
+    (if-let [op (expr-op expr)]
+      (Expression. (get repl op op)
+                   (mapv #(substitute-expr* % repl) (expr-args expr)))
+      (get repl (value expr) expr))))
+
+(extend-protocol PSubstitute
+  clojure.lang.ISeq
+  (substitute-expr [this repl]
+    (walk/postwalk-replace repl this))
+  Expression
+  (substitute-expr [this repl]
+    (substitute-expr* this repl)))
