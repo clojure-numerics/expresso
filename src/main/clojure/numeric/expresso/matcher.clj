@@ -60,7 +60,12 @@
                (isao es ps)
                (add-replacemento es ps)
                ((:match-rel m) (expr-args this) (expr-args that)))
-        fail)))
+        fail))
+    numeric.expresso.protocols.BasicExtractor
+    (match [this that]
+      (let [args (.args this)
+            rel (.rel this)]
+        (rel args that))))
 
 (defn isao
   "succeeds if a isa? b or if any argument is unbound - in this case
@@ -490,10 +495,6 @@
    ((conda
      ((is-expro exp) (is-expro pat)
       (fresh [ps es pargs eargs]
-             (utils/expo ps pargs pat)
-             (utils/expo es eargs exp)
-             (isao es ps)
-             (add-replacemento es ps)
              (project [pat exp]
                       (match pat exp))))
              ;;(project [ps pargs eargs pat exp]
@@ -501,8 +502,15 @@
              ;;           (f pargs eargs)))))
      ((is-expro pat)
       (fresh [ps pargs]
-             (utils/expo ps pargs pat)
-             (project [ps pargs exp]
-                      (let [f (extractor ps)]
-                        (f pargs exp)))))
+;             (utils/debug [pat exp] "check extractor " pat exp)
+            ; (utils/expo ps pargs pat)
+             (project [pat exp]
+                      (match pat exp))))
+                      ;;(if (instance?
+                      ;;     numeric.expresso.protocols.BasicExtractor pat)
+                      ;;  (let [ps (.name pat)
+                      ;;        pargs (.args pat)
+                      ;;        f (extractor ps)]
+                      ;;    (f pargs exp))
+                      ;;  fail))))
      ((expression-matcho pat exp))))))
