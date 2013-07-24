@@ -486,7 +486,7 @@
         expr (reduce (fn [expr [s repl]]
                        (reduce #(substitute-expr %1 {%2 s}) expr repl))
                      expr locals)]
-     (let-expr (mapv (fn [[l s]] [l (first s)]) locals)
+     (let-expr (vec (mapcat (fn [[l s]] [l (first s)]) locals))
        [(to-sexp expr)])))
 
 
@@ -495,7 +495,8 @@
     (evaluate expr sm)))
 
 (defmacro compile-expr [expr]
-  `(eval-func ~expr))
+  `(fn [sm#]
+     (evaluate ~expr sm#)))
 
 (defn optimize* [expr]
   (->> expr  remove-common-subexpressions))
@@ -503,3 +504,5 @@
 
 (defn optimize [expr]
   (->> expr optimize* eval-func))
+
+

@@ -108,7 +108,7 @@
   PExpression
   (expr-op [this] 'let)
   (expr-args [this] code)
-    clojure.lang.Sequential
+  clojure.lang.Sequential
   clojure.lang.Counted
   (count [this] (+ 1 (count code)))
   clojure.lang.ISeq
@@ -124,8 +124,8 @@
   (evaluate [this sm]
     (let [nsm (->> bindings (partition 2)
                    (map (fn [[a b]] [a (evaluate b sm)])) (into {}))
-          sm (merge sm nsm)]
-      (last (map #(evaluate % sm) code)))))
+          nnsm (merge sm nsm)]
+      (last (map #(evaluate % nnsm) code)))))
 
 (extend-protocol PAtom
   java.lang.Object

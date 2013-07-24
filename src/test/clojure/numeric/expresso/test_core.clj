@@ -5,6 +5,7 @@
   (:use [clojure.core.logic.protocols]
         [clojure.core.logic :exclude [is] :as l]
         [numeric.expresso.rules]
+        [numeric.expresso.protocols]
         [numeric.expresso.construct]
         clojure.test)
   (:require [clojure.core.logic.fd :as fd])
@@ -50,3 +51,8 @@
   (is (= [#{(ex (* 2 1)) (ex (* 1 2))}]
          (common-subexpressions (ex (+ (* 1 2) (* 2 1)))))))
 
+(deftest test-evaluate-let
+  (is (= 4 (evaluate (optimize* (ex (+ (* 1 2) (* 2 1)))) {}))))
+
+(deftest test-compile
+  (is (= 8 ((compile-expr (optimize* (ex (+ (* x 2) (* 2 x))))) {'x 2}))))

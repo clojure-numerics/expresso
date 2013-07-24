@@ -13,33 +13,6 @@
 (declare add-replacemento)
 
 
-
-#_(extend-protocol PMatch
-  numeric.expresso.protocols.Expression
-  (match [this that]
-    (if-let [m (and (expr-op that) (meta (expr-op this)))]
-      (fresh []
-             
-               (match-expressiono (expr-op this) (expr-op that))
-               ((:match-rel m) (expr-args this) (expr-args that)))
-        fail))
-  numeric.expresso.protocols.BasicExtractor
-  (match [this that]
-    (let [args (.args this)
-          rel (.rel this)]
-      (rel args that)))
-  clojure.lang.ISeq
-  (match [this that]
-    (prn "hi")
-    (if-let [m (and (expr-op this) (expr-op that) (meta (expr-op this)))]
-      (fresh []
-             (match-expressiono (expr-op this) (expr-op that))
-             ((:match-rel m) (expr-args this) (expr-args that)))
-      fail))
-  java.lang.Object
-  (match [this that]
-    (expression-matcho this that)))
-    
 (extend-protocol PMatch
   numeric.expresso.protocols.Expression
   (match [this that]
@@ -72,11 +45,6 @@
    ((project [a b]
              (== true (isa? a b))))))
 
-#_(defn is-expro
-  "succeeds if v is an expression"
-  [v]
-  (project [v]
-           (== true (and (coll? v) (symbol? (first v))))))
 
 (defn is-expro [v]
   (project [v]
@@ -136,9 +104,6 @@
           ((== res [ap x])))))
   
         
-
-
-
 (defn zip
   "utility to zip collections"
   [& colls]

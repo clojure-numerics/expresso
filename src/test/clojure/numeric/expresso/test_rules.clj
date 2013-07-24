@@ -109,3 +109,6 @@
   (is (= 0 (apply-rule tgr nil)))
   (is (= nil (apply-rule tgr 0)))
   (is (= 1 (apply-rule rttr 0))))
+
+(deftest test-extractor
+  (is (= '(2 3) (apply-rule (rule (ex (cons? ?p ?ps)) :=> ?ps) [1 2 3]))))

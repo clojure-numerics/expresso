@@ -6,6 +6,7 @@
         [clojure.test])
   (:require [clojure.core.logic.fd :as fd]
             [clojure.walk :as walk]
+            [instaparse.core :as insta]
             [clojure.core.logic.unifier :as u]
             [numeric.expresso.utils :as utils]))
 (defmulti create-special-expression first)
@@ -53,8 +54,7 @@
 (defn splice-in-seq-matchers [expr]
   (walk/postwalk (fn [expr] (if (coll? expr) (extract expr) expr)) expr))
 
-#_(defn ce [symb & args]
-  (list* (with-meta symb {:properties (props symb)}) args))
+
 (defn create-expression [symbol args]
   (numeric.expresso.protocols.Expression. symbol (vec args)))
 
@@ -157,3 +157,31 @@
 
 (defn let-expr [bindings code]
   (numeric.expresso.protocols.LetExpression. bindings code))
+
+
+
+(def arithmetic
+  (insta/parser
+    "expr = add-sub
+     <add-sub> = mul-div | add | sub
+     add = add-sub <'+'> mul-div
+     sub = add-sub <'-'> mul-div
+     <mul-div> = exp-term | mul | div
+     mul = mul-div <'*'> exp-term
+     div = mul-div <'/'> exp-term
+     <exp-term> = term | expon
+     expon = exp-term <'^'> term
+     <term> = literal | <'('> expr <')'>
+     <literal> = number | symbol | vec | (<' '>* literal <' '>*)
+     vec = <'['> expr* <']'>
+     symbol = #'[a-zA-Z]'*
+     number = floating-point-number | int | frac
+     <floating-point-number> = (int 'M') | (int frac) | (int exp) |
+                               (int frac exp)
+     <int> = digit| (#'[1-9]' digits) |('+' digit) |('+' #'[1-9]' digits)|
+             ('-' digit) |('-' #'[1-9]' digits)
+    <frac> = '.' digits
+    <exp> = ex digits
+    <digits> = digit | (digit digits)
+    <digit> = #'[0-9]'
+    <ex> = 'e' | 'e+' | 'e-' | 'E' | 'E+' | 'E-'"))
