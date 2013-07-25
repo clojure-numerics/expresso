@@ -251,7 +251,7 @@
   (if-let [op (expr-op expr)]
     (let [transformed (map (partial transform-expression rules) (expr-args expr))
          ]
-      (apply-to-end rules (c/create-expression (first expr) transformed)))
+      (apply-to-end rules (list* (first expr) transformed)))
     (apply-to-end rules expr)))
 
 ;;See if it is possible to reinstantiate rules so that they can be applied all

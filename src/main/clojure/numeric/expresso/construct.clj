@@ -64,7 +64,7 @@
 (defn ce [symb & args]
   (or (create-special-expression [symb args])
       (create-extractor symb args)
-      (create-expression (with-meta symb (add-information symb)) args)))
+      (list* (with-meta symb (add-information symb)) args)))
 
 
 (def °)

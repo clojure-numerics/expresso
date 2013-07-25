@@ -7,6 +7,7 @@
   (:require [clojure.core.logic.fd :as fd]
             [clojure.walk :as walk]
             [clojure.core.logic.unifier :as u]
+            [clojure.core.matrix.operators :as m]
             [numeric.expresso.utils :as utils]
             [numeric.expresso.matcher :as match]))
 

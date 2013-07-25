@@ -213,11 +213,11 @@
                   (vec (second %))
                   [%]) args)))
 
-#_(defn walk-expresso-expression* [v f]
+(defn walk-expresso-expression* [v f]
   (Expression. (walk-term (f (.-op v)) f)
                  (expand-seq-matchers (mapv #(walk-term (f %) f) (.-args v)))))
 
-(defn walk-needed-terms [v f]
+#_(defn walk-needed-terms [v f]
   (if-let [op (expr-op v)]
     (Expression. (if (lvar? op) (walk-term (f op) f) op)
                  (mapv (fn [v] (walk-needed-terms v f)) (expr-args v)))
@@ -225,7 +225,7 @@
       (walk-term (f v) f)
       v)))
 
-(defn walk-expresso-expression* [v f]
+#_(defn walk-expresso-expression* [v f]
   (walk-needed-terms v f))
 
 (defn substitute-expr [expr smap]
@@ -250,7 +250,8 @@
   (walk-term [v f] (AtomicExpression. (walk-term (f (value v)) f)))
   Expression
   (walk-term [v f]
-    (let [res (walk-expresso-expression* v f)]
+    (let [
+          res (walk-expresso-expression* v f)]
       res)))
 
 

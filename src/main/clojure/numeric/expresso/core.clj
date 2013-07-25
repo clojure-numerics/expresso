@@ -3,6 +3,7 @@
   (:use [clojure.core.logic.protocols]
         [clojure.core.logic :exclude [is] :as l]
         [numeric.expresso.construct]
+        [numeric.expresso.properties :as props]
         [numeric.expresso.protocols]
         [numeric.expresso.rules]
         [clojure.test])
@@ -11,6 +12,8 @@
             [clojure.core.logic.unifier :as u]
             [numeric.expresso.utils :as utils]
             [numeric.expresso.solve :as s]
+            [clojure.core.matrix :as matrix]
+            [clojure.core.matrix.operators :as mop]
             [numeric.expresso.matcher :as m]
             [numeric.expresso.construct :as c]))
 
@@ -505,4 +508,15 @@
 (defn optimize [expr]
   (->> expr optimize* eval-func))
 
+(defn extract-zero [pargs expr]
+  (== 0 expr))
 
+(defmethod props/extractor-rel 'zero-mat? [_] extract-zero)
+
+(defn define-extractor [name rel]
+  (.addMethod props/extractor-rel name (fn [_] rel)))
+
+(def matr-rules
+  [(rule (ex (mop/* ?&*1 (zero-matt?) ?&*2)) :=> (ex (mop/* ?&*1 ?&*2))
+    ;  :if (guard (= 0 ?x))
+         )])
