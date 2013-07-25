@@ -140,6 +140,9 @@
             (map exnright (rest expr))))
     (list 'quote expr)))
 
+(defn construct-ex [expr]
+  (exnright expr))
+
 (defmacro ex [expr]
   (exnright expr))
 
