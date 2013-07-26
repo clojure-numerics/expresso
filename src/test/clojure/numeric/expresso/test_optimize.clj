@@ -1,10 +1,11 @@
-(ns numeric.expresso.optimize
+(ns numeric.expresso.test-optimize
   (:refer-clojure :exclude [==])
   (:use [clojure.core.logic.protocols]
         [clojure.core.logic :exclude [is] :as l]
         [numeric.expresso.construct]
         [numeric.expresso.properties :as props]
         [numeric.expresso.protocols]
+        [numeric.expresso.optimize]
         [numeric.expresso.rules]
         [clojure.test])
   (:require [clojure.core.logic.fd :as fd]
