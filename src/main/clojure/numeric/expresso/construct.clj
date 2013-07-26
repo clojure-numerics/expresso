@@ -96,6 +96,11 @@
       (list* `ce (list 'quote symb) (rest s-exp)))
     s-exp))
 
+(defn construct-with* [s & code]
+  (let [s-set (set s)]
+    `(do 
+       ~@(clojure.walk/postwalk #(replace-with-expresso-sexp s-set %) code))))
+
 (defmacro with-expresso [s & code]
   (let [s-set (set s)]
     `(do 
@@ -117,8 +122,9 @@
   (let [[s expr]
         (if (= (count expr) 1)
           [#{} (first expr)]
-          [(into #{} (first expr)) (second expr)])]
-    (eval (walk/prewalk #(create-expression-with-values s %) expr))))
+          [(into #{} (first expr)) (second expr)])
+        expr (walk/postwalk #(if (s %) (list 'quote %) %) expr)]
+    (walk/prewalk #(create-expression-with-values s %) expr)))
 
 (defmacro ex'
   [& expr]
@@ -140,11 +146,14 @@
             (map exnright (rest expr))))
     (list 'quote expr)))
 
+(defn construct-ex [expr]
+  (exnright expr))
+
 (defmacro ex [expr]
   (exnright expr))
 
 (defn ex* [expr]
-  (ex ~expr))
+  (exnright expr))
 
 (defn exn*right [expr]
   (if (and (sequential? expr) (symbol? (first expr)))

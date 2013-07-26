@@ -134,6 +134,13 @@
     (with-meta [(?-to-lvar pat) (?-to-lvar trans) (?-to-lvar guard)] {:syntactic (and (seq rest) (= (last rest) :syntactical))})))
 
 
+(defn rule* [v]
+  (let [expanded (?-to-lvar v)
+        [pat to trans & rest] v
+        trans (if (= to :==>) (make-inline-trans trans) trans)
+        guard (if (and (seq rest) (= :if (first rest))) (second rest) succeed)]
+    (with-meta [(?-to-lvar pat) (?-to-lvar trans) (?-to-lvar guard)] {:syntactic (and (seq rest) (= (last rest) :syntactical))})))
+  
 
 (defn apply-semantic-rule
   "applies rule to expression. The first succesful application of the rule gets performed"

@@ -29,6 +29,8 @@
 (defmethod props 'clojure.core// [_] {:exec-func /
                                       :properties #{:n-ary} :inverse-of 'clojure.core/*})
 (defmethod props 'e/ca-op [_] {:properties [:commutative]})
+(defmethod props 'numeric.expresso.core/** [_] {:exec-func (fn [a b]
+                                                             (Math/pow a b))})
 (defmulti matcher identity)
 (defmethod matcher :default [_] {:match-rel match/expression-matcho})
 (defmethod matcher 'e/ca-op [_] {:match-rel match/match-commutativeo})
