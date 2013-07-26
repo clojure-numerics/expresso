@@ -79,7 +79,7 @@
 
 
 
-(with-expresso [+ - * / ** diff ln sin cos]
+(with-expresso [+ - * / numeric.expresso.core/** diff ln sin cos]
 
 (def universal-rules
   [(rule (+) :=> 0)
@@ -89,7 +89,7 @@
    (rule (+ 0 ?&*) :=> (+ ?&*))
    (rule (* 0 ?&*) :=> 0)
    (rule (* 1 ?&*) :=> (* ?&*))
-   (rule (** ?x 1) :=> ?x)
+   (rule (numeric.expresso.core/** ?x 1) :=> ?x)
    (rule (* (* ?&*) ?&*r) :=> (* ?&* ?&*r))
    (rule (+ (+ ?&*) ?&*r) :=> (+ ?&* ?&*r))
    (rule (- 0 ?x) :=> (- ?x))
@@ -103,7 +103,7 @@
   
 (def normal-form-rules
   (concat universal-rules
-   [(rule (* ?x ?x ?&*) :=> (* (** ?x 2) ?&*))
+   [(rule (* ?x ?x ?&*) :=> (* (numeric.expresso.core/** ?x 2) ?&*))
    (rule (* ?x (/ ?x) ?&*) :=> (* ?&*))
    (rule (+ (* ?x ?n1) (* ?x ?n2) ?&*) :==>
          (+ (* ?x (clojure.core/+ ?n1 ?n2)) ?&*) :if
@@ -118,7 +118,7 @@
          (* (+ (seq-matcher (for [a (matcher-args ?&+)] (* a ?x)))) ?&*))]))
 
 (def simplify-rules
-  [(rule (* ?x ?x ?&*) :=> (* (** ?x 2) ?&*))
+  [(rule (* ?x ?x ?&*) :=> (* (numeric.expresso.core/** ?x 2) ?&*))
    (rule (* ?x (/ ?x) ?&*) :=> (* ?&*))
    (rule (+ ?x (- ?x) ?&*) :=> (+ ?&*))])
 
@@ -136,9 +136,9 @@
            (* ?&* (+ (seq-matcher (for [a args1 b args2] (* a b)))))))
    (rule (* (+ ?&+) ?x ?&*) :==>
          (* (+ (seq-matcher (for [a (matcher-args ?&+)] (* a ?x)))) ?&*))
-   (rule (** (* ?&+) ?n) :==> (* (map-sm #(** % ?n) ?&+)))
-   (rule (** (** ?x ?n1) ?n2) :==> (** ?x (clojure.core/* ?n1 ?n2)))
-   (rule (** (+ ?&+) ?n) :==> (multinomial ?n (matcher-args ?&+)))
+   (rule (numeric.expresso.core/** (* ?&+) ?n) :==> (* (map-sm #(numeric.expresso.core/** % ?n) ?&+)))
+   (rule (numeric.expresso.core/** (numeric.expresso.core/** ?x ?n1) ?n2) :==> (numeric.expresso.core/** ?x (clojure.core/* ?n1 ?n2)))
+   (rule (numeric.expresso.core/** (+ ?&+) ?n) :==> (multinomial ?n (matcher-args ?&+)))
    (rule (* ?x (/ ?x) ?&*) :=> (* ?&*))]
 )
 (def diff-rules
@@ -149,13 +149,13 @@
              (for [i (range (count-sm ?&+)) :let [[bv ith af] (split-in-pos-sm ?&+ i)]]
                (* (diff ith ?x) bv af)))))
    (rule (diff (- ?a) ?x) :=> (- (diff ?a ?x)))
-   (rule (diff (/ ?a) ?x) :=> (- (* (diff ?a ?x) (/ (** ?a 2)))))
-   (rule (diff (** ?a ?n) ?x) :==> (* ?n (** ?a (clojure.core/- ?n 1)) (diff ?a ?x))
+   (rule (diff (/ ?a) ?x) :=> (- (* (diff ?a ?x) (/ (numeric.expresso.core/** ?a 2)))))
+   (rule (diff (numeric.expresso.core/** ?a ?n) ?x) :==> (* ?n (numeric.expresso.core/** ?a (clojure.core/- ?n 1)) (diff ?a ?x))
          :if (guard (number? ?n)))
    (rule (diff (ln ?a) ?x) :=> (* (diff ?a ?x) (/ ?a)))
    (rule (diff (sin ?a) ?x) :=> (* (cos ?a) (diff ?a ?x)))
    (rule (diff (cos ?a) ?x) :=> (* (- (sin ?a)) (diff ?a ?x)))
-   (rule (diff (** 'e ?n) ?x) :=> (* (** 'e ?n) (diff ?n ?x)))
+   (rule (diff (numeric.expresso.core/** 'e ?n) ?x) :=> (* (numeric.expresso.core/** 'e ?n) (diff ?n ?x)))
    (rule (diff ?u ?x) :=> 0)])
 )
 (defn- binom [n k]
@@ -188,7 +188,7 @@
              (cond
               (= (first index) 0) ret
               (= (first index) 1) (conj ret (nth args i))
-               :else (conj ret (ex' (** ~(nth args i) ~(first index)))))))))
+               :else (conj ret (ex' (numeric.expresso.core/** ~(nth args i) ~(first index)))))))))
 
 (defn multinomial [n args]
   (let [args (vec args)
@@ -202,7 +202,7 @@
                               (ex' (* coeff factors)))))))))
     
 
-(with-expresso [+ - * / **]
+(with-expresso [+ - * / numeric.expresso.core/**]
   (def transform-to-polynomial-normal-form-rules
     (concat universal-rules
             [(rule (+ [?x ?y] [?z ?y] ?&*)
@@ -220,7 +220,7 @@
 
 (defn- transform-to-coefficients-form [v expr]
   (if (sequential? expr)
-    (if (= (first expr) `**)
+    (if (= (first expr) `numeric.expresso.core/**)
       [1 (second (rest  expr))]
       (apply (partial ce (first expr)) (map (partial transform-to-coefficients-form v) (rest expr))))
     (if (= v expr) [1 1] [expr 0])))
@@ -233,7 +233,7 @@
   (list* (first expr)
          (walk/postwalk #(if (and (sequential? %) (= (count %) 2) (expression? (first %)) (number? (second %)))
                            (if (= 0 (second %)) (first %)
-                               (ex' (* ~(first %) (** v ~(second %)))))
+                               (ex' (* ~(first %) (numeric.expresso.core/** v ~(second %)))))
                            %) (sort #(> (second %1) (second %2)) (rest expr)))))
 
 
