@@ -20,7 +20,6 @@
 
 
 (deftest test-mapo 
-  (is (= [[2 3 4]] (run* [q] (mapo (s/lifto inc) [1 2 3] q))))
   (is (= [2] (run* [q] (mapo (lifto-with-inverse inc dec) [1 q 3] [2 3 4])))))
 
 (deftest test-resolve-opo
