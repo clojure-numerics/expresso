@@ -37,6 +37,13 @@
   (is (= (ex (= x -4))
          (solve 'x (ex (= (* 3 x) (+ (* 4 x) 4)))))))
 
+(deftest test-differentiate
+  (is (= (ex (* 2 x)) (differentiate '[x] (ex (** x 2)))))
+  (is (= 2 (differentiate '[x x] (ex (** x 2)))))
+  (is (= (ex (* 3 (** x 2))) (differentiate '[x] (ex (** x 3)))))
+  (is (= '(clojure.core/+ (clojure.core/* 3 (numeric.expresso.core/** x 3)) (clojure.core/* 9 (numeric.expresso.core/** x 2) x))
+         (differentiate '[x] (ex (* (** x 3) (* 3 x)))))))
+
 (deftest test-compile-expr
   (is (= 4 ((compile-expr (ex (+ (* 1 2) (* 2 1)))) {})))
   (is (= 8 ((compile-expr (ex (+ (* x 2) (* 2 x)))) {'x 2}))))

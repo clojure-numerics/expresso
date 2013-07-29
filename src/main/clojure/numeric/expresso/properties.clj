@@ -41,4 +41,4 @@
 (defmethod extractor-rel 'cons? [_] match/extract-cons)
 
 (defn add-information [op]
-  (merge (props op) (matcher op)))
+  (merge {:expression true} (props op) (matcher op)))

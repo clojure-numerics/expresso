@@ -93,3 +93,8 @@
 
 (defn splice-in-seq-matchers [expr]
   (walk/postwalk (fn [expr] (if (coll? expr) (extract expr) expr)) expr))
+
+(defn validate-eq [expr]
+  (if (not= 'clojure.core/= (first expr))
+    (throw (Exception. "Input is no Equation"))
+    expr))

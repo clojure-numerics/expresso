@@ -110,18 +110,25 @@
 (defn make-inline-trans [transcode]
   (let [lvars (lvars-in-code transcode)]
     `((transfn ~lvars ~transcode) ~@lvars)))
-    
-(defmacro trans [transcode]
+
+(defn trans* [transcode]
   (let [res (?-to-lvar (make-inline-trans (replace-back transcode)))]
     res))
+    
+(defmacro trans [transcode]
+  (trans* transcode))
+
 
 (defn make-inline-guard [guardcode]
   (let [lvars (lvars-in-code guardcode)]
     `((guardfn ~lvars ~guardcode) ~@lvars)))
 
-(defmacro guard [guardcode]
+(defn guard* [guardcode]
   (let [res (?-to-lvar (make-inline-guard (replace-back guardcode)))]
     res))
+
+(defmacro guard [guardcode]
+  (guard* guardcode))
 
 (defmacro rule
   "constructs an rule. Syntax is (rule pat :=> trans) or \n

@@ -6,6 +6,7 @@
             [numeric.expresso.matcher :as match]
             [numeric.expresso.rules :as rules]
             [numeric.expresso.parse :as parse]
+            [numeric.expresso.utils :as utils]
             [numeric.expresso.properties :as props]
             [numeric.expresso.construct :as constr])) 
 
@@ -55,23 +56,19 @@
    [s]
    (parse/parse-expression s))
    
-
-(defn expression?
-  "checks if the given argument is suitable for manipulation with
-   expresso, for example such expressions constructed with one of
-   expressos constructing functions"
-  [expr]
-  (boolean (protocols/expr-op expr)))
-
 (defn evaluate
   "evaluates the expression after replacing the symbols in the symbol map with
    their associated values"
   [expr sm]
-  (protocols/evaluate expr sm))
+  (-> expr
+      constr/to-expression
+      (protocols/evaluate sm)))
 
 (defn substitute [expr repl]
   "substitutes every occurrence of a key in the replacement-map by its value"
-  (protocols/substitute-expr expr repl))
+  (-> expr
+      constr/to-expression
+      (protocols/substitute-expr repl)))
 
 (defmacro rule
   "constructs a rule. Syntax is (rule pat :=> trans) pat is a normal expression
@@ -86,6 +83,20 @@
    with the expression and succeeds if the rule is applicable or fails if not."
   [& v]
   (rules/rule* v))
+
+(defmacro trans
+  "to be used inside a rule to transform the inline-code to a core.logic
+   relation which is suitable for the rule based translator as translation
+   relation"
+  [inline-code]
+  (rules/trans* inline-code))
+
+(defmacro guard
+  "to be used inside a rule to transform the inline (boolean returning) code
+   to a core.logic relation which is suitable for the rule based translator
+   as guard relation"
+  [inline-code]
+  (rules/guard* inline-code))
 
 (defn define-extractor
   "defines and installs an extractor with the given name and relation.
@@ -120,44 +131,62 @@
   "transforms the expression according to the rules in the rules vector in a
    bottom up manner until no rule can be applied to any subexpression anymore"
   [rules expr]
-  (rules/transform-expression rules expr))
+  (->> expr
+       constr/to-expression
+       (rules/transform-expression rules)))
 
 (defn simplify
   "simplifies the given expression to a shorter form"
   [expr]
-  (solve/simp-expr expr))
+  (->> expr
+       constr/to-expression
+       solve/simp-expr))
 
 (defn to-polynomial-normal-form
   "transforms the given expression to a fully expanded polynomial representation
    regarding the variable v"
   [v expr]
-  (solve/to-polynomial-normal-form v expr))
+  (->> expr
+       constr/to-expression
+       (solve/to-polynomial-normal-form v)))
 
 (defn rearrange
   "if the equation contains only one occurrence of v it will be rearranged so
-   that v is the only symbol on the lhs of the equation"
+   that v is the only symbol on the lhs of the equation."
   [v eq]
-  (solve/rearrange v eq))
+  (->> eq
+       constr/to-expression
+       utils/validate-eq
+       (solve/rearrange v)))
 
 (defn solve
   "solves the given equation in regard to the variable v"
   [v eq]
-  (solve/solve v eq))
+  (->> eq
+       constr/to-expression
+       utils/validate-eq
+       (solve/solve v)))
 
 (defn differentiate
-  "Differentiates the given expression regarding the variable v"
-  [v expr]
-  (solve/differentiate v expr))
+  "Differentiates the given expression regarding the symbols in the symbol
+   vector symbv"
+  [symbv expr]
+  (let [expr (->> expr constr/to-expression)]
+    (reduce #(solve/differentiate %2 %1) expr symbv)))
 
 (defmacro compile-expr
-  "compiles the given expression to a clojure function."
+  "compiles the given expression to a clojure function which can be called with
+   a symbol-map"
   [expr]
-  (opt/compile-expr* expr))
+  (->> expr
+       (opt/compile-expr*)))
 
 (defn optimize
   "optimizes the given expression"
   [expr]
-  (opt/optimize expr))
+  (->> expr
+       constr/to-expression
+       (opt/optimize )))
 
 (defn ^:dynamic **
   "default exponentiation operator."

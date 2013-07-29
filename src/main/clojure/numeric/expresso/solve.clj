@@ -120,7 +120,10 @@
 (def simplify-rules
   [(rule (* ?x ?x ?&*) :=> (* (numeric.expresso.core/** ?x 2) ?&*))
    (rule (* ?x (/ ?x) ?&*) :=> (* ?&*))
-   (rule (+ ?x (- ?x) ?&*) :=> (+ ?&*))])
+   (rule (+ ?x (- ?x) ?&*) :=> (+ ?&*))
+   (rule (+ ?x ?x ?&*) :=> (+ (* 2 ?x) ?&*))
+   (rule (+ (* ?x ?&*) (* ?x ?&*2) ?&*3) :=> (+ (* ?x (+ ?&* ?&*2)) ?&*3))
+   (rule (+ (* ?x ?&*) ?x ?&*2) :=> (+ (* ?x (+ ?&* 1)) ?&*2))])
 
 (def to-inverses-rules
   [(rule (- ?x ?&+) :=> (trans (+ ?x (map-sm #(- %) ?&+))))
@@ -260,7 +263,7 @@
                                      multiply-out-rules))))
 
 (defn only-one-occurrence-of [v expr]
-  (= (count (filter #{v} (flatten expr))) 1))
+  (<= (count (filter #{v} (flatten expr))) 1))
 
 (def c= =)
 
@@ -276,14 +279,15 @@
          :==> (let [[left x right] (split-in-pos-sm ?&+ ?p)]
                 [?ps (= x (if (c= ?p 0)
                             (+ ?rhs right)
-                            (- (+ (- ?rhs (first-sm left))
-                                  (rest-sm left) right))))]))
+                            (- left right ?rhs)))]))
    (rule [(cons? ?p ?ps) (= (/ ?&+) ?rhs)]
          :==> (let [[left x right] (split-in-pos-sm ?&+ ?p)]
                 [?ps (= x (if (c= ?p 0)
                             (* ?rhs right)
-                            (/ (* (/ ?rhs (first-sm left))
-                                  (rest-sm left) right))))]))]))
+                            (/ left right ?rhs)))]))]))
+
+(defn only-one-occurrence [v equation]
+  (>= 1 (->> equation flatten (filter #{v}) count)))
                   
 (defn position-in-equation
   ([v equation] (position-in-equation v equation []))
@@ -297,6 +301,8 @@
   (list eq rhs lhs))
 
 (defn rearrange [v equation]
+  (assert (only-one-occurrence v equation)
+          "cant rearrange an equation with multiple occurrences of the variable")
   (if-let [pos (position-in-equation v equation)]
     (->> (apply-to-end rearrange-rules
                       [(subvec pos 1) (if (= (first pos) 1)
@@ -306,10 +312,12 @@
     equation))
 
 (defn simp-expr [expr]
-  (transform-expression
-   (concat eval-rules universal-rules to-inverses-rules
-           multiply-out-rules simplify-rules)
-   expr))
+  (->> expr 
+       (transform-expression
+        (concat eval-rules universal-rules to-inverses-rules
+                multiply-out-rules ))
+       (transform-expression (concat universal-rules simplify-rules))))
+   
 
 (def simplify-eq (fn [eq] (ce `= (simp-expr (nth eq 1))  (nth eq 2))))
 
@@ -334,10 +342,16 @@
         '())
       eq)))
 
+(defn check-if-can-be-solved [v eq]
+  (assert (only-one-occurrence v eq)
+          (str "Couldn't reduce the number of occurrences of " v " to one."))
+  eq)
+
 (defn solve [v equation]
   (->> equation
        lhs-rhs=0
        simplify-eq
+       (check-if-can-be-solved v)
        (rearrange v)
        simplify-rhs
        (report-res v)))

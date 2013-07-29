@@ -140,9 +140,10 @@
   clojure.lang.ISeq
   (expr-op [obj]
     (let [f (first obj)]
-      (if (and f (or (lvar? f) (symbol? f)))
-        f
-        nil)))
+      (cond
+       (and f (symbol? f) (contains? (meta f) :expression)) f
+       (and f (lvar? f)) f
+        :else nil)))
   (expr-args [obj] (vec (rest obj))))
 
 (extend-protocol PExprToSexp

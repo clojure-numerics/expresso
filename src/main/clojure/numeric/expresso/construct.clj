@@ -6,6 +6,7 @@
         [clojure.test])
   (:require [clojure.core.logic.fd :as fd]
             [clojure.walk :as walk]
+            [numeric.expresso.protocols :as protocols]
             [clojure.core.logic.unifier :as u]
             [numeric.expresso.utils :as utils]))
 (defmulti create-special-expression first)
@@ -167,3 +168,9 @@
   (numeric.expresso.protocols.LetExpression. bindings code))
 
 
+(defn to-expression [expr]
+  (if-let [op (protocols/expr-op expr)]
+    expr
+    (walk/postwalk #(if (and (sequential? %) (symbol? (first %)))
+                      (apply (partial ce (first %))  (rest %))
+                      %) expr)))

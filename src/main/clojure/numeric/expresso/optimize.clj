@@ -76,7 +76,9 @@
      (evaluate ~expr sm#)))
 
 (defn compile-expr* [expr]
-  `(fn [sm#] (evaluate ~expr sm#)))
+  `(fn [sm#] (-> ~expr
+                 to-expression
+                 (evaluate sm#))))
 
 (defn optimize* [expr]
   (->> expr  remove-common-subexpressions))
