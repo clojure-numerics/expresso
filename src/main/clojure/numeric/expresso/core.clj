@@ -51,7 +51,7 @@
    normal precedence. unnests operators where possible
    examples:
    (parse-expression \"1+2+3\") :=> (clojure.core/+ 1 2 3)
-   (parse-expression \"1+2*3^4+5\")
+   (parse-expression \"1+2*3**4+5\")
      :=> (clojure.core/+ 1 (clojure.core/* 2 (numeric.expresso.core/** 3 4)) 5)"
    [s]
    (parse/parse-expression s))

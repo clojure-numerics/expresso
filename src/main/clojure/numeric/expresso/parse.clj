@@ -9,6 +9,7 @@
   (:require [clojure.core.logic.fd :as fd]
             [clojure.walk :as walk]
             [instaparse.core :as insta]
+            [numeric.expresso.protocols :as protocols]
             [clojure.core.logic.unifier :as u]
             [numeric.expresso.utils :as utils]))
 
@@ -45,7 +46,12 @@
    (rule (ex (+ (+ ?&*) ?&*r)) :=> (ex (+ ?&* ?&*r)))
    (rule (ex (+ ?x)) :=> ?x)
    (rule (ex (* ?x)) :=> ?x)])
- 
+
+(defn transform-if-successful [expr]
+  (if-let [op (protocols/expr-op expr)]
+    (transform-with-rules parse-simplification-rules expr)
+    expr))
+
 (defn parse-expression [expr]
   (->> (arithmetic expr)
        (insta/transform
@@ -58,5 +64,4 @@
          :expr identity
          :vec vector
          })
-       (transform-with-rules parse-simplification-rules)))
-
+       transform-if-successful))

@@ -14,7 +14,8 @@
             [numeric.expresso.utils :as utils]))
 
 (deftest test-parse-expression
-  (= (ex (+ 1 2)) (parse-expression "1+2"))
-  (= (ex (+ 1 2 3 4)) (parse-expression "1+2+3+4"))
-  (= (ex (+ (* 1 2 3) 4)) (parse-expression "1*2*3+4"))
-  (= (ex (* 1 2 (+ 3 4))) (parse-expression "1*2*(3+4)")))
+  (is (= (ex (+ 1 2)) (parse-expression "1+2")))
+  (is (= (ex (+ 1 2 3 4)) (parse-expression "1+2+3+4")))
+  (is (= (ex (+ (* 1 2 3) 4)) (parse-expression "1*2*3+4")))
+  (is (= (ex (* 1 2 (+ 3 4))) (parse-expression "1*2*(3+4)")))
+  (is (= (ex (+ 1 (* 2 (numeric.expresso.core/** 3 4)) 5)) (parse-expression "1+2*3**4+5"))))
