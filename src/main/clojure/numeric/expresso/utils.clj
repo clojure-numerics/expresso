@@ -88,11 +88,17 @@
 
 
 (defn extract [c]
-  (mapcat #(if (and (coll? %) (= (first %) :numeric.expresso.construct/seq-match)) (second %) [%]) c))
+  (let [res 
+        (mapcat
+         #(if (and (coll? %) (= (first %) :numeric.expresso.construct/seq-match))
+            (second %) [%]) c)]
+    (if (vector? c) (into [] res)
+        res)))
 
 
-(defn splice-in-seq-matchers [expr]
-  (walk/postwalk (fn [expr] (if (coll? expr) (extract expr) expr)) expr))
+(defn splice-in-seq-matchers [express]
+  (walk/postwalk (fn [expr] (if (and (coll? expr))
+                              (extract expr) expr)) express))
 
 (defn validate-eq [expr]
   (if (not= 'clojure.core/= (first expr))
