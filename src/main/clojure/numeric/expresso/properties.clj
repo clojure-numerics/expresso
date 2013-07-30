@@ -3,6 +3,7 @@
   (:use [clojure.core.logic.protocols]
         [clojure.core.logic :exclude [is] :as l]
         [clojure.test])
+  (:require [numeric.expresso.protocols]) 
   (:import [numeric.expresso.protocols Expression AtomicExpression])
   (:require [clojure.core.logic.fd :as fd]
             [clojure.walk :as walk]
