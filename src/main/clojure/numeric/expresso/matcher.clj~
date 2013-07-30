@@ -1,9 +1,0 @@
-(ns numeric.expresso.matcher
-  (:refer-clojure :exclude [==])
-  (:use [clojure.core.logic.protocols]
-        [clojure.core.logic :exclude [is] ]
-        clojure.test)
-  (:require [clojure.core.logic.fd :as fd]
-            [clojure.walk :as walk]
-            [numeric.expresso.utils :as utils]
-            [numeric.expresso.construct :as c]))
