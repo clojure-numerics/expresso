@@ -7,6 +7,7 @@
         clojure.test)
   (:require [clojure.core.logic.fd :as fd]
             [clojure.walk :as walk]
+            [clojure.core.memoize :as memo]
             [numeric.expresso.utils :as utils]
             [numeric.expresso.construct :as c]))
 (defn- replace-?-with-lvar
@@ -214,14 +215,14 @@
             (recur (rest rules) expr)))
       expr)))
 
-(declare apply-rules transform-with-rules transform-expression)
+(declare apply-rules transform-with-rules transform-expression*)
 (defn apply-to-end
   [rules expr]
   (loop [rules rules expr expr]
     (let [nexpr (apply-rules rules expr)]
       (if (= expr nexpr)
         nexpr
-        (transform-expression rules nexpr)))))
+        (transform-expression* rules nexpr)))))
 
 (defn apply-simp
   [rules expr]
@@ -261,12 +262,21 @@
   ([rules expr] (transform-with-rules rules expr walk/prewalk apply-rules)))
 
 
+(def transform-expression*
+  (memo/memo
+   (fn [rules expr]
+     (if-let [op (expr-op expr)]
+       (let [transformed (map (partial transform-expression* rules)
+                              (expr-args expr))
+             ]
+         (apply-to-end rules (list* (first expr) transformed)))
+       (apply-to-end rules expr)))))
+
 (defn transform-expression [rules expr]
-  (if-let [op (expr-op expr)]
-    (let [transformed (map (partial transform-expression rules) (expr-args expr))
-         ]
-      (apply-to-end rules (list* (first expr) transformed)))
-    (apply-to-end rules expr)))
+  (let [res (transform-expression* rules expr)]
+    (memo/memo-clear! transform-expression*)
+    res))
+
 
 ;;See if it is possible to reinstantiate rules so that they can be applied all
 ;;in the core.logic context
