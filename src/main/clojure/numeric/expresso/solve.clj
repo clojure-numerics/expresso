@@ -362,3 +362,10 @@
        (#(ce 'diff % v))
        (transform-expression diff-rules)
        (transform-expression (concat eval-rules universal-rules))))
+
+
+(def matrix-simplification-rules
+  [(rule (ex (matrix/add (mzero? ?x) ?&*)) :=> (ex (matrix/add ?&*)))
+   (rule (ex (matrix/sub ?x ?x)) :==> (matrix/new-matrix
+                                       (matrix/row-count ?x)
+                                       (matrix/column-count ?x)))   ])

@@ -13,6 +13,8 @@
 (defmethod create-special-expression :default [_] nil)
 
 
+(defn add-metadata [s m]
+  (with-meta s (merge (meta s) m)))
 
 (defn expr-properties [s-exp]
   (:properties (meta (first s-exp))))
@@ -67,6 +69,11 @@
       (create-extractor symb args)
       (list* (with-meta symb (add-information symb)) args)))
 
+(defn matrix-symb
+  ([s] (matrix-symb s #{}))
+  ([s additional-props]
+     (add-metadata s {:type :matrix
+                  :properties (set additional-props)})))
 
 (def °)
 
@@ -81,6 +88,8 @@
 (derive 'clojure.core/* 'e/ca*)
 (derive 'clojure.core/- 'e/-)
 (derive 'clojure.core// 'e/div)
+(derive 'clojure.core.matrix.operators/+ 'e/ca-op)
+(derive 'clojure.core.matrix/add 'e/ca-op)
 (derive `° 'e/ao-op)
 
 

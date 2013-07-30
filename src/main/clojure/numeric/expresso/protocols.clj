@@ -29,6 +29,9 @@
 (defprotocol PSubstitute
   (substitute-expr [expr sm]))
 
+(defprotocol PType
+  (type-of [this]))
+
 (declare value) 
 (deftype Expression [op args]
   clojure.lang.Sequential
@@ -54,6 +57,8 @@
   PExpression
   (expr-op [this] op)
   (expr-args [this] args)
+  PType
+  (type-of [this] :expression)
   PProps
   (properties [this] (when-let [m (meta op)] (:properties m))))
 
@@ -77,9 +82,7 @@
 (defprotocol PAtom
   "The abstraction for an Atom in a Expression. Can be ac actual
    constant or a variable"
-  (value [atom])
-  (type-of [atom]))
-
+  (value [atom]))
 (defprotocol PMatch
   "The abstraction for matching in a rule based context"
   (match [this that]))
@@ -90,10 +93,11 @@
     (= val (value that)))
   PAtom
   (value [this] val)
-  (type-of [this] (type val))
   PProps
   (vars [this] #{})
-  (properties [this] nil))
+  (properties [this] nil)
+  PType
+  (type-of [this] (type-of val)))
 
 (deftype BasicExtractor [name args rel]
   java.lang.Object
@@ -129,9 +133,7 @@
 
 (extend-protocol PAtom
   java.lang.Object
-  (value [this]  this)
-  (type-of [this] (type this)))
-
+  (value [this]  this))
 (extend-protocol PExpression
   nil
   (expr-op [obj] nil)
@@ -271,3 +273,13 @@
   Expression
   (substitute-expr [this repl]
     (substitute-expr* this repl)))
+
+
+(extend-protocol PType
+  java.lang.Number
+  (type-of [this] :number)
+  Object
+  (type-of [this]
+    (if-let [type (and (meta this) (:type (meta this)))]
+      type
+      :Unknown)))
