@@ -102,6 +102,9 @@
     `(do 
        ~@(clojure.walk/postwalk #(replace-with-expresso-sexp s-set %) code))))
 
+(defmacro construct-with [s & code]
+  (apply (partial construct-with* s) code))
+
 (defmacro with-expresso [s & code]
   (let [s-set (set s)]
     `(do 

@@ -18,7 +18,7 @@
             [numeric.expresso.construct :as c]))
 
 (def disjunctive-normal-form-rules
-  (with-expresso [not and or]
+  (construct-with [not and or]
     [(rule (not (not ?x)) :=> ?x :syntactical)
      (rule (not (or ?a ?b)) :=> (and (not ?a) (not ?b)) :syntactical)
      (rule (not (and ?a ?b)) :=> (or (not ?a) (not ?b)) :syntactical)
@@ -27,7 +27,7 @@
      (rule (and (and ?a ?b) ?c) :=> (and ?a (and ?b ?c)) :syntactical)
      (rule (or (or ?a ?b) ?c) :=> (or ?a (or ?b ?c)) :syntactical)]))
 
-(with-expresso [and not or]
+(construct-with [and not or]
   (transform-with-rules disjunctive-normal-form-rules
     (or 'a (not (or 'b (and 'c (not 'd)))))))
 

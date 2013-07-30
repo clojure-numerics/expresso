@@ -79,7 +79,7 @@
 
 
 
-(with-expresso [+ - * / numeric.expresso.core/** diff ln sin cos]
+(construct-with [+ - * / numeric.expresso.core/** diff ln sin cos]
 
 (def universal-rules
   [(rule (+) :=> 0)
@@ -205,7 +205,7 @@
                               (ex' (* coeff factors)))))))))
     
 
-(with-expresso [+ - * / numeric.expresso.core/**]
+(construct-with [+ - * / numeric.expresso.core/**]
   (def transform-to-polynomial-normal-form-rules
     (concat universal-rules
             [(rule (+ [?x ?y] [?z ?y] ?&*)
@@ -267,7 +267,7 @@
 
 (def c= =)
 
-(with-expresso [+ cons? nth-arg? = - / * ]
+(construct-with [+ cons? nth-arg? = - / * ]
 (def rearrange-rules
   [(rule [(cons? ?p ?ps) (= (+ ?&+) ?rhs)]
          :==> (let [[left x right] (split-in-pos-sm ?&+ ?p)]
@@ -362,6 +362,3 @@
        (#(ce 'diff % v))
        (transform-expression diff-rules)
        (transform-expression (concat eval-rules universal-rules))))
-
-
-
