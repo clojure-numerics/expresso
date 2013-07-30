@@ -364,8 +364,16 @@
        (transform-expression (concat eval-rules universal-rules))))
 
 
+(defn infer-shape-zero-mat [sf x sl]
+  (let [series (concat (matcher-args sf) [x] (matcher-args sl))]
+    (if (= (count series) 1)
+      x
+      (zero-matrix (filter identity [(first (shape (first series)))
+                                     (last (shape (last series)))])))))
+
 (def matrix-simplification-rules
   [(rule (ex (matrix/add (mzero? ?x) ?&*)) :=> (ex (matrix/add ?&*)))
-   (rule (ex (matrix/sub ?x ?x)) :==> (matrix/new-matrix
-                                       (matrix/row-count ?x)
-                                       (matrix/column-count ?x)))   ])
+   (rule (ex (matrix/sub ?x ?x)) :==> (let [s (shape ?x)]
+                                        (zero-matrix s)))
+   (rule (ex (matrix/mul ?&*1 (mzero? ?x) ?&*2))
+         :==> (infer-shape-zero-mat ?&*1 ?x ?&*2))])

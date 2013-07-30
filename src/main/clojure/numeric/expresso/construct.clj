@@ -6,6 +6,7 @@
         [clojure.test])
   (:require [clojure.core.logic.fd :as fd]
             [clojure.walk :as walk]
+            [clojure.set :as set]
             [numeric.expresso.protocols :as protocols]
             [clojure.core.logic.unifier :as u]
             [numeric.expresso.utils :as utils]))
@@ -41,6 +42,7 @@
 
 (defn first-sm [sm] (first (matcher-args sm)))
 (defn rest-sm [sm] (seq-matcher (rest (matcher-args sm))))
+(defn last-sm [sm] (last (matcher-args sm)))
 
 (defn count-sm [sm] (count (vec (matcher-args sm))))
 (defn split-in-pos-sm [sm pos]
@@ -70,10 +72,18 @@
       (list* (with-meta symb (add-information symb)) args)))
 
 (defn matrix-symb
-  ([s] (matrix-symb s #{}))
-  ([s additional-props]
+  ([s shape] (matrix-symb s shape #{}))
+  ([s shape additional-props]
      (add-metadata s {:type :matrix
-                  :properties (set additional-props)})))
+                      :properties (set additional-props)
+                      :shape shape })))
+
+(defn zero-matrix
+  ([s] (zero-matrix s #{}))
+  ([s additional-props]
+     (matrix-symb (symbol (str "zeromat" (apply str (interpose "-" s))))
+                  (set/union additional-props #{:mzero}))))
+     
 
 (def °)
 

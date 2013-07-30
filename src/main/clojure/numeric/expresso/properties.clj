@@ -3,7 +3,7 @@
   (:use [clojure.core.logic.protocols]
         [clojure.core.logic :exclude [is] :as l]
         [clojure.test])
-  (:require [numeric.expresso.protocols]) 
+  (:require [numeric.expresso.protocols :as protocols]) 
   (:import [numeric.expresso.protocols Expression AtomicExpression])
   (:require [clojure.core.logic.fd :as fd]
             [clojure.walk :as walk]
@@ -47,9 +47,9 @@
       true)))
 
 (defn extract-mzero [pargs expr]
-  (project [pargs]
+  (project [pargs expr]
            (let [x (first pargs)]
-             (if (and (meta x) (contains? (meta x) :mzero))
+             (if (contains? (protocols/properties expr) :mzero)
                (== x expr)
                (if (zero-matrix? expr)
                  (== x expr)

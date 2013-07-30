@@ -5,6 +5,7 @@
         [clojure.core.logic :exclude [is]])
   (:require [numeric.expresso.utils :as utils]
             [clojure.set :as set]
+            [clojure.core.matrix :as mat]
             [clojure.walk :as walk]))
 
 (defprotocol PExpression
@@ -31,6 +32,9 @@
 
 (defprotocol PType
   (type-of [this]))
+
+(defprotocol PShape
+  (shape [this]))
 
 (declare value) 
 (deftype Expression [op args]
@@ -283,3 +287,31 @@
     (if-let [type (and (meta this) (:type (meta this)))]
       type
       :Unknown)))
+
+(extend-protocol PShape
+  nil
+  (shape [this] [])
+  clojure.lang.Symbol
+  (shape [this] (:shape (meta this)))
+  java.lang.Number
+  (shape [this] [])
+  java.lang.Object
+  (shape [this]
+    (if-let [shape (:shape (meta this))]
+      shape
+      (mat/shape this))))
+      
+
+(extend-protocol PProps
+  java.lang.Object
+  (properties [this]
+    (when-let [m (meta this)]
+      (:properties m)))
+  java.lang.Number
+  (properties [this]
+    (cond
+     (> this 0) #{:positive}
+     (= this 0) #{:zero}
+     :else      #{:negative})))
+        
+      
