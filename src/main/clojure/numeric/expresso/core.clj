@@ -59,10 +59,11 @@
 (defn evaluate
   "evaluates the expression after replacing the symbols in the symbol map with
    their associated values"
-  [expr sm]
-  (-> expr
+  ([expr] (evaluate expr {}))
+  ([expr sm]
+     (-> expr
       constr/to-expression
-      (protocols/evaluate sm)))
+      (protocols/evaluate sm))))
 
 (defn substitute [expr repl]
   "substitutes every occurrence of a key in the replacement-map by its value"

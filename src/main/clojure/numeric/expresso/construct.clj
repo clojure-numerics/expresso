@@ -171,6 +171,6 @@
 (defn to-expression [expr]
   (if-let [op (protocols/expr-op expr)]
     expr
-    (walk/postwalk #(if (and (sequential? %) (symbol? (first %)))
+    (walk/postwalk #(if (and (seq? %) (symbol? (first %)))
                       (apply (partial ce (first %))  (rest %))
                       %) expr)))
