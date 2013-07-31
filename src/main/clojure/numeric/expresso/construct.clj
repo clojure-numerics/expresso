@@ -82,7 +82,15 @@
   ([s] (zero-matrix s #{}))
   ([s additional-props]
      (matrix-symb (symbol (str "zeromat" (apply str (interpose "-" s))))
+                  s
                   (set/union additional-props #{:mzero}))))
+
+(defn identity-matrix
+  ([s] (identity-matrix s #{}))
+  ([s additional-props]
+     (matrix-symb (symbol (str "identitymat" (apply str (interpose "-" [s s]))))
+                  [s s]
+                  (set/union additional-props #{:midentity}))))
      
 
 (def °)

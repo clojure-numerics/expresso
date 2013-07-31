@@ -368,12 +368,31 @@
   (let [series (concat (matcher-args sf) [x] (matcher-args sl))]
     (if (= (count series) 1)
       x
-      (zero-matrix (filter identity [(first (shape (first series)))
-                                     (last (shape (last series)))])))))
+      (let [s (filter identity [(first (shape (first series)))
+                                       (last (shape (last series)))])]
+        (if (some symbol? series)
+          (zero-matrix s)
+          (matrix/broadcast 0 s))))))
+
+(defn identity-right-shape [a]
+  (let [s (shape a)]
+    (cond
+     (empty? s) 1
+     (symbol? a) (identity-matrix (first s))
+     :else (matrix/identity-matrix (first s)))))
 
 (def matrix-simplification-rules
   [(rule (ex (matrix/add (mzero? ?x) ?&*)) :=> (ex (matrix/add ?&*)))
    (rule (ex (matrix/sub ?x ?x)) :==> (let [s (shape ?x)]
-                                        (zero-matrix s)))
+                                        (if (symbol? ?x)
+                                          (zero-matrix s)
+                                          (matrix/broadcast 0 s))))
    (rule (ex (matrix/mul ?&*1 (mzero? ?x) ?&*2))
-         :==> (infer-shape-zero-mat ?&*1 ?x ?&*2))])
+         :==> (infer-shape-zero-mat ?&*1 ?x ?&*2))
+   (rule (ex (matrix/mul ?&*1 (midentity? ?x) ?&*2))
+         :=> (ex (matrix/mul ?&*1 ?&*2)))
+   (rule (ex (matrix/div ?a ?a)) :==> (identity-right-shape ?a))
+   (rule (ex (matrix/mul ?a (matrix/div ?a) ?&*)) :=> (ex (matrix/mul ?&*)))])
+
+(defn simplify-matrix-expression [expr]
+  (transform-expression matrix-simplification-rules expr))

@@ -14,9 +14,9 @@
 
 
 (deftest test-matrix-simplification-rules
-  (is (= 'zeromat2-2 (apply-rules
+  (is (= (matrix/broadcast 0 [2 2]) (apply-rules
                       matrix-simplification-rules
                       (ex (matrix/mul [[1 2][3 4]] [[0 0][0 0]])))))
-  (is (= 'zeromat3-2 (apply-rules
+  (is (= (matrix/broadcast 0 [3 2]) (apply-rules
                       matrix-simplification-rules
                       (ex (matrix/mul [[1 2][3 4] [5 6]] [[0 0][0 0]]))))))
