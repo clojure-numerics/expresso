@@ -7,7 +7,7 @@
                  [org.clojure/tools.trace "0.7.5"]
                  [instaparse "1.2.2"]
                  [org.clojure/core.memoize "0.5.6"]
-                 [net.mikera/core.matrix "0.9.0"]
+                 [net.mikera/core.matrix "0.8.0"]
                  [org.clojure/core.logic "0.8.3"]]
 
   :source-paths ["src" "src/main/clojure"]
