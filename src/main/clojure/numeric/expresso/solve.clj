@@ -396,3 +396,22 @@
 
 (defn simplify-matrix-expression [expr]
   (transform-expression matrix-simplification-rules expr))
+
+#_(-run {:occurs-check true :n false :reify-vars 
+         (fn [v s] s) }
+        [q] (== q [1 (lvar 'b) 2]))
+
+
+(defn update-expr [aa l r]
+  (-run {:occurs-check true :n false :reify-vars 
+         (fn [v s] s) }
+        [q] (== l r) (== q aa)))
+
+
+(def matvec ['a (lvar 'matvecs1 false) (lvar 'matvecs2 false)])
+
+(def matvec2 ['b (lvar 'matvec2s1 false) (lvar 'matvec2s2 false)])
+
+(def r (rule (ex (matrix/mul ~matvec 0 ~matvec2)) :==> [0 (second matvec) (nth matvec2 2)]))
+
+  

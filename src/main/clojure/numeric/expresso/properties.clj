@@ -10,8 +10,12 @@
             [clojure.core.logic.unifier :as u]
             [clojure.core.matrix.operators :as mop]
             [clojure.core.matrix :as mat]
+            [clojure.set :as set]
             [numeric.expresso.utils :as utils]
             [numeric.expresso.matcher :as match]))
+
+(defn add-metadata [s m]
+  (with-meta s (merge (meta s) m)))
 
 (defmulti props identity)
 (defmethod props :default [_]
@@ -102,3 +106,28 @@
 
 (defn add-information [op]
   (merge {:expression true} (props op) (matcher op)))
+
+(defn all*
+  "Like fresh but does does not create logic variables."
+  ([] clojure.core.logic/s#)
+  ([goals] (fn [a] (reduce (fn [l r] (bind l r)) a goals))))
+
+(defn check-constraints [value]
+  (let [cs (:constraints (meta value))]
+    (first (-run {:occurs-check true :n 1 :reify-vars (fn [v s] s)} [q]
+        (fresh []
+               (all* cs)
+               (== q value))))))
+
+
+(defn add-constraint [value constraint]
+  (if-let [c (:constraints (meta value))]
+    (add-metadata value {:constraints (set/union c #{constraint})})
+    (add-metadata value {:constraints #{constraint}})))
+
+(defn steal-substitution [atom]
+  (fn [sub]
+    (reset! atom sub)
+    sub))
+
+(defn create-matrix-mul [[symb args]])

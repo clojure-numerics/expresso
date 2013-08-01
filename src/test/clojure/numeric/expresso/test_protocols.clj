@@ -8,7 +8,7 @@
         [numeric.expresso.construct]
         clojure.test)
   (:require [clojure.core.logic.fd :as fd])
-  (:import [numeric.expresso.protocols Expression AtomicExpression])
+  (:import [numeric.expresso.protocols Expression AtomicExpression MatrixSymbol])
   (:require [clojure.core.logic.unifier :as u]))
 
 (deftest test-unification
@@ -25,3 +25,20 @@
   (is (= `+ (first (Expression. `+ [1 2 3]))))
   (is (= [1 2 3] (rest (Expression. `+ [1 2 3]))))
   (is (= (Expression. `* [1 2 3]) (first (rest (Expression. `+ [(Expression. `* [1 2 3])]))))))
+
+
+(deftest test-matrix-symbol-unification
+  (is (= '(_0) (run* [q] (== (MatrixSymbol. 'a nil nil)
+                           (MatrixSymbol. 'a nil nil)))))
+  (is (= '(_0) (run* [q] (== (MatrixSymbol. 'a nil nil)
+                             (with-meta 'a {:shape nil})))))
+  (is (= (MatrixSymbol. 'a 2 nil)
+         (first (run* [q] (fresh [a]
+                                 (== a 2)
+                                 (== q (MatrixSymbol. 'a a nil))))))))
+
+
+(deftest test-shape
+  (is (= '() (shape 1)))
+  (is (= [2 2] (shape [[1 2][3 4]])))
+  (is (= '() (shape 'bla))))

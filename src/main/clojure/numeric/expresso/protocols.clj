@@ -18,6 +18,15 @@
   (vars [expr])
   (properties [expr]))
 
+(defprotocol PAtom
+  "The abstraction for an Atom in a Expression. Can be ac actual
+   constant or a variable"
+  (value [atom]))
+
+(defprotocol PMatch
+  "The abstraction for matching in a rule based context"
+  (match [this that]))
+
 (defprotocol PExprToSexp
   (to-sexp [expr]))
 
@@ -36,7 +45,9 @@
 (defprotocol PShape
   (shape [this]))
 
-(declare value) 
+(defprotocol PConstraints
+  (constraints [this]))
+
 (deftype Expression [op args]
   clojure.lang.Sequential
   clojure.lang.Counted
@@ -82,14 +93,20 @@
 
 (defn make-poly [v coeff]
   (PolynomialExpression. v coeff))
+
+(deftype MatrixSymbol [symb shape properties]
+  java.lang.Object
+  (hashCode [a]
+    (.hashCode symb))
+  (toString [expr]
+    (str  symb))
+  (equals [this that]
+    (= symb (value that)))
+  PAtom
+  (value [this] symb))
   
-(defprotocol PAtom
-  "The abstraction for an Atom in a Expression. Can be ac actual
-   constant or a variable"
-  (value [atom]))
-(defprotocol PMatch
-  "The abstraction for matching in a rule based context"
-  (match [this that]))
+  
+
 
 (deftype AtomicExpression [ val]
   java.lang.Object
@@ -205,7 +222,15 @@
         (unify s (value v) u))
       (unify s (value u) (value v)))))
 
-
+(defn unify-with-matrix-symbol* [u v s]
+  (let [valueu (value u)
+        valuev (value v)
+        shapeu (shape u)
+        shapev (shape v)]
+    (some-> s
+            (unify valueu valuev)
+            (unify shapeu shapev))))
+            
 
 (extend-protocol IUnifyTerms
   Expression
@@ -213,7 +238,10 @@
     (unify-with-expression* u v s))
   AtomicExpression
   (unify-terms [u v s]
-    (unify-with-expression* u v s)))
+    (unify-with-expression* u v s))
+  MatrixSymbol
+  (unify-terms [u v s]
+    (unify-with-matrix-symbol* u v s)))
 
 (defn expand-seq-matchers [args]
   (vec (mapcat #(if (and (sequential? %) (= (first %) :numeric.expresso.construct/seq-match))
@@ -235,7 +263,7 @@
 #_(defn walk-expresso-expression* [v f]
   (walk-needed-terms v f))
 
-(defn substitute-expr [expr smap]
+#_(defn substitute-expr [expr smap]
   (if-let [op (expr-op expr)]
     (Expression. op (mapv #(substitute-expr % smap) (expr-args expr)))
     (get smap (value expr) expr)))
@@ -259,8 +287,11 @@
   (walk-term [v f]
     (let [
           res (walk-expresso-expression* v f)]
-      res)))
-
+      res))
+  MatrixSymbol
+  (walk-term [v f]  (MatrixSymbol. (walk-term (f (.-symb v)) f)
+                                   (walk-term (f (.-shape v)) f)
+                                   (walk-term (f (.-properties v)) f))))
 
 (defn substitute-expr* [expr repl]
   (if-let [sub (get repl expr)]
@@ -291,15 +322,14 @@
 (extend-protocol PShape
   nil
   (shape [this] [])
-  clojure.lang.Symbol
-  (shape [this] (:shape (meta this)))
+  MatrixSymbol
+  (shape [this] (.-shape this))
   java.lang.Number
   (shape [this] [])
   java.lang.Object
   (shape [this]
-    (if-let [shape (:shape (meta this))]
-      shape
-      (mat/shape this))))
+    (get  (meta this) :shape
+          (mat/shape this))))
       
 
 (extend-protocol PProps
@@ -313,5 +343,8 @@
      (> this 0) #{:positive}
      (= this 0) #{:zero}
      :else      #{:negative})))
-        
-      
+
+(extend-protocol PConstraints
+  java.lang.Object
+  (constraints [this]
+    (get (meta this) :constraints #{})))

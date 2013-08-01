@@ -12,10 +12,9 @@
             [numeric.expresso.utils :as utils]))
 (defmulti create-special-expression first)
 (defmethod create-special-expression :default [_] nil)
+(defmethod create-special-expression 'clojure.core.matrix.inner-product [x]
+  (create-matrix-mul x))
 
-
-(defn add-metadata [s m]
-  (with-meta s (merge (meta s) m)))
 
 (defn expr-properties [s-exp]
   (:properties (meta (first s-exp))))
@@ -74,11 +73,13 @@
       (list* (with-meta symb (add-information symb)) args)))
 
 (defn matrix-symb
-  ([s shape] (matrix-symb s shape #{}))
-  ([s shape additional-props]
-     (add-metadata s {:type :matrix
+  ([s] (matrix-symb s #{}))
+  ([s additional-props] (matrix-symb s #{} [(lvar 'srows) (lvar 'scols)]))
+  ([s additional-props shape]     
+     #_(add-metadata s {:type :matrix
                       :properties (set additional-props)
-                      :shape shape })))
+                        :shape shape })
+     (numeric.expresso.protocols.MatrixSymbol. s shape additional-props)))
 
 (defn zero-matrix
   ([s] (zero-matrix s #{}))

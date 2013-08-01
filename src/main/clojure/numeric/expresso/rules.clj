@@ -178,13 +178,13 @@
 (defn apply-semantic-rule
   "applies rule to expression. The first succesful application of the rule gets performed"
   [rule exp]
-  (first (run 1 [q]
-              (fresh [pat trans guard tmp]
-                     (== rule [pat trans guard])
-                     (match-expressiono pat exp)
-                     (check-guardo guard)
-                     (apply-transformationo trans tmp)
-                     (replace-symbolso tmp q)))))
+  (first (-run {:occurs-check true :n 1 :reify-vars (fn [v s] s)} [q]
+               (fresh [pat trans guard tmp]
+                      (== rule [pat trans guard])
+                      (match-expressiono pat exp)
+                      (check-guardo guard)
+                      (apply-transformationo trans tmp)
+                      (replace-symbolso tmp q)))))
 
 (defn apply-syntactic-rule
   "applies simple syntactical rule to expression."
