@@ -62,7 +62,9 @@
   (when-let [rel (extractor-rel symb)]
     (numeric.expresso.protocols.BasicExtractor. symb args rel)))
 
-(defn ce [symb & args]
+(defn ce
+  "constructs an expression from the symbol with the supplied args"
+  [symb & args]
   (or (create-special-expression [symb args])
       (create-extractor symb args)
       (list* (with-meta symb (add-information symb)) args)))
