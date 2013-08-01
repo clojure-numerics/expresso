@@ -6,6 +6,7 @@
         [numeric.expresso.protocols]
         clojure.test)
   (:require [clojure.core.logic.fd :as fd]
+            [numeric.expresso.properties :as props]
             [clojure.walk :as walk]
             [clojure.core.memoize :as memo]
             [numeric.expresso.utils :as utils]
@@ -116,7 +117,11 @@
   (let [res (?-to-lvar (make-inline-trans (replace-back transcode)))]
     res))
     
-(defmacro trans [transcode]
+(defmacro trans
+  "to be used inside a rule to transform the inline-code to a core.logic
+   relation which is suitable for the rule based translator as translation
+   relation"
+  [transcode]
   (trans* transcode))
 
 
@@ -128,12 +133,24 @@
   (let [res (?-to-lvar (make-inline-guard (replace-back guardcode)))]
     res))
 
-(defmacro guard [guardcode]
+(defmacro guard
+  "to be used inside a rule to transform the inline (boolean returning) code
+   to a core.logic relation which is suitable for the rule based translator
+   as guard relation"
+  [guardcode]
   (guard* guardcode))
 
 (defmacro rule
-  "constructs an rule. Syntax is (rule pat :=> trans) or \n
-   (rule pat :=> trans :if guard)"
+  "constructs a rule. Syntax is (rule pat :=> trans) pat is a normal expression
+   which can contain symbols starting with a ? which will be transformed to
+   logic variables which are unified while matching the an expression to the
+   pattern. trans can also be an expression containing lvars or it can be an
+   arbitrary core.logic relation which takes the transformed rule as its output
+   argument. :==> can be used to automatically translate a normal inline clojure
+   function to the needed core.logic relation.
+   It supports an optional guard argument. Syntax is then (rule pat :=> trans :if
+   guard) guard is a core.logic relation which is called after matching the pat
+   with the expression and succeeds if the rule is applicable or fails if not."
   [& v]
   (let [expanded (?-to-lvar v)
         [pat to trans & rest] v
@@ -149,6 +166,14 @@
         guard (if (and (seq rest) (= :if (first rest))) (second rest) succeed)]
     (with-meta [(?-to-lvar pat) (?-to-lvar trans) (?-to-lvar guard)] {:syntactic (and (seq rest) (= (last rest) :syntactical))})))
   
+
+(defn define-extractor
+  "defines and installs an extractor with the given name and relation.
+   The relation will be called during matching and unifies the arguments
+   of the extractor with the expression it is being matched with"
+  [name rel]
+  (.addMethod props/extractor-rel name (fn [_] rel)))
+
 
 (defn apply-semantic-rule
   "applies rule to expression. The first succesful application of the rule gets performed"
@@ -172,7 +197,10 @@
                      (apply-transformationo trans q)))))
 
 
-(defn apply-rule [rule exp]
+(defn apply-rule
+  "applies the specified rule to the epxression returning a modified one if the
+   rule was applicable of nil if the rule was not applicable"
+  [rule exp]
   (if-let [m (meta rule)]
     (if (:syntactical m)
       (apply-syntactic-rule rule exp)
@@ -272,11 +300,13 @@
          (apply-to-end rules (list* (first expr) transformed)))
        (apply-to-end rules expr)))))
 
-(defn transform-expression [rules expr]
+(defn transform-expression
+  "transforms the expression according to the rules in the rules vector in a
+   bottom up manner until no rule can be applied to any subexpression anymore"
+  [rules expr]
   (let [res (transform-expression* rules expr)]
     (memo/memo-clear! transform-expression*)
     res))
-
 
 ;;See if it is possible to reinstantiate rules so that they can be applied all
 ;;in the core.logic context

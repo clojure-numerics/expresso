@@ -11,10 +11,6 @@
             [numeric.expresso.construct :as constr])) 
 
 
-(defn ce
-  "constructs an expression from the symbol with the supplied args"
-  [symb & args]
-  (apply (partial constr/ce symb) args))
 
 (defmacro ex
   "constructs an expression from the given s-exp. variables are automatically
@@ -37,14 +33,7 @@
   ([expr] (constr/ex'* expr))
   ([symbv expr] (apply constr/ex'* [symbv expr])))
 
-(defmacro construct-with
-  "replaces all occurences of the symbols in the symbol vector in the enclosed
-   code by the corresponding calls to ce. Very handy for defining rules.
-   No macros in the expansion so all the functions can be used in higher order
-   functions. Variables need to be explicitly quoted. Example:
-   (construct-with [+] (+ 1 2 3)) :=> (clojure.core/+ 1 2 3)"
-  [symbv & code]
-  (apply (partial constr/construct-with* symbv) code))
+
 
 (defn parse-expression
   "parses the expression from the given string supports + - * / ** with the
@@ -59,10 +48,11 @@
 (defn evaluate
   "evaluates the expression after replacing the symbols in the symbol map with
    their associated values"
-  [expr sm]
-  (-> expr
+  ([expr] (evaluate expr {}))
+  ([expr sm]
+     (-> expr
       constr/to-expression
-      (protocols/evaluate sm)))
+      (protocols/evaluate sm))))
 
 (defn substitute [expr repl]
   "substitutes every occurrence of a key in the replacement-map by its value"
@@ -70,70 +60,6 @@
       constr/to-expression
       (protocols/substitute-expr repl)))
 
-(defmacro rule
-  "constructs a rule. Syntax is (rule pat :=> trans) pat is a normal expression
-   which can contain symbols starting with a ? which will be transformed to
-   logic variables which are unified while matching the an expression to the
-   pattern. trans can also be an expression containing lvars or it can be an
-   arbitrary core.logic relation which takes the transformed rule as its output
-   argument. :==> can be used to automatically translate a normal inline clojure
-   function to the needed core.logic relation.
-   It supports an optional guard argument. Syntax is then (rule pat :=> trans :if
-   guard) guard is a core.logic relation which is called after matching the pat
-   with the expression and succeeds if the rule is applicable or fails if not."
-  [& v]
-  (rules/rule* v))
-
-(defmacro trans
-  "to be used inside a rule to transform the inline-code to a core.logic
-   relation which is suitable for the rule based translator as translation
-   relation"
-  [inline-code]
-  (rules/trans* inline-code))
-
-(defmacro guard
-  "to be used inside a rule to transform the inline (boolean returning) code
-   to a core.logic relation which is suitable for the rule based translator
-   as guard relation"
-  [inline-code]
-  (rules/guard* inline-code))
-
-(defn define-extractor
-  "defines and installs an extractor with the given name and relation.
-   The relation will be called during matching and unifies the arguments
-   of the extractor with the expression it is being matched with"
-  [name rel]
-  (.addMethod props/extractor-rel name (fn [_] rel)))
-
-(defn apply-rule
-  "applies the specified rule to the epxression returning a modified one if the
-   rule was applicable of nil if the rule was not applicable"
-  [rule exp]
-  (rules/apply-rule rule exp))
-
-(defn apply-rules
-  "returns the result of the first succesful application of a rule in the rules
-   vector"
-  [rules expr]
-  (rules/apply-rules rules expr))
-
-(defn transform-with-rules
-  "transforms the expr according to the rules in the rules vector until no rule
-   can be applied any more. Uses clojure.walk/prewalk to walk the expression tree
-   in the default case. A custom walkfn and applyfn can be specified defaults to
-   clojure.walk/postwalk and apply-rules"
-  ([rules expr] (rules/transform-with-rules rules expr))
-  ([rules expr walkfn applyfn] (rules/transform-with-rules
-                                 rules expr walkfn applyfn)))
-
-
-(defn transform-expression
-  "transforms the expression according to the rules in the rules vector in a
-   bottom up manner until no rule can be applied to any subexpression anymore"
-  [rules expr]
-  (->> expr
-       constr/to-expression
-       (rules/transform-expression rules)))
 
 (defn simplify
   "simplifies the given expression to a shorter form"
