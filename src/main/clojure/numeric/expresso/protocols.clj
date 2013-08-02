@@ -46,7 +46,9 @@
   (shape [this]))
 
 (defprotocol PConstraints
-  (constraints [this]))
+  (constraints [this])
+  (add-constraint [this constraint]))
+
 
 (deftype Expression [op args]
   clojure.lang.Sequential
@@ -99,7 +101,7 @@
   (hashCode [a]
     (.hashCode symb))
   (toString [expr]
-    (str  symb))
+    (str symb " " (first shape) "x" (second shape)))
   (equals [this that]
     (= symb (value that)))
   PAtom
@@ -289,9 +291,9 @@
           res (walk-expresso-expression* v f)]
       res))
   MatrixSymbol
-  (walk-term [v f]  (MatrixSymbol. (walk-term (f (.-symb v)) f)
-                                   (walk-term (f (.-shape v)) f)
-                                   (walk-term (f (.-properties v)) f))))
+  (walk-term [v f] (MatrixSymbol. (walk-term (f (.-symb v)) f)
+                                  (walk-term (f (.-shape v)) f)
+                                  (.-properties v))))
 
 (defn substitute-expr* [expr repl]
   (if-let [sub (get repl expr)]
@@ -311,8 +313,14 @@
 
 
 (extend-protocol PType
+  Integer
+  (type-of [this] :numeric.expresso.types/integer)
+  Long
+  (type-of [this] :numeric.expresso.types/long)
+  Double
+  (type-of [this] :numeric.expresso.types/double)
   java.lang.Number
-  (type-of [this] :number)
+  (type-of [this] :numeric.expresso.types/number)
   Object
   (type-of [this]
     (if-let [type (and (meta this) (:type (meta this)))]
@@ -344,7 +352,59 @@
      (= this 0) #{:zero}
      :else      #{:negative})))
 
+(defn add-metadata [s m]
+  (with-meta s (merge (meta s) m)))
+
+(defn add-constraint-normal [value constraint]
+  (let [res (if-let [c (:constraints (meta value))]
+              (add-metadata value {:constraints (set/union c #{constraint})})
+              (add-metadata value {:constraints #{constraint}}))]
+    res))
+
+(defn all*
+  "function version of all macro in logic.clj
+   Like fresh but does does not create logic variables."
+  ([] clojure.core.logic/s#)
+  ([goals] (fn [a] (reduce (fn [l r] (bind l r)) a goals))))
+
+(defn check-constraints
+  "checks the constraints on value.
+   throws exception if they don't hold"
+  [value]
+  (let [cs (constraints value)
+        res (-run {:occurs-check true :n 1 :reify-vars (fn [v s] s)} [q]
+                  (fresh []
+                         (all* cs)
+                         (== q value)))]
+    (if (not= res '())
+      (first res)
+      (throw (Exception. "constraint check failed")))))
+
+
 (extend-protocol PConstraints
   java.lang.Object
   (constraints [this]
-    (get (meta this) :constraints #{})))
+    (get (meta this) :constraints #{}))
+  (add-constraint [this constraint]
+    (check-constraints (add-constraint-normal this constraint)))
+  MatrixSymbol
+  (constraints [this]
+    (get (meta (.-symb this)) :constraints #{}))
+  (add-constraint [this constraint]
+    (check-constraints
+     (MatrixSymbol. (add-constraint-normal (.-symb this) constraint)
+                    (.-shape this) (.-properties this))))
+  clojure.lang.ISeq
+  (add-constraint [this constraint]
+    (check-constraints (add-constraint-normal this constraint)))
+  (constraints [this]
+    (let [cs (get (meta this) :constraints #{})]
+      (if (not (empty? this))
+        (apply (partial set/union cs) (map constraints this)))))
+  Expression
+  (add-constraint [this constraint]
+    (check-constraints (Expression. (add-constraint-normal (expr-op this)) (expr-args this))))
+  (constraints [this]
+    (let [cs (get (meta this) :constraints #{})]
+      (apply (partial set/union (set/union cs (constraints (expr-op this))))
+             (map constraints (expr-args this))))))

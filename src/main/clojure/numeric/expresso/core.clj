@@ -118,3 +118,6 @@
   "default exponentiation operator."
   [a b]
   (Math/pow a b))
+
+
+#_(run* [q]  (== q #{}))

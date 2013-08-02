@@ -42,3 +42,28 @@
   (is (= '() (shape 1)))
   (is (= [2 2] (shape [[1 2][3 4]])))
   (is (= '() (shape 'bla))))
+
+
+
+(def lhs (lvar 'lhs false))
+(def rhs (lvar 'rhs false))
+(def transs (lvar 'transs false))
+
+(def v1 (add-constraint [lhs rhs] (== lhs rhs)))
+(def v2 (add-constraint [lhs transs] (== lhs transs)))
+
+(def vv1 (check-constraints v1))
+(def vv2 (check-constraints v2))
+
+(def cv (add-constraint [vv1 vv2] (== lhs rhs)))
+(def cv (add-constraint cv (== lhs transs)))
+
+(def ccv (check-constraints cv))
+
+(deftest test-check-constraints
+  (is (= [rhs rhs] vv1))
+  (is (= [transs transs] vv2))
+  (is (= 1 (count (into #{} (flatten ccv))))))
+
+(deftest test-add-constraint
+  (is (= 1 (count (constraints (add-constraint 'a (== 0 0)))))))

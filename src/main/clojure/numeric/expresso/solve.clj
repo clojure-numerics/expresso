@@ -414,4 +414,9 @@
 
 (def r (rule (ex (matrix/mul ~matvec 0 ~matvec2)) :==> [0 (second matvec) (nth matvec2 2)]))
 
-  
+
+(def x (matrix-symb 'x))
+(def y (matrix-symb 'y))
+(def res (ex' (matrix/inner-product x y)))
+
+(def res (add-constraint res (== (second (shape x)) 3)))

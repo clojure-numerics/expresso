@@ -10,10 +10,12 @@
             [numeric.expresso.protocols :as protocols]
             [clojure.core.logic.unifier :as u]
             [numeric.expresso.utils :as utils]))
+
+(declare create-matrix-inner-product)
 (defmulti create-special-expression first)
-(defmethod create-special-expression :default [_] nil)
-(defmethod create-special-expression 'clojure.core.matrix.inner-product [x]
-  (create-matrix-mul x))
+(defmethod create-special-expression :default [_]  nil)
+(defmethod create-special-expression 'clojure.core.matrix/inner-product [x]
+  (create-matrix-inner-product x))
 
 
 (defn expr-properties [s-exp]
@@ -207,3 +209,17 @@
     (walk/postwalk #(if (and (seq? %) (symbol? (first %)))
                       (apply (partial ce (first %))  (rest %))
                       %) expr)))
+
+
+(defn create-matrix-inner-product [[symb args]]
+  (if (> (count args) 1)
+    (let [nargs (reduce (fn [processed new]
+                          (let [lp (last processed)
+                                l (second (protocols/shape lp))
+                                r (first (protocols/shape new))]
+                (concat (butlast processed)
+                        [(protocols/add-constraint lp (== l r))]
+                        [(protocols/add-constraint new (== l r))])))
+                        [(first args)] (rest args))]
+      (list* symb nargs))
+    (list* symb args)))
