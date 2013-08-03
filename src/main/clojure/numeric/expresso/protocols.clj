@@ -80,6 +80,12 @@
   (properties [this] (when-let [m (meta op)] (:properties m))))
 
 (deftype PolynomialExpression [v coeffs]
+  Object
+  (equals [this other]
+    (and (instance? PolynomialExpression other)
+         (= v (.-v other)) (= coeffs (.-coeffs other))))
+  (toString [this]
+    (str v coeffs))
   PExpression
   (expr-op [this] `+)
   (expr-args [this] coeffs)
@@ -95,6 +101,8 @@
 
 (defn make-poly [v coeff]
   (PolynomialExpression. v coeff))
+
+
 
 (deftype MatrixSymbol [symb shape properties]
   java.lang.Object

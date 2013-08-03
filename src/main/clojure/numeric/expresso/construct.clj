@@ -9,7 +9,9 @@
             [clojure.set :as set]
             [numeric.expresso.protocols :as protocols]
             [clojure.core.logic.unifier :as u]
-            [numeric.expresso.utils :as utils]))
+            [clojure.core.matrix :as mat]
+            [numeric.expresso.utils :as utils])
+  (:import [numeric.expresso.protocols PolynomialExpression]))
 
 (declare create-matrix-inner-product)
 (defmulti create-special-expression first)
@@ -223,3 +225,140 @@
                         [(first args)] (rest args))]
       (list* symb nargs))
     (list* symb args)))
+
+
+(defn main-var [^PolynomialExpression poly]
+  (.-v poly))
+
+(defn coef [^PolynomialExpression poly ^long i]
+  (nth (.-coeffs poly) i))
+
+(defn degree [^PolynomialExpression poly]
+  (- (count (.-coeffs poly)) 1))
+
+(defn poly [x & coeffs]
+  (protocols/make-poly x (into [] coeffs)))
+
+(defn new-poly [x degree]
+  (loop [i 0 coeffs (transient [])]
+    (if (<= i degree)
+      (recur (+ i 1) (conj! coeffs 0))
+      (protocols/make-poly x (persistent! coeffs)))))
+
+(defn set-main-var [^PolynomialExpression poly v]
+  (protocols/make-poly v (.-coeffs poly)))
+
+(defn set-coef [^PolynomialExpression poly i val]
+  (protocols/make-poly (.-v poly) (assoc (.-coeffs poly) i val)))
+
+
+(defn var= [x y] (= x y))
+(defn var> [x y] (= 1 (compare x y)))
+
+(declare poly+poly normalize-poly poly*poly)
+
+(defn poly**n [p ^long n]
+  (cond
+   (clojure.core/== n 0) (do (assert (not (== p 0))) 1)
+   (integer? p) (Math/pow p n)
+   :else (poly*poly p (poly**n p (- n 1)))))
+   
+
+(defn normalize-poly [p]
+  (if (number? p) p
+      (let [coeffs (.-coeffs p)
+            pdeg (loop [i (degree p)]
+                   (if (or (>= 0 i) (clojure.core/== (nth coeffs i) 0))
+                     i (recur (dec i))))]
+        (cond (<= pdeg 0) (normalize-poly (coef p 0))
+              (< pdeg (degree p))
+              (protocols/make-poly (.-v p) (subvec (.-coeffs p) 0 pdeg))
+              :else p))))
+
+(defn poly*same [p q]
+  (let [r-degree (+ (degree p) (degree q))
+        r (new-poly (main-var p) r-degree)
+        q-degree (degree q)]
+    (loop [i 0 r r]
+      (if (< i r-degree)
+        (if (not (clojure.core/== (coef p i) 0))
+          (recur (inc i)
+                 (loop [j 0 r r]
+                   (if (< j q-degree)
+                     (recur
+                      (inc j) (set-coef r (+ i j)
+                                        (poly+poly (coef r (+ i j))
+                                                   (poly*poly (coef p i)
+                                                              (coef q j)))))
+                     r)))
+          (recur (inc i) r))
+        r))))
+
+(defn k*poly [k ^PolynomialExpression p]
+  (cond
+   (clojure.core/== k 0) 0 (clojure.core/== k 1) p
+   (and (number? k) (number? p)) (* k p)
+   :else
+   (protocols/make-poly (main-var p) (mapv #(poly*poly k %) (.-coeffs p)))))
+
+(defn poly*poly [p q]
+  (normalize-poly
+   (cond
+    (number? p) (k*poly p q)
+    (number? q) (k*poly q p)
+    (var= (main-var p) (main-var q)) (poly*same p q)
+    (var> (main-var q) (main-var p)) (k*poly q p)
+    :else (k*poly p q))))
+
+(defn poly+same [p q]
+  (if (> (degree p) (degree q))
+    (poly+same q p)
+    (let [d (degree p)]
+      (loop [i 0 res q]
+        (if (< i d)
+          (recur (inc i) (set-coef res i (poly+poly (coef res i) (coef p i))))
+          res)))))
+
+(defn k+poly [k p]
+  (cond (= k 0) p
+        (and (number? k) (number? p)) (+ k p)
+        :else (set-coef p 0 (poly+poly (coef p 0) k))))
+
+(defn poly+poly [p q]
+  (normalize-poly
+   (cond
+    (number? p) (k+poly p q)
+    (number? q) (k+poly q p)
+    (var= (main-var p) (main-var q)) (poly+same p q)
+    (var> (main-var q) (main-var p)) (k+poly q p)
+    :else (k+poly p q))))
+
+(declare poly+poly poly*poly)
+
+(defn poly+ [& args]
+  (reduce poly+poly args))
+
+(defn poly- [& args]
+  (if (= (count args) 1)
+    (poly*poly -1 (first args))
+    (apply
+     (partial poly+ (first args)) (map #(poly*poly -1 %) (rest args)))))
+
+(defn poly*polyc [& args]
+  (reduce poly*poly args))
+
+(defn poly**nc [& args]
+  (poly**n (first args) (second args)))
+
+(defmulti construct-poly identity)
+(defmethod construct-poly '+ [_] poly+)
+(defmethod construct-poly '- [_] poly-)
+(defmethod construct-poly '* [_] poly*polyc)
+(defmethod construct-poly '** [_] poly**nc)
+
+
+(defn to-poly-normal-form [expr]
+  (walk/postwalk
+   #(if (and (seq? %) (symbol? (first %)))
+      (apply (construct-poly (first %)) (rest %))
+      (if (symbol? %) (poly % 0 1) %)) expr))
