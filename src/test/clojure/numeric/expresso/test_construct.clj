@@ -27,3 +27,8 @@
   (is (= '(clojure.core/+ x y z a b) (ex' (+ 'x 'y 'z 'a 'b))))
   (is (= '(clojure.core/+ x y z a b) (ex' [x y z a b] (+ x y z a b))))
   (is (= '(clojure.core/+ c 3)) (let [x 3] (ex' [c] (+ c x)))))
+
+
+(deftest test-to-poly-normal-form
+  (is (= 7 (to-poly-normal-form '(+ 3 x 4 (- x)))))
+  (is (= (poly 'x (poly 'y 0 2) 2) (to-poly-normal-form '(+ x y y x)))))

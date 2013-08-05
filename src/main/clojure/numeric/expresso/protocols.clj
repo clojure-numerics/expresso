@@ -79,6 +79,14 @@
   PProps
   (properties [this] (when-let [m (meta op)] (:properties m))))
 
+
+(defn polysexp [poly]
+  (if (number? poly) poly
+      (let [v (.-v poly)
+            coeffs (.-coeffs poly)]
+        (list* '+ (map #(list '* %1 (list '** v %2))
+                      coeffs (range))))))
+
 (deftype PolynomialExpression [v coeffs]
   Object
   (equals [this other]
@@ -86,9 +94,20 @@
          (= v (.-v other)) (= coeffs (.-coeffs other))))
   (toString [this]
     (str v coeffs))
+  clojure.lang.Seqable
+  (seq [this] this)
+  clojure.lang.Sequential
+  clojure.lang.ISeq
+  (next [this] (next (polysexp this)))
+  (first [this] (first (polysexp this)))
+  (more [this] (.more (polysexp this)))
+  (cons [this obj] (cons obj (polysexp this)))
+  (equiv [this that] (or (.equals this that)
+                         (= (polysexp this) that)))
+  (empty [this] false)
   PExpression
   (expr-op [this] `+)
-  (expr-args [this] coeffs)
+  (expr-args [this] (vec (rest (polysexp this))))
   PExprEvaluate
   (evaluate [poly sm]
     (if-let [vval (v sm)]

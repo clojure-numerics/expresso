@@ -11,6 +11,7 @@
             [clojure.walk :as walk]
             [clojure.core.logic.unifier :as u]
             [numeric.expresso.utils :as utils]
+            [numeric.expresso.symbolic :as symb]
             [numeric.expresso.solve :as s]
             [clojure.core.matrix :as matrix]
             [clojure.core.matrix.operators :as mop]
@@ -420,3 +421,37 @@
 (def res (ex' (matrix/inner-product x y)))
 
 (def res (add-constraint res (== (second (shape x)) 3)))
+
+
+#_(solve-system [(ex (= (+ x y z) 3))
+				      (ex (= (- (* x 5) y z) 2))
+				      (ex (= (+ (* 4 z) (* -2 y) y) 1))]
+				     '[x y z])
+
+(defn lhs-to-poly [eq]
+  (ex (= ~(to-poly-normal-form (nth eq 1)) ~(nth eq 2))))
+
+(defn search-coef [lhs v]
+  (cond (number? lhs) 0
+        (var= (main-var lhs) v) (coef lhs 1)
+        (not (var> (main-var lhs) v)) (search-coef (coef lhs 0) v)
+        :else 0))
+
+(defn collect-params [eq vars]
+  (let [lhs (nth eq 1)
+        rhs (nth eq 2)
+        mv (main-var lhs)]
+    (ce `= (for [v vars]
+             (search-coef lhs v)) rhs)))
+
+(defn build-matrix [eqs]
+  (mapv #(conj (vec (nth %1 1)) (nth %1 2)) eqs))
+
+(defn solve-linear-system
+  "solves a system of equations for the variables in the variable vector"
+  [eqv vars]
+  (->> eqv
+       (map lhs-to-poly)
+       (map #(collect-params % vars))
+       build-matrix
+       symb/gaus-solve))

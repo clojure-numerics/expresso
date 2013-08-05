@@ -253,13 +253,18 @@
 
 
 (defn var= [x y] (= x y))
-(defn var> [x y] (= 1 (compare x y)))
+(defn var> [x y] (< 0 (compare x y)))
 
 (declare poly+poly normalize-poly poly*poly)
 
+(defn p== [x y]
+  (if (and (number? x) (number? y))
+    (clojure.core/== x y)
+    (= x y)))
+
 (defn poly**n [p ^long n]
   (cond
-   (clojure.core/== n 0) (do (assert (not (== p 0))) 1)
+   (p== n 0) (do (assert (not (= p 0))) 1)
    (integer? p) (Math/pow p n)
    :else (poly*poly p (poly**n p (- n 1)))))
    
@@ -268,7 +273,7 @@
   (if (number? p) p
       (let [coeffs (.-coeffs p)
             pdeg (loop [i (degree p)]
-                   (if (or (>= 0 i) (clojure.core/== (nth coeffs i) 0))
+                   (if (or (>= 0 i) (not (p== (nth coeffs i) 0)))
                      i (recur (dec i))))]
         (cond (<= pdeg 0) (normalize-poly (coef p 0))
               (< pdeg (degree p))
@@ -278,13 +283,13 @@
 (defn poly*same [p q]
   (let [r-degree (+ (degree p) (degree q))
         r (new-poly (main-var p) r-degree)
-        q-degree (degree q)]
+        q-degree (degree q) p-degree (degree p)]
     (loop [i 0 r r]
-      (if (< i r-degree)
-        (if (not (clojure.core/== (coef p i) 0))
+      (if (<= i p-degree)
+        (if (not (clojure.core/= (coef p i) 0))
           (recur (inc i)
                  (loop [j 0 r r]
-                   (if (< j q-degree)
+                   (if (<= j q-degree)
                      (recur
                       (inc j) (set-coef r (+ i j)
                                         (poly+poly (coef r (+ i j))
@@ -296,7 +301,7 @@
 
 (defn k*poly [k ^PolynomialExpression p]
   (cond
-   (clojure.core/== k 0) 0 (clojure.core/== k 1) p
+   (p== k 0) 0 (p== k 1) p
    (and (number? k) (number? p)) (* k p)
    :else
    (protocols/make-poly (main-var p) (mapv #(poly*poly k %) (.-coeffs p)))))
@@ -315,7 +320,7 @@
     (poly+same q p)
     (let [d (degree p)]
       (loop [i 0 res q]
-        (if (< i d)
+        (if (<= i d)
           (recur (inc i) (set-coef res i (poly+poly (coef res i) (coef p i))))
           res)))))
 
@@ -352,13 +357,24 @@
 
 (defmulti construct-poly identity)
 (defmethod construct-poly '+ [_] poly+)
+(defmethod construct-poly `+ [_] poly+)
 (defmethod construct-poly '- [_] poly-)
+(defmethod construct-poly `- [_] poly-)
 (defmethod construct-poly '* [_] poly*polyc)
+(defmethod construct-poly `* [_] poly*polyc)
 (defmethod construct-poly '** [_] poly**nc)
 
 
 (defn to-poly-normal-form [expr]
-  (walk/postwalk
-   #(if (and (seq? %) (symbol? (first %)))
-      (apply (construct-poly (first %)) (rest %))
-      (if (symbol? %) (poly % 0 1) %)) expr))
+  (if (and (seq? expr) (symbol? (first expr)))
+    (apply (construct-poly (first expr))
+           (map to-poly-normal-form  (rest expr)))
+    (if (symbol? expr) (poly expr 0 1) expr)))
+
+(defn poly-to-sexp [poly]
+  (if (number? poly) poly
+      (let [v (.-v poly)
+            coeffs (.-coeffs poly)]
+        (list* '+ (map #(list '* (poly-to-sexp %1) (list '** v %2))
+                      coeffs (range))))))
+        
