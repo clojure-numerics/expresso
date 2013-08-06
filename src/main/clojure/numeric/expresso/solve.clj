@@ -11,6 +11,7 @@
             [clojure.walk :as walk]
             [clojure.core.logic.unifier :as u]
             [numeric.expresso.utils :as utils]
+            [clojure.set :as set]
             [numeric.expresso.symbolic :as symb]
             [numeric.expresso.solve :as s]
             [clojure.core.matrix :as matrix]
@@ -94,6 +95,7 @@
    (rule (* (* ?&*) ?&*r) :=> (* ?&* ?&*r))
    (rule (+ (+ ?&*) ?&*r) :=> (+ ?&* ?&*r))
    (rule (- 0 ?x) :=> (- ?x))
+   (rule (- ?x 0) :=> ?x)
    (rule (+ (* ?x ?y) (* ?z ?y) ?&*) :=> (+ (* (+ ?x ?z) ?y) ?&*)
          :if (guard (and (number? ?x) (number? ?z))))
    ])
@@ -123,15 +125,16 @@
    (rule (* ?x (/ ?x) ?&*) :=> (* ?&*))
    (rule (+ ?x (- ?x) ?&*) :=> (+ ?&*))
    (rule (+ ?x ?x ?&*) :=> (+ (* 2 ?x) ?&*))
+   (rule (+ (* ?x ?&*) (- ?x) ?&*2) :=> (+ (* ?x (- ?&* 1)) ?&*2))
    (rule (+ (* ?x ?&*) (* ?x ?&*2) ?&*3) :=> (+ (* ?x (+ ?&* ?&*2)) ?&*3))
-   (rule (+ (* ?x ?&*) ?x ?&*2) :=> (+ (* ?x (+ ?&* 1)) ?&*2))])
+   (rule (+ (* ?x ?&*) ?x ?&*2) :=> (+ (* ?x (+ ?&* 1)) ?&*2))
+   (rule (- (- ?x)) :=> ?x)])
 
 (def to-inverses-rules
   [(rule (- ?x ?&+) :=> (trans (+ ?x (map-sm #(- %) ?&+))))
    (rule (- (+ ?&+)) :==> (+ (map-sm #(- %) ?&+)))
    (rule (- (* ?&+)) :=> (* -1 ?&+))
    (rule (/ ?x ?&+) :=> (trans (* ?x (map-sm #(/ %) ?&+))))])
-
 (declare multinomial)
 (def multiply-out-rules
   [(rule (* (+ ?&+1) (+ ?&+2) ?&*) :==>
@@ -268,19 +271,34 @@
 
 (def c= =)
 
-(construct-with [+ cons? nth-arg? = - / * ]
+(construct-with [+ cons? nth-arg? = - / * mop/+ mop/- mop/* matrix/div]
 (def rearrange-rules
   [(rule [(cons? ?p ?ps) (= (+ ?&+) ?rhs)]
          :==> (let [[left x right] (split-in-pos-sm ?&+ ?p)]
                 [?ps (= x (- ?rhs left right))]))
+   (rule [(cons? ?p ?ps) (= (mop/+ ?&+) ?rhs)]
+         :==> (let [[left x right] (split-in-pos-sm ?&+ ?p)]
+                [?ps (= x (mop/- ?rhs left right))]))
    (rule [(cons? ?p ?ps) (= (* ?&+) ?rhs)]
          :==> (let [[left x right] (split-in-pos-sm ?&+ ?p)]
                 [?ps (= x (/ ?rhs (* left right)))]))
+   (rule [(cons? ?p ?ps) (= (mop/* ?&+) ?rhs)]
+         :==> (let [[left x right] (split-in-pos-sm ?&+ ?p)]
+                [?ps (= x (matrix/div ?rhs (mop/* left right)))]))
    (rule [(cons? ?p ?ps) (= (- ?&+) ?rhs)]
+         :==> (if (c= (count-sm ?&+) 1)
+                [?ps (= ?&+ (- ?rhs))]
+                (let [[left x right] (split-in-pos-sm ?&+ ?p)]
+                  [?ps (= x (if (c= ?p 0)
+                              (+ ?rhs right)
+                              #_(- left right ?rhs)
+                              (+ (- ?rhs (first-sm left)) (rest-sm left)
+                                 right)))])))
+   (rule [(cons? ?p ?ps) (= (mop/- ?&+) ?rhs)]
          :==> (let [[left x right] (split-in-pos-sm ?&+ ?p)]
                 [?ps (= x (if (c= ?p 0)
-                            (+ ?rhs right)
-                            (- left right ?rhs)))]))
+                            (mop/+ ?rhs right)
+                            (mop/- left right ?rhs)))]))
    (rule [(cons? ?p ?ps) (= (/ ?&+) ?rhs)]
          :==> (let [[left x right] (split-in-pos-sm ?&+ ?p)]
                 [?ps (= x (if (c= ?p 0)
@@ -317,12 +335,13 @@
        (transform-expression
         (concat eval-rules universal-rules to-inverses-rules
                 multiply-out-rules ))
-       (transform-expression (concat universal-rules simplify-rules))))
+       (transform-expression (concat universal-rules
+                                     eval-rules simplify-rules))))
    
 
 (def simplify-eq (fn [eq] (ce `= (simp-expr (nth eq 1))  (nth eq 2))))
 
-(def simplify-rhs (fn [eq] (ce `= (nth eq 1) (transform-expression (concat universal-rules eval-rules) (nth eq 2)))))
+(def simplify-rhs (fn [eq] (ce `= (nth eq 1) (simp-expr (nth eq 2)))))
 
 
 (defn substitute [repl-map expr]
@@ -349,13 +368,17 @@
   eq)
 
 (defn solve [v equation]
-  (->> equation
-       lhs-rhs=0
-       simplify-eq
-       (check-if-can-be-solved v)
-       (rearrange v)
-       simplify-rhs
-       (report-res v)))
+  (if (and (= (nth equation 1) v)
+           (not= v (nth equation 2))
+           (= 0 (->> (nth equation 2) flatten (filter #{v}) count)))
+    (report-res v (simplify-rhs equation))
+    (->> equation
+         lhs-rhs=0
+         simplify-eq
+         (check-if-can-be-solved v)
+         (rearrange v)
+         simplify-rhs
+         (report-res v))))
 
 (defn differentiate [v expr]
   (->> expr
@@ -426,10 +449,19 @@
 #_(solve-system [(ex (= (+ x y z) 3))
 				      (ex (= (- (* x 5) y z) 2))
 				      (ex (= (+ (* 4 z) (* -2 y) y) 1))]
-				     '[x y z])
+                '[x y z])
+
+(defn poly-const [poly]
+  (cond (number? poly) poly
+        (number? (coef poly 0)) (coef poly 0)
+        :else (poly-const (coef poly 0))))
 
 (defn lhs-to-poly [eq]
-  (ex (= ~(to-poly-normal-form (nth eq 1)) ~(nth eq 2))))
+  (let [lhs (nth eq 1) rhs (nth eq 2)
+        polylhs (to-poly-normal-form (ex (- ~lhs ~rhs)))
+        const (poly-const polylhs)
+        nlhs (to-poly-normal-form (ex (- ~polylhs ~const)))]
+    (ex (= ~nlhs ~(* -1 const)))))
 
 (defn search-coef [lhs v]
   (cond (number? lhs) 0
@@ -439,13 +471,17 @@
 
 (defn collect-params [eq vars]
   (let [lhs (nth eq 1)
-        rhs (nth eq 2)
-        mv (main-var lhs)]
+        rhs (nth eq 2)]
     (ce `= (for [v vars]
              (search-coef lhs v)) rhs)))
 
 (defn build-matrix [eqs]
   (mapv #(conj (vec (nth %1 1)) (nth %1 2)) eqs))
+
+(defn simp-sols [sols]
+  (cond (= '() sols) sols
+        (some expr-op sols) (mapv simp-expr sols)
+        :else sols))
 
 (defn solve-linear-system
   "solves a system of equations for the variables in the variable vector"
@@ -454,4 +490,53 @@
        (map lhs-to-poly)
        (map #(collect-params % vars))
        build-matrix
-       symb/gaus-solve))
+       symb/ff-gauss-echelon
+       symb/report-solution
+       simp-sols))
+
+(def rres (to-expression '(clojure.core// (clojure.core/+ (clojure.core/- _2) (clojure.core/- (clojure.core// (clojure.core/+ -1 (clojure.core/* -4 _2)) -1)) -3) 1)))
+
+(def F1 (ex (= Y (+ X Z))))
+(def F2 (ex (= X [1 2 3])))
+(def F3 (ex (= Z (* 2.0 X))))
+
+(defn not-in-existing-sols [sol-map var-set]
+  (into #{} (remove sol-map var-set)))
+
+(defn solve-system*
+  ([v eqs] (solve-system* v eqs {}))
+  ([v eqs existing-sols]
+     (if (v existing-sols)
+       existing-sols
+       ;;v is variable and eqs set of equations
+       (let [eqv (map (fn [a] [a (vars a)]) eqs)
+             equation-containing-v (some (fn [a]
+                                           (if (contains? (second a) v)
+                                             a nil)) eqv)]
+         (if equation-containing-v
+           (let [depends-on (not-in-existing-sols
+                             existing-sols
+                             (set/difference (second equation-containing-v)
+                                             #{v}))
+                 other-eqs (set/difference eqs #{(first equation-containing-v)})
+                 other-sols (reduce (fn [l r]
+                                      (let [s (solve-system* r other-eqs l)]
+                                        (merge l s)))
+                                    existing-sols depends-on)
+                 equation-without-deps (substitute-expr
+                                        (first equation-containing-v)
+                                        (merge existing-sols
+                                               other-sols))
+                 sol (solve v equation-without-deps)]
+             (assoc other-sols v (nth sol 2)))
+           existing-sols)))))
+
+(defn submap [keys m]
+  (into {} (reduce (fn [kvs symb]
+                      (conj kvs [symb (get m symb)])) [] keys)))
+
+(defn solve-system [symbv eqs]
+  (let [eqs (into #{} eqs)]
+    (submap (into #{} symbv)
+            (reduce (fn [l r]
+                      (merge l (solve-system* r eqs l))) {} symbv))))

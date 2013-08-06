@@ -299,12 +299,24 @@
           (recur (inc i) r))
         r))))
 
+(defn polydk [^PolynomialExpression p k]
+  (cond
+   (p== k 0) :error
+   (and (number? k) (number? p)) (/ p k)
+   (number? k)
+   (let [nc (mapv #(polydk % k) (.-coeffs p))]
+     (if (some #{:error} nc)
+       :error
+       (protocols/make-poly (main-var p) nc)))
+   :else :error))
+
 (defn k*poly [k ^PolynomialExpression p]
   (cond
    (p== k 0) 0 (p== k 1) p
    (and (number? k) (number? p)) (* k p)
    :else
    (protocols/make-poly (main-var p) (mapv #(poly*poly k %) (.-coeffs p)))))
+
 
 (defn poly*poly [p q]
   (normalize-poly
@@ -352,14 +364,20 @@
 (defn poly*polyc [& args]
   (reduce poly*poly args))
 
+(defn polydkc [& args]
+  (reduce polydk args))
+
 (defn poly**nc [& args]
   (poly**n (first args) (second args)))
 
 (defmulti construct-poly identity)
+(defmethod construct-poly :default [_] (fn [& a] :error))
 (defmethod construct-poly '+ [_] poly+)
 (defmethod construct-poly `+ [_] poly+)
 (defmethod construct-poly '- [_] poly-)
 (defmethod construct-poly `- [_] poly-)
+(defmethod construct-poly `/ [_] polydkc)
+(defmethod construct-poly '/ [_] polydkc)
 (defmethod construct-poly '* [_] poly*polyc)
 (defmethod construct-poly `* [_] poly*polyc)
 (defmethod construct-poly '** [_] poly**nc)
@@ -367,9 +385,12 @@
 
 (defn to-poly-normal-form [expr]
   (if (and (seq? expr) (symbol? (first expr)))
-    (apply (construct-poly (first expr))
-           (map to-poly-normal-form  (rest expr)))
-    (if (symbol? expr) (poly expr 0 1) expr)))
+    (let [args (map to-poly-normal-form  (rest expr))]
+      (if (some #{:error} args)
+        :error
+        (apply (construct-poly (first expr)) args)))
+    (if (symbol? expr) (poly expr 0 1)
+        (if (number? expr) expr :error))))
 
 (defn poly-to-sexp [poly]
   (if (number? poly) poly

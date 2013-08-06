@@ -36,6 +36,10 @@
             rel (.rel this)]
         (rel args that))))
 
+(defn myisa? [a b]
+  (let [res (or (isa? a b) (= (str a) (str b) "clojure.core//"))]
+    res))
+
 (defn isao
   "succeeds if a isa? b or if any argument is unbound - in this case
    unifying them"
@@ -43,7 +47,7 @@
   (conda
    ((== a b))
    ((project [a b]
-             (== true (isa? a b))))))
+             (== true (myisa? a b))))))
 
 
 (defn is-expro [v]

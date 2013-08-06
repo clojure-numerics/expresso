@@ -104,14 +104,16 @@
   (let [n (mat/row-count mat) m (mat/column-count mat)]
     (loop [index 0 indexcol 0 mat mat div 1]
       (if (and (< (inc index) n) (< indexcol m))
-        (let [pivot (mat/mget mat (inc index) indexcol)
+        (let [pivot (mat/mget mat index indexcol)
               swap (loop [k index pivot pivot]
-                     (cond (>= k n) false
-                           (== 0 pivot) (recur (inc k) (mat/mget mat k indexcol))
+                     (cond (== (inc k) n) false
+                           (== 0 pivot)  (recur (inc k)
+                                                (mat/mget mat (inc k) indexcol))
                            :else k))]
             (if swap 
               (recur (inc index) (inc indexcol)
-                     (let [res (ffgaus-step (swap-rows mat index swap) index indexcol div)]
+                     (let [res (ffgaus-step (swap-rows mat index swap)
+                                            index indexcol div)]
                        res)
                      (let [ndiv (mat/mget mat index indexcol)]
                        (if (== 0 ndiv) div ndiv)))
@@ -141,27 +143,57 @@
   ;;if there is one butzero line no solution
   (let [cc (mat/column-count mat)
         rows (mat/rows mat)
+        but-zero-lines
+        (some #{true} (map (fn [e] (and (every? #(== 0 %) (butlast e))
+                                          (not (== 0 (last e))))) rows))
         zero-lines (filter #{true} (map (fn [e] (every? #(== 0 %) e)) rows))
         det-row-count (- (mat/row-count mat) (count zero-lines))]
-    (if (== cc (inc det-row-count)) :one
-        (if (>= det-row-count cc) :zero :infinite))))
+    (if but-zero-lines :zero
+        (if (== cc (inc det-row-count)) :one
+            (if (>= det-row-count cc) :zero :infinitive)))))
 
+
+(defn s+ [a b]
+  (if (and (number? a) (number? b))
+    (+ a b)
+    (c/ce `+ a b)))
+
+(defn s- [a b]
+  (if (and (number? a) (number? b))
+    (- a b)
+    (c/ce `- a b)))
+
+(defn s* [a b]
+  (if (and (number? a) (number? b))
+    (* a b)
+    (c/ce `* a b)))
+
+(defn sd [a b]
+  (if (and (number? a) (number? b))
+    (/ a b)
+    (c/ce `/ a b)))
 
 (defn solution-vec [m]
   (let [cc (mat/column-count m)
         row (- cc 2) col (- cc 2)]
-    (loop [row row solv []]
-      (if (< row 0)
-        solv
-        (recur (dec row)
-               (conj solv (/ (- (mat/mget m row (dec cc))
-                                (loop [col (- cc 2) i 0 res 0]
-                                  (if (<= col row) res
-                                      (recur (dec col) (inc i)
-                                             (+ res (* (mat/mget m row col)
-                                                       (nth solv i)))))))
-                             (mat/mget m row row))))))))
-                         
+    (if (< 0 (- cc (mat/row-count m) 1))
+      (solution-vec (mat/matrix (concat (mat/rows m)
+                                        (repeat (- cc (mat/row-count m) 1)
+                                                (mat/new-array [cc])))))
+      (loop [row row numbv 0 solv []]
+        (if (< row 0)
+          solv
+          (if (== 0 (mat/mget m row row))
+            (recur (dec row) (inc numbv) (conj solv (symbol (str "_" numbv))))
+            (recur (dec row) numbv
+                   (conj solv (sd (s- (mat/mget m row (dec cc))
+                                      (loop [col (- cc 2) i 0 res 0]
+                                        (if (<= col row) res
+                                            (recur (dec col) (inc i)
+                                                   (s+ res (s* (mat/mget m row col)
+                                                               (nth solv i)))))))
+                                  (mat/mget m row row))))))))))
+
 
 (defn report-solution [echelon-matrix]
   (let [zero-inf? (check-zero-or-inf-sols echelon-matrix)]

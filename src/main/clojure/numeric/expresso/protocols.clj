@@ -15,8 +15,12 @@
 
 (defprotocol PProps
   "The abstraction to query properties of an Expression or Atom"
-  (vars [expr])
   (properties [expr]))
+
+(defprotocol PVars
+  "generic method to get the set of variables in the expression"
+  (vars [expr]))
+
 
 (defprotocol PAtom
   "The abstraction for an Atom in a Expression. Can be ac actual
@@ -144,8 +148,9 @@
   PAtom
   (value [this] val)
   PProps
-  (vars [this] #{})
   (properties [this] nil)
+  PVars
+  (vars [this] #{})
   PType
   (type-of [this] (type-of val)))
 
@@ -229,7 +234,7 @@
             (throw (Exception. (str "No value specified for symbol " val))))
           val)))))
 
-(extend-protocol PProps
+(extend-protocol PVars
   java.lang.Object
   (vars [expr]
     (if-let [op (expr-op expr)]
@@ -333,7 +338,8 @@
 (extend-protocol PSubstitute
   clojure.lang.ISeq
   (substitute-expr [this repl]
-    (walk/postwalk-replace repl this))
+    (let [res (walk/postwalk-replace repl this)]
+      res))
   Expression
   (substitute-expr [this repl]
     (substitute-expr* this repl)))
@@ -372,12 +378,19 @@
   (properties [this]
     (when-let [m (meta this)]
       (:properties m)))
+  (vars [expr]
+    (if-let [op (expr-op expr)]
+      (apply set/union (map vars (expr-args expr)))
+      (if (symbol? (value expr))
+        #{(value expr)}
+        #{})))
   java.lang.Number
   (properties [this]
     (cond
      (> this 0) #{:positive}
      (= this 0) #{:zero}
-     :else      #{:negative})))
+     :else      #{:negative}))
+  (vars [expr] #{}))
 
 (defn add-metadata [s m]
   (with-meta s (merge (meta s) m)))
