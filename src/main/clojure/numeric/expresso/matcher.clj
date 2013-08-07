@@ -37,7 +37,9 @@
         (rel args that))))
 
 (defn myisa? [a b]
-  (let [res (or (isa? a b) (= (str a) (str b) "clojure.core//"))]
+  (let [res (or (isa? a b) (= (str a) (str b) "clojure.core//")
+                (and (symbol? a) (not (some #{\/} (butlast (str a))))
+                     (isa? (symbol (str "e/" a)) b)))]
     res))
 
 (defn isao

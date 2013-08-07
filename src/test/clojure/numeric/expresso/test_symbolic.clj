@@ -28,6 +28,6 @@
 (deftest test-gaus-solve
   (is (mat/e== [1/2 -1 3/4 2] (gaus-solve testmatrix)))
   (is (= '() (gaus-solve test3)))
-  (is (= '[(clojure.core// (clojure.core/- 0 (clojure.core/+ (clojure.core/+ (clojure.core/+ (clojure.core/+ 0 (clojure.core/* 1 _0)) (clojure.core/* 2 _1)) (clojure.core/* 3 _2)) (clojure.core/* 4 (clojure.core// (clojure.core/- 25 (clojure.core/+ (clojure.core/+ (clojure.core/+ 0 (clojure.core/* 20 _0)) (clojure.core/* 15 _1)) (clojure.core/* 10 _2))) 5)))) 5) (clojure.core// (clojure.core/- 25 (clojure.core/+ (clojure.core/+ (clojure.core/+ 0 (clojure.core/* 20 _0)) (clojure.core/* 15 _1)) (clojure.core/* 10 _2))) 5) _2 _1 _0]
+  (is (= '[(/ (- 0 (+ (+ (+ (+ 0 (* 1 _0)) (* 2 _1)) (* 3 _2)) (* 4 (/ (- 25 (+ (+ (+ 0 (* 20 _0)) (* 15 _1)) (* 10 _2))) 5)))) 5) (/ (- 25 (+ (+ (+ 0 (* 20 _0)) (* 15 _1)) (* 10 _2))) 5) _2 _1 _0]
          (gaus-solve test2)))
   (is (mat/e== [2 3 -1] (gaus-solve test4))))

@@ -31,8 +31,8 @@
                               '[x y z])))
   (is (= '()
          (solve-linear-system [(ex (= x (+ x 1)))] '[x])))
-  (is (= '[_0 _0]
-         (solve-linear-system [(ex (= x y))] '[x y]))))
+  (is (= '_0
+         (second (solve-linear-system [(ex (= x y))] '[x y])))))
 
 (deftest test-solve-system
   (is (= {'y [3 6 9]}

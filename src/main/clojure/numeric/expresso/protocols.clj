@@ -8,7 +8,6 @@
             [numeric.expresso.types :as types]
             [clojure.core.matrix :as mat]
             [clojure.walk :as walk]))
-
 (defprotocol PExpression
   "The abstraction for an expresso Expression"
   (expr-op [expr])
@@ -53,8 +52,8 @@
 (defprotocol PConstraints
   (constraints [this])
   (add-constraint [this constraint]))
-
-(defmulti type-of-function first)
+(declare type-of-function)
+#_((defmulti type-of-function first)
 (defmethod type-of-function :default [_] :Unknown)
 (defmethod type-of-function '+ [_] types/number)
 (defmethod type-of-function '- [_] types/number)
@@ -65,7 +64,7 @@
 (defmethod type-of-function '** [_] types/number)
 (defmethod type-of-function 'emul [_] types/matrix)
 (defmethod type-of-function 'add [_] types/matrix)
-(defmethod type-of-function 'negate [_] types/matrix)
+(defmethod type-of-function 'negate [_] types/matrix))
 
 (deftype Expression [op args]
   clojure.lang.Sequential
@@ -372,7 +371,7 @@
     (if-let [type (and (meta this) (:type (meta this)))]
       type
       (if (mat/array? this)
-        types/matrix
+        :numeric.expresso.types/matrix
         :Unknown))))
 
 (extend-protocol PShape

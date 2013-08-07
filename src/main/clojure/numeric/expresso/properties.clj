@@ -20,7 +20,7 @@
 (defmulti props identity)
 (defmethod props :default [_] {})
 (defmethod props '* [_] {:exec-func *
-                         :properies #{:associative
+                         :properties #{:associative
                                       :commutative
                                       :n-ary}
                          })

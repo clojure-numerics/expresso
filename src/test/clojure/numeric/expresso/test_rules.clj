@@ -23,7 +23,7 @@
   (is (= '(3) (run* [q] (apply-ruleo (first rules) (* 3 1) q))))
   (is (= '() (run* [q] (apply-ruleo (first rules) (+ 3 1) q))))
   (is (= '(0) (run* [q] (apply-ruleo (nth rules 3) (+ 2 (- 2)) q))))
-  (is (=  '((clojure.core/- (clojure.core/* 2 1)))
+  (is (=  (list (- (* 2 1)))
           (run* [q] (apply-ruleo (last rules) (- 1 1) q)))))
 )
 
@@ -54,7 +54,7 @@
    (rule (e/ca* ?x (e/ca+ ?a ?b)) :=> (e/ca+ (e/ca* ?x ?a) (e/ca* ?x ?b)))])
 
 (deftest test-transform-with-rules
-  (is (= '(clojure.core/* 3 3)
+  (is (= (list '* 3 3)
          (transform-with-rules simplification-rules 
            (* 3 (+ (+ 0 3) (* 0 3)))))))
 
@@ -62,7 +62,7 @@
                            (+ (* ?x (+ (* ?&*a) (* ?&*b))) ?&*r)))
 
 (deftest test-seq-matching-commutative-rule
-  (is (= '(clojure.core/+ (clojure.core/* x (clojure.core/+ (clojure.core/* 3 2) (clojure.core/* 4 3))) 1)
+  (is (= (+ (* 'x (+ (* 3 2) (* 4 3))) 1)
          (apply-rule factor-out-rule (+ (* 'x 3 2) (* 'x 4 3) 1)))))
 
 ;; ° (the list constructor) is an associative operation
@@ -85,9 +85,9 @@
                                           (matcher-args ?&+)))))))
 
 (deftest test-inline-trans
-  (is (= '(clojure.core/+ 3 (clojure.core/- 4)) (apply-rule inline-trans
-                                                            (ex (- 3 4)))))
-  (is (= '(clojure.core/+ 3 (clojure.core/- 4) (clojure.core/- 5))
+  (is (= (ex (+ 3 (- 4))) (apply-rule inline-trans
+                                      (ex (- 3 4)))))
+  (is (= (ex (+ 3 (- 4) (- 5)))
          (apply-rule inline-trans (ex (- 3 4 5))))))
 
 (def inline-guard

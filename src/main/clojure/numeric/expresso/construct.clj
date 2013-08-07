@@ -147,6 +147,9 @@
 
 (derive 'e/ca+ 'e/ca-op)
 (derive 'e/ca* 'e/ca-op)
+(derive 'e/+   'e/ca+)
+(derive 'e/*   'e/ca*)
+(derive 'e/add   'e/ca-op)
 (derive 'clojure.core/+ 'e/ca+)
 (derive 'clojure.core/* 'e/ca*)
 (derive 'clojure.core/- 'e/-)

@@ -1,5 +1,12 @@
-(ns numeric.expresso.types)
-
+(ns numeric.expresso.types
+  (:refer-clojure :exclude [long double])
+  (:use [clojure.test]
+        [clojure.core.logic.protocols]
+        [clojure.core.logic :exclude [is]])
+  (:require [numeric.expresso.utils :as utils]
+            [clojure.set :as set]
+            [clojure.core.matrix :as mat]
+            [clojure.walk :as walk]))
 (def matrix ::matrix)
 (def number ::number)
 (def integer ::integer)

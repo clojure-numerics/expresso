@@ -63,7 +63,9 @@
 (defn compute-subexpression [expr]
   (if (coll? expr)
     (let [[xs & args] expr]
-      (cond (isa? xs 'e/ca-op) (collabse-arguments-commutative xs args)
+      (cond #_(isa? xs 'e/ca-op)
+            (contains? (:properties (meta xs)) :commutative)
+            (collabse-arguments-commutative xs args)
             (isa? xs 'e/ao-op) (collabse-arguments-associative xs args)
             :else expr))
     expr))
@@ -227,7 +229,7 @@
 
 (defn- transform-to-coefficients-form [v expr]
   (if (sequential? expr)
-    (if (= (first expr) `numeric.expresso.core/**)
+    (if (= (first expr) '**)
       [1 (second (rest  expr))]
       (apply (partial ce (first expr)) (map (partial transform-to-coefficients-form v) (rest expr))))
     (if (= v expr) [1 1] [expr 0])))

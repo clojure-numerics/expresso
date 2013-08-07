@@ -18,15 +18,15 @@
 
 
 (deftest test-ex
-  (is (= '(clojure.core/+ 1 2 3) (ex (+ 1 2 3))))
-  (is (= '(clojure.core/+ x y z a b) (ex (+ x y z a b))))
-  (is (= '(clojure.core/+ x 3)) (let [x 3] (ex (+ x ~x)))))
+  (is (= '(+ 1 2 3) (ex (+ 1 2 3))))
+  (is (= '(+ x y z a b) (ex (+ x y z a b))))
+  (is (= '(+ x 3)) (let [x 3] (ex (+ x ~x)))))
 
 (deftest test-ex'
-  (is (= '(clojure.core/+ 1 2 3) (ex' (+ 1 2 3))))
-  (is (= '(clojure.core/+ x y z a b) (ex' (+ 'x 'y 'z 'a 'b))))
-  (is (= '(clojure.core/+ x y z a b) (ex' [x y z a b] (+ x y z a b))))
-  (is (= '(clojure.core/+ c 3)) (let [x 3] (ex' [c] (+ c x)))))
+  (is (= '(+ 1 2 3) (ex' (+ 1 2 3))))
+  (is (= '(+ x y z a b) (ex' (+ 'x 'y 'z 'a 'b))))
+  (is (= '(+ x y z a b) (ex' [x y z a b] (+ x y z a b))))
+  (is (= '(+ c 3)) (let [x 3] (ex' [c] (+ c x)))))
 
 
 (deftest test-to-poly-normal-form
