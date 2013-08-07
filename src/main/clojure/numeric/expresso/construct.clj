@@ -13,13 +13,47 @@
             [numeric.expresso.utils :as utils])
   (:import [numeric.expresso.protocols PolynomialExpression]))
 
-(declare create-matrix-inner-product)
+(declare create-matrix-inner-product
+         create-normal-expression)
 (defmulti create-special-expression first)
 (defmethod create-special-expression :default [_]  nil)
 (defmethod create-special-expression 'clojure.core.matrix/inner-product [x]
   (create-matrix-inner-product x))
+(defmethod create-special-expression 'negate [_]
+  (if (is-number? (first (second _)))
+    (create-normal-expression '- (second _))
+    (create-normal-expression 'negate (second _))))
 
 
+(defmulti expresso-symb identity)
+(defmethod expresso-symb :default [s]
+  (if (= (str s) "clojure.core//") '/ s))
+(defmethod expresso-symb 'clojure.core/* [_] '*)
+(defmethod expresso-symb 'clojure.core/+ [_] '+)
+(defmethod expresso-symb 'clojure.core/- [_] '-)
+(defmethod expresso-symb 'clojure.core// [_] '/)
+(defmethod expresso-symb 'numeric.expresso.core/** [_] '**)
+(defmethod expresso-symb `mat/emul [_] 'emul)
+(defmethod expresso-symb `mat/div [_] 'div)
+(defmethod expresso-symb `mat/add [_] 'add)
+(defmethod expresso-symb `mat/sub [_] 'sub)
+(defmethod expresso-symb 'Math/abs [_] 'abs)
+(defmethod expresso-symb 'Math/acos [_] 'acos)
+(defmethod expresso-symb 'Math/asin [_] 'asinc)
+(defmethod expresso-symb 'Math/atan [_] 'atan)
+(defmethod expresso-symb 'Math/cos [_] 'cos)
+(defmethod expresso-symb 'Math/cosh [_] 'cosh)
+(defmethod expresso-symb 'Math/exp [_] 'exp)
+(defmethod expresso-symb 'Math/log [_] 'log)
+(defmethod expresso-symb 'Math/log10 [_] 'log)
+(defmethod expresso-symb 'Math/sin [_] 'sin)
+(defmethod expresso-symb 'Math/sinh [_] 'sinh)
+(defmethod expresso-symb 'Math/sqrt [_] 'sqrt)
+(defmethod expresso-symb 'Math/tan [_] 'tan)
+(defmethod expresso-symb 'Math/tanh [_] 'tanh)
+(defmethod expresso-symb 'mat/negate [_] 'negate)
+(defmethod expresso-symb `mat/mul [_] 'mul)
+(defmethod expresso-symb `mat/inner-product [_] 'inner-product)
 (defn expr-properties [s-exp]
   (:properties (meta (first s-exp))))
 
@@ -69,12 +103,16 @@
   (when-let [rel (extractor-rel symb)]
     (numeric.expresso.protocols.BasicExtractor. symb args rel)))
 
+(defn create-normal-expression [symb args]
+  (list* (with-meta symb (add-information symb)) args))
+
 (defn ce
   "constructs an expression from the symbol with the supplied args"
   [symb & args]
-  (or (create-special-expression [symb args])
-      (create-extractor symb args)
-      (list* (with-meta symb (add-information symb)) args)))
+  (let [symb (expresso-symb symb)]
+    (or (create-special-expression [symb args])
+        (create-extractor symb args)
+        (create-normal-expression symb args))))
 
 (defn matrix-symb
   ([s] (matrix-symb s #{}))

@@ -5,6 +5,7 @@
         [clojure.core.logic :exclude [is]])
   (:require [numeric.expresso.utils :as utils]
             [clojure.set :as set]
+            [numeric.expresso.types :as types]
             [clojure.core.matrix :as mat]
             [clojure.walk :as walk]))
 
@@ -53,6 +54,18 @@
   (constraints [this])
   (add-constraint [this constraint]))
 
+(defmulti type-of-function first)
+(defmethod type-of-function :default [_] :Unknown)
+(defmethod type-of-function '+ [_] types/number)
+(defmethod type-of-function '- [_] types/number)
+(defmethod type-of-function '* [_] types/number)
+(defmethod type-of-function '/ [_] types/number)
+(defmethod type-of-function 'div [_] types/matrix)
+(defmethod type-of-function 'sub [_] types/number)
+(defmethod type-of-function '** [_] types/number)
+(defmethod type-of-function 'emul [_] types/matrix)
+(defmethod type-of-function 'add [_] types/matrix)
+(defmethod type-of-function 'negate [_] types/matrix)
 
 (deftype Expression [op args]
   clojure.lang.Sequential
@@ -79,7 +92,7 @@
   (expr-op [this] op)
   (expr-args [this] args)
   PType
-  (type-of [this] :expression)
+  (type-of [this] (type-of-function op args))
   PProps
   (properties [this] (when-let [m (meta op)] (:properties m))))
 
@@ -358,7 +371,9 @@
   (type-of [this]
     (if-let [type (and (meta this) (:type (meta this)))]
       type
-      :Unknown)))
+      (if (mat/array? this)
+        types/matrix
+        :Unknown))))
 
 (extend-protocol PShape
   nil
@@ -448,3 +463,9 @@
     (let [cs (get (meta this) :constraints #{})]
       (apply (partial set/union (set/union cs (constraints (expr-op this))))
              (map constraints (expr-args this))))))
+
+
+(extend-protocol PType
+  clojure.lang.ISeq
+  (type-of [this]
+    (type-of-function [(first this) (rest this)])))

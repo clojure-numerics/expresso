@@ -11,33 +11,41 @@
             [clojure.core.matrix.operators :as mop]
             [clojure.core.matrix :as mat]
             [clojure.set :as set]
+            [numeric.expresso.types :as types]
             [numeric.expresso.utils :as utils]
             [numeric.expresso.matcher :as match]))
 
 
 
 (defmulti props identity)
-(defmethod props :default [_]
-  (if (= (str _) "clojure.core//") {:exec-func /
-                                    :properties #{:n-ary}
-                                    :inverse-op 'clojure.core/* }
-      {}))
-(defmethod props 'clojure.core/* [_] {:exec-func *
-                                      :properies #{:associative
-                                                   :commutative
-                                                   :n-ary}
-                                      })
-(defmethod props 'clojure.core/+ [_] {:exec-func +
-                                      :properties #{:associative :commutative :n-ary}})
-(defmethod props 'clojure.core/- [_] {:exec-func -
-                                      :properties [:n-ary [:inverse-of 'clojure.core/+]]})
-(defmethod props 'clojure.core// [_] {:exec-func /
-                                      :properties #{:n-ary} :inverse-of 'clojure.core/*})
+(defmethod props :default [_] {})
+(defmethod props '* [_] {:exec-func *
+                         :properies #{:associative
+                                      :commutative
+                                      :n-ary}
+                         })
+(defmethod props '+ [_] {:exec-func +
+                         :properties #{:associative :commutative :n-ary}})
+(defmethod props '- [_] {:exec-func -
+                         :properties [:n-ary [:inverse-of 'clojure.core/+]]})
+(defmethod props '/ [_] {:exec-func /
+                         :properties #{:n-ary} :inverse-of 'clojure.core/*})
 (defmethod props 'e/ca-op [_] {:properties [:commutative]})
-(defmethod props 'numeric.expresso.core/** [_] {:exec-func (fn [a b]
-                                                             (Math/pow a b))})
-(defmulti matcher identity)
-(defmethod matcher :default [_] {:match-rel match/expression-matcho})
+(defmethod props '** [_] {:exec-func (fn [a b]
+                                       (Math/pow a b))})
+(defmethod props 'emul [_] {:exec-func mat/emul})
+(defmethod props 'div [_] {:exec-func mat/div})
+(defmethod props 'add [_] {:exec-func mat/add})
+(defmethod props 'sub [_] {:exec-func mat/sub})
+(defmethod props 'inner-product [_] {:exec-func mat/inner-product})
+(defmethod props 'negate [_] {:exec-func mat/negate})
+
+
+(defmulti matcher first)
+(defmethod matcher :default [_]
+  (if (contains? (:properties (second _)) :commutative)
+    {:match-rel match/match-commutativeo}
+    {:match-rel match/expression-matcho}))
 (defmethod matcher 'e/ca-op [_] {:match-rel match/match-commutativeo})
 
 
@@ -104,8 +112,12 @@
 (defmethod extractor-rel 'midentity? [_] extract-midentity)
 
 (defn add-information [op]
-  (merge {:expression true} (props op) (matcher op)))
+  (let [p (props op)
+        m (matcher [op p])]
+    (merge {:expression true} p m)))
 
 
 
 
+(defn is-number? [x]
+  (or (number? x) (isa? (protocols/type-of x) types/number)))
