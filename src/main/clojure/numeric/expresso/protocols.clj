@@ -49,11 +49,13 @@
 (defprotocol PShape
   (shape [this]))
 
+(defprotocol PRearrange
+  (rearrange-step [lhs pos rhs]))
+
 (defprotocol PConstraints
   (constraints [this])
   (add-constraint [this constraint]))
-(declare type-of-function)
-#_((defmulti type-of-function first)
+(defmulti type-of-function first)
 (defmethod type-of-function :default [_] :Unknown)
 (defmethod type-of-function '+ [_] types/number)
 (defmethod type-of-function '- [_] types/number)
@@ -64,7 +66,11 @@
 (defmethod type-of-function '** [_] types/number)
 (defmethod type-of-function 'emul [_] types/matrix)
 (defmethod type-of-function 'add [_] types/matrix)
-(defmethod type-of-function 'negate [_] types/matrix))
+(defmethod type-of-function 'negate [_] types/matrix)
+
+
+(defmulti rearrange-step-function first)
+
 
 (deftype Expression [op args]
   clojure.lang.Sequential
@@ -421,11 +427,18 @@
   ([] clojure.core.logic/s#)
   ([goals] (fn [a] (reduce (fn [l r] (bind l r)) a goals))))
 
+(defn to-relations [constraint]
+  (let [[rel & args] constraint]
+    (conda
+     ((apply rel args))
+     ((project [] (throw (Exception.
+                         (str "Constraint " constraint " failed!"))))))))
+
 (defn check-constraints
   "checks the constraints on value.
    throws exception if they don't hold"
   [value]
-  (let [cs (constraints value)
+  (let [cs (map to-relations (constraints value))
         res (-run {:occurs-check true :n 1 :reify-vars (fn [v s] s)} [q]
                   (fresh []
                          (all* cs)
@@ -468,3 +481,10 @@
   clojure.lang.ISeq
   (type-of [this]
     (type-of-function [(first this) (rest this)])))
+
+
+(extend-protocol PRearrange
+  clojure.lang.ISeq
+  (rearrange-step [lhs pos rhs]
+    (if-let [op (expr-op lhs)]
+      (rearrange-step-function [op (vec (rest lhs)) pos rhs]))))

@@ -9,20 +9,35 @@
             [clojure.set :as set]
             [numeric.expresso.protocols :as protocols]
             [clojure.core.logic.unifier :as u]
+            [numeric.expresso.types :as types]
             [clojure.core.matrix :as mat]
             [numeric.expresso.utils :as utils])
   (:import [numeric.expresso.protocols PolynomialExpression]))
 
+(defn add-constraints [x constraints]
+  (reduce (fn [l r] (protocols/add-constraint l r)) x constraints))
+
 (declare create-matrix-inner-product
          create-normal-expression)
+
+
 (defmulti create-special-expression first)
 (defmethod create-special-expression :default [_]  nil)
-(defmethod create-special-expression 'clojure.core.matrix/inner-product [x]
+(defmethod create-special-expression 'inner-product [x]
   (create-matrix-inner-product x))
 (defmethod create-special-expression 'negate [_]
   (if (is-number? (first (second _)))
     (create-normal-expression '- (second _))
     (create-normal-expression 'negate (second _))))
+
+(defmethod create-special-expression 'add [[symb args]]
+  (if (is-number? (first args))
+    (create-normal-expression '+ args)
+    (let [constraints (map (fn [x] [== (protocols/shape (first args))
+                                       (protocols/shape x)]) (rest args))]
+      (create-normal-expression 'add (map #(add-constraints % constraints)
+                                          args)))))
+
 
 
 (defmulti expresso-symb identity)
@@ -261,8 +276,8 @@
                                 l (second (protocols/shape lp))
                                 r (first (protocols/shape new))]
                 (concat (butlast processed)
-                        [(protocols/add-constraint lp (== l r))]
-                        [(protocols/add-constraint new (== l r))])))
+                        [(protocols/add-constraint lp [== l r])]
+                        [(protocols/add-constraint new [== l r])])))
                         [(first args)] (rest args))]
       (list* symb nargs))
     (list* symb args)))
@@ -439,4 +454,27 @@
             coeffs (.-coeffs poly)]
         (list* '+ (map #(list '* (poly-to-sexp %1) (list '** v %2))
                       coeffs (range))))))
-        
+
+
+(defmethod protocols/type-of-function :default [_] :Unknown)
+(defmethod protocols/type-of-function '+ [_] types/number)
+(defmethod protocols/type-of-function '- [_] types/number)
+(defmethod protocols/type-of-function '* [_] types/number)
+(defmethod protocols/type-of-function '/ [_] types/number)
+(defmethod protocols/type-of-function 'div [_] types/matrix)
+(defmethod protocols/type-of-function 'sub [_] types/number)
+(defmethod protocols/type-of-function '** [_] types/number)
+(defmethod protocols/type-of-function 'emul [_] types/matrix)
+(defmethod protocols/type-of-function 'add [_] types/matrix)
+(defmethod protocols/type-of-function 'negate [_] types/matrix)
+
+
+(defn split-in-pos-args [args pos]
+  (let [args (vec args)]
+    [(subvec args 0 pos) (nth args pos) (subvec args (inc pos))]))
+
+
+(defmethod protocols/rearrange-step-function '+ [[op args pos rhs]]
+  (let [[left x right] (split-in-pos-args args pos)]
+    (apply (partial ce '-) (concat [rhs] left right))))
+

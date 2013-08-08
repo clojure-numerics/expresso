@@ -49,14 +49,14 @@
 (def rhs (lvar 'rhs false))
 (def transs (lvar 'transs false))
 
-(def v1 (add-constraint [lhs rhs] (== lhs rhs)))
-(def v2 (add-constraint [lhs transs] (== lhs transs)))
+(def v1 (add-constraint [lhs rhs] [== lhs rhs]))
+(def v2 (add-constraint [lhs transs] [== lhs transs]))
 
 (def vv1 (check-constraints v1))
 (def vv2 (check-constraints v2))
 
-(def cv (add-constraint [vv1 vv2] (== lhs rhs)))
-(def cv (add-constraint cv (== lhs transs)))
+(def cv (add-constraint [vv1 vv2] [== lhs rhs]))
+(def cv (add-constraint cv [== lhs transs]))
 
 (def ccv (check-constraints cv))
 
@@ -66,4 +66,4 @@
   (is (= 1 (count (into #{} (flatten ccv))))))
 
 (deftest test-add-constraint
-  (is (= 1 (count (constraints (add-constraint 'a (== 0 0)))))))
+  (is (= 1 (count (constraints (add-constraint 'a [== 0 0]))))))

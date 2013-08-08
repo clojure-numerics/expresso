@@ -445,7 +445,7 @@
 (def y (matrix-symb 'y))
 (def res (ex' (matrix/inner-product x y)))
 
-(def res (add-constraint res (== (second (shape x)) 3)))
+(def res (add-constraint res [== (second (shape x)) 3]))
 
 
 #_(solve-system [(ex (= (+ x y z) 3))
