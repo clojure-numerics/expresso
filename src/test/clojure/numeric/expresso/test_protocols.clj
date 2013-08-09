@@ -66,4 +66,6 @@
   (is (= 1 (count (into #{} (flatten ccv))))))
 
 (deftest test-add-constraint
-  (is (= 1 (count (constraints (add-constraint 'a [== 0 0]))))))
+  (is (= 1 (count (constraints (add-constraint 'a [== 0 0])))))
+  (is (= [rhs rhs] (shape (add-constraint (with-meta 'x {:shape [lhs rhs]})
+                                          [== lhs rhs])))))

@@ -47,7 +47,8 @@
   (type-of [this]))
 
 (defprotocol PShape
-  (shape [this]))
+  (shape [this])
+  (set-shape [this shape]))
 
 (defprotocol PRearrange
   (rearrange-step [lhs pos rhs]))
@@ -70,6 +71,60 @@
 
 
 (defmulti rearrange-step-function first)
+
+(defn all*
+  "function version of all macro in logic.clj
+   Like fresh but does does not create logic variables."
+  ([] clojure.core.logic/s#)
+  ([goals] (fn [a] (reduce (fn [l r] (bind l r)) a goals))))
+
+(defn to-relations [constraint]
+  (let [[rel & args] constraint]
+    (conda
+     ((apply rel args))
+     ((project [] (throw (Exception.
+                          (str "Constraint " constraint " failed!"))))))))
+
+(defn with-meta-informations [value]
+  (let [type (type-of value)
+        shape (shape value)
+        value (if-let [op (expr-op value)]
+                (with-meta
+                  (list* op
+                         (map with-meta-informations (expr-args value)))
+                  (meta value))
+                (if (sequential? value)
+                  (with-meta (mapv with-meta-informations value)
+                    (meta value))
+                  value))]
+    {:type type :shape shape :value value}))
+
+(defn restore-expression [wmi]
+  (let [type (:type wmi)
+        shape (:shape wmi)
+        value (:value wmi)
+        value (if-let [op (expr-op value)]
+                (with-meta
+                  (list* op (map restore-expression (expr-args value)))
+                  (meta value))
+                (if (sequential? value)
+                  (with-meta (mapv restore-expression value) (meta value))
+                    value))]
+    (-> value (set-shape shape))))
+
+(defn check-constraints
+  "checks the constraints on value.
+   throws exception if they don't hold"
+  [value]
+  (let [cs (map to-relations (constraints value))
+        res (-run {:occurs-check true :n 1 :reify-vars (fn [v s] s)} [q]
+                  (fresh []
+                         (all* cs)
+                         (== q (with-meta-informations value))))]
+    (if (not= res '())
+      (restore-expression (first res))
+      (throw (Exception. "constraint check failed")))))
+
 
 
 (deftype Expression [op args]
@@ -383,14 +438,21 @@
 (extend-protocol PShape
   nil
   (shape [this] [])
+  (set-shape [this shape] "not-supported")
   MatrixSymbol
   (shape [this] (.-shape this))
+  (set-shape [this shape] (MatrixSymbol. (.-symb this)
+                                         shape (.-properties this)))
   java.lang.Number
   (shape [this] [])
+  (set-shape [this shape]
+    (if (= [] shape) this "invalid!"))
   java.lang.Object
   (shape [this]
     (get  (meta this) :shape
-          (mat/shape this))))
+          (mat/shape this)))
+  (set-shape [this shape]
+    (with-meta this (assoc (meta this) :shape shape))))
       
 
 (extend-protocol PProps
@@ -421,31 +483,7 @@
               (add-metadata value {:constraints #{constraint}}))]
     res))
 
-(defn all*
-  "function version of all macro in logic.clj
-   Like fresh but does does not create logic variables."
-  ([] clojure.core.logic/s#)
-  ([goals] (fn [a] (reduce (fn [l r] (bind l r)) a goals))))
-
-(defn to-relations [constraint]
-  (let [[rel & args] constraint]
-    (conda
-     ((apply rel args))
-     ((project [] (throw (Exception.
-                         (str "Constraint " constraint " failed!"))))))))
-
-(defn check-constraints
-  "checks the constraints on value.
-   throws exception if they don't hold"
-  [value]
-  (let [cs (map to-relations (constraints value))
-        res (-run {:occurs-check true :n 1 :reify-vars (fn [v s] s)} [q]
-                  (fresh []
-                         (all* cs)
-                         (== q value)))]
-    (if (not= res '())
-      (first res)
-      (throw (Exception. "constraint check failed")))))
+(declare check-constraints)
 
 
 (extend-protocol PConstraints
