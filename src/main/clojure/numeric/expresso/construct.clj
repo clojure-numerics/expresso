@@ -20,6 +20,9 @@
 (declare create-matrix-inner-product
          create-normal-expression)
 
+(defn set-symbol-type [symb args type]
+  (create-normal-expression
+   symb (map #(if (symbol? %) (protocols/set-type % type) %) args)))
 
 (defmulti create-special-expression first)
 (defmethod create-special-expression :default [_]  nil)
@@ -37,6 +40,15 @@
                                        (protocols/shape x)]) (rest args))]
       (create-normal-expression 'add (map #(add-constraints % constraints)
                                           args)))))
+
+(defmethod create-special-expression '+ [[symb args]]
+  (set-symbol-type symb args types/number))
+(defmethod create-special-expression '- [[symb args]]
+  (set-symbol-type symb args types/number))
+(defmethod create-special-expression '* [[symb args]]
+  (set-symbol-type symb args types/number))
+(defmethod create-special-expression '/ [[symb args]]
+  (set-symbol-type symb args types/number))
 
 
 
@@ -118,13 +130,27 @@
   (when-let [rel (extractor-rel symb)]
     (numeric.expresso.protocols.BasicExtractor. symb args rel)))
 
+(defn construct-symbol [arg]
+  (let [type (cond (:matrix (meta arg)) types/matrix
+                   (:number (meta arg)) types/number
+                   (:double (meta arg)) types/double
+                   (:long   (meta arg)) types/long
+                   (:int    (meta arg)) types/integer
+                   :else (lvar 'type))
+        shape (cond (isa? type types/number) []
+                    (= type types/matrix) (or (:shape (meta arg))
+                                              [(lvar 'lshape) (lvar 'rshape)])
+                    :else (lvar 'shape))]
+    (with-meta arg (assoc (meta arg) :type type :shape shape))))
+
 (defn create-normal-expression [symb args]
   (list* (with-meta symb (add-information symb)) args))
 
 (defn ce
   "constructs an expression from the symbol with the supplied args"
   [symb & args]
-  (let [symb (expresso-symb symb)]
+  (let [symb (expresso-symb symb)
+        args (map #(if (symbol? %) (construct-symbol %) %) args)]
     (or (create-special-expression [symb args])
         (create-extractor symb args)
         (create-normal-expression symb args))))

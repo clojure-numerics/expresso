@@ -44,7 +44,8 @@
   (substitute-expr [expr sm]))
 
 (defprotocol PType
-  (type-of [this]))
+  (type-of [this])
+  (set-type [this type]))
 
 (defprotocol PShape
   (shape [this])
@@ -153,6 +154,9 @@
   (expr-args [this] args)
   PType
   (type-of [this] (type-of-function op args))
+  (set-type [this type] (if (= type (type-of-function op args))
+                          this
+                          (throw (Exception. (str "invalid type " type "for " op)))))
   PProps
   (properties [this] (when-let [m (meta op)] (:properties m))))
 
@@ -225,7 +229,8 @@
   PVars
   (vars [this] #{})
   PType
-  (type-of [this] (type-of val)))
+  (type-of [this] (type-of val))
+  (set-type [this type] (AtomicExpression. (set-type val type))))
 
 (deftype BasicExtractor [name args rel]
   java.lang.Object
@@ -417,23 +422,42 @@
   (substitute-expr [this repl]
     (substitute-expr* this repl)))
 
+(defn check-type [this type to-check]
+  (if (= type to-check) this
+      (throw (Exception. (str "Invalid Type " type "for "
+                              this "excpected " to-check)))))
 
 (extend-protocol PType
   Integer
   (type-of [this] :numeric.expresso.types/integer)
+  (set-type [this type] (check-type this type :numeric.expresso.types/integer))
   Long
   (type-of [this] :numeric.expresso.types/long)
+  (set-type [this type] (check-type this type :numeric.expresso.types/long))
   Double
   (type-of [this] :numeric.expresso.types/double)
+  (set-type [this type] (check-type this type :numeric.expresso.types/double))
   java.lang.Number
   (type-of [this] :numeric.expresso.types/number)
+  (set-type [this type] (check-type this type :numeric.expresso.types/number))
   Object
   (type-of [this]
     (if-let [type (and (meta this) (:type (meta this)))]
       type
       (if (mat/array? this)
         :numeric.expresso.types/matrix
-        :Unknown))))
+        :Unknown)))
+  (set-type [this type]
+    (cond
+     (mat/array? this) (check-type this type :numeric.expresso.types/matrix)
+     (lvar? (:type (meta this)))
+     (with-meta this (assoc (meta this) :type type :shape
+                            (if (= type :numeric.expresso.types/matrix)
+                              [(lvar 'lshape) (lvar 'rshape)] [])))
+     :else (if (isa? (:type (meta this)) type)
+             this
+             (throw (Exception. (str "invalid type " type " for "
+                                     (:type (meta this)) " of " this)))))))
 
 (extend-protocol PShape
   nil
