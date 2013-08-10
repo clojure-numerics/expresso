@@ -451,9 +451,11 @@
     (cond
      (mat/array? this) (check-type this type :numeric.expresso.types/matrix)
      (lvar? (:type (meta this)))
-     (with-meta this (assoc (meta this) :type type :shape
-                            (if (= type :numeric.expresso.types/matrix)
-                              [(lvar 'lshape) (lvar 'rshape)] [])))
+     (add-constraint
+      (with-meta this (assoc (meta this) :type type :shape
+                             (if (= type :numeric.expresso.types/matrix)
+                               [(lvar 'lshape) (lvar 'rshape)] [])))
+      [== (:type (meta this)) type])
      :else (if (isa? (:type (meta this)) type)
              this
              (throw (Exception. (str "invalid type " type " for "
@@ -511,6 +513,9 @@
 
 
 (extend-protocol PConstraints
+  java.lang.Number
+  (constraints [this] #{})
+  (add-constraint [this] this)
   java.lang.Object
   (constraints [this]
     (get (meta this) :constraints #{}))
