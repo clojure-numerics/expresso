@@ -104,3 +104,21 @@
   (if (not= 'clojure.core/= (first expr))
     (throw (Exception. "Input is no Equation"))
     expr))
+
+(defn lasto
+  "y is the last element of x"
+  [x y]
+  (fresh [a] (appendo a [y] x)))
+
+(defn butlasto
+  "y ist butlast from x"
+  [x y]
+  (fresh [a]
+         (appendo y [a] x)))
+
+
+(defn inner-product-shape [sl sr s]
+  (fresh [a b]
+         (butlasto sl a)
+         (resto sr b)
+         (appendo a b s)))

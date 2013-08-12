@@ -13,7 +13,7 @@
             [clojure.core.matrix :as mat]
             [numeric.expresso.utils :as utils])
   (:import [numeric.expresso.protocols PolynomialExpression]))
-
+(declare ce)
 (defn add-constraints [x constraints]
   (reduce (fn [l r] (protocols/add-constraint l r)) x constraints))
 
@@ -24,23 +24,95 @@
   (create-normal-expression
    symb (map #(if (symbol? %) (protocols/set-type % type) %) args)))
 
+(defn find-next-matrix [akt args]
+  (loop [akt akt]
+    (if (< akt (count args))
+      (if (is-number? (nth args akt))
+        (recur (inc akt))
+        akt)
+      akt)))
+
+(defn find-next-numbers [akt args]
+  (loop [akt akt]
+    (if (< (inc akt) (count args))
+      (if (and (is-number? (nth args akt))
+               (is-number? (nth args (inc akt))))
+        akt
+        (recur (inc akt)))
+      (count args))))
+
+(defn get-starting-indizes [args]
+  (let [args (vec args)]
+    (loop [akt 0 ind []]
+      (if (< akt (count args))
+        (if (and (is-number? (nth args akt))
+                 (< (inc akt) (count args))
+                 (is-number? (nth args (inc akt))))
+          (recur (find-next-matrix akt args) (conj ind akt))
+          (recur (find-next-numbers akt args) (conj ind akt)))
+        ind))))
+
+(defn sections [args indizes]
+  (conj (reduce (fn [l [start end]]
+                  (conj l (subvec args start end)))
+                [] (partition 2 1 indizes))
+        (subvec args (last indizes) (count args))))
+
+(defn fall-back-to-number-operations [symb numbsymb args]
+  (if (= (count args) 1)
+    (if (is-number? (nth args 0))
+      (create-normal-expression numbsymb args)
+      (protocols/set-shape (create-normal-expression symb args)
+                           (protocols/shape (nth args 0))))
+    (let [indizes (get-starting-indizes args)
+          sections (sections args indizes)]
+      (if (= 1 (count indizes))
+        (create-normal-expression (if (and (is-number? (nth args 0))
+                                           (< 1 (count args))
+                                           (is-number? (nth args 1)))
+                                    numbsymb
+                                    symb) args)
+        (create-normal-expression symb
+                                  (mapcat #(if (and (is-number? (nth % 0))
+                                                    (< 1 (count args))
+                                                    (is-number? (nth % 1)))
+                                             [(create-normal-expression numbsymb
+                                                                        %)]
+                                             %) sections))))))
+
+(defn create-matrix-operation [symb numsymb args]
+  (if (every? is-number? args)
+    (ce numsymb args)
+    (let [s (first (remove #{[]} (map protocols/shape args)))
+          expr (create-normal-expression symb args)]
+      (protocols/set-shape expr s))))
+
+(defn create-inner-product [[symb args]]
+  (let [sl (protocols/shape (first args))
+        sr (protocols/shape (last args))
+        expr (create-normal-expression symb args)
+        lv (lvar 'shape)]
+    (-> expr (protocols/set-shape lv)
+        (protocols/add-constraint [utils/inner-product-shape
+                                    sl sr lv]))))
+      
 (defmulti create-special-expression first)
 (defmethod create-special-expression :default [_]  nil)
 (defmethod create-special-expression 'inner-product [x]
-  (create-matrix-inner-product x))
+  (create-inner-product x))
 (defmethod create-special-expression 'negate [_]
   (if (is-number? (first (second _)))
     (create-normal-expression '- (second _))
     (create-normal-expression 'negate (second _))))
 
 (defmethod create-special-expression 'add [[symb args]]
-  (if (is-number? (first args))
-    (create-normal-expression '+ args)
-    (let [constraints (map (fn [x] [== (protocols/shape (first args))
-                                       (protocols/shape x)]) (rest args))]
-      (create-normal-expression 'add (map #(add-constraints % constraints)
-                                          args)))))
-
+  (create-matrix-operation 'add '+ args))
+(defmethod create-special-expression 'sub [[symb args]]
+  (create-matrix-operation 'sub '- args))
+(defmethod create-special-expression 'emul [[symb args]]
+  (create-matrix-operation 'emul '* args))
+(defmethod create-special-expression 'div [[symb args]]
+  (create-matrix-operation 'div '/ args))
 (defmethod create-special-expression '+ [[symb args]]
   (set-symbol-type symb args types/number))
 (defmethod create-special-expression '- [[symb args]]
