@@ -82,7 +82,7 @@
 
 (defn create-matrix-operation [symb numsymb args]
   (if (every? is-number? args)
-    (ce numsymb args)
+    (apply (partial ce numsymb) args)
     (let [s (first (remove #{[]} (map protocols/shape args)))
           expr (create-normal-expression symb args)]
       (protocols/set-shape expr s))))

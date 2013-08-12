@@ -15,7 +15,12 @@
             [clojure.core.matrix :as matrix]
             [clojure.core.matrix.operators :as mop]
             [numeric.expresso.matcher :as m]
+            [numeric.expresso.common-rules :as cr]
             [numeric.expresso.construct :as c]))
+
+(declare remove-common-subexpressions)
+
+
 
 (defn zip [& colls]
   (apply (partial map (fn [& a] a)) colls))
@@ -64,8 +69,31 @@
                        (reduce #(substitute-expr %1 {%2 s}) expr repl))
                      expr locals)]
      (let-expr (vec (mapcat (fn [[l s]] [l (first s)]) locals))
-       [(to-sexp expr)])))
+               [(to-sexp expr)])))
+(construct-with [* + / - **]
+(def optimize-rules [(rule (* ?x ?x ?&*) :=> (* (** ?x 2) ?&*))               
+                     (rule (* ?x (/ ?x) ?&*) :=> (* ?&*))
+                     (rule (+ (* ?x ?n1) (* ?x ?n2) ?&*) :==>
+                           (+ (* ?x (clojure.core/+ ?n1 ?n2)) ?&*))
+                     (rule (+ (* ?a ?&*1) (* ?a ?&*2) ?&*r)
+                           :==> (+ (* ?a (+ ?&*1 ?&*2)) ?&*r))
+                     (rule (* ?x (/ ?x) ?&*) :=> (* ?&*))
+                     (rule (+ ?x (- ?x) ?&*) :=> (+ ?&*))
+                     (rule (+ (* ?x ?&*) (- ?x) ?&*2)
+                           :=> (+ (* ?x (- ?&* 1)) ?&*2))
+                     (rule (+ (* ?x ?&*) ?x ?&*2) :=> (+ (* ?x (+ ?&* 1)) ?&*2))
+                     (rule (- (- ?x)) :=> ?x)]))
 
+
+
+
+(defn optimize-by-rules [expr]
+  (transform-expression (concat cr/eval-rules cr/to-inverses-rules
+                                optimize-rules) expr))
+
+(defn replace-with-special-operations [expr]
+  (transform-expression [(rule (ex (** ?x 0.5)) :=> (ex (sqrt ?x)))
+                         (rule (ex (** ?x 1/2)) :=> (ex (sqrt ?x)))] expr))
 
 (defn eval-func [expr]
   (fn [sm]
@@ -80,10 +108,17 @@
                  to-expression
                  (evaluate sm#))))
 
+(def optimizations
+  (atom [optimize-by-rules
+         replace-with-special-operations
+         remove-common-subexpressions]))
+
 (defn optimize* [expr]
-  (->> expr  remove-common-subexpressions))
+  (loop [opt @optimizations expr expr]
+    (if (seq opt)
+      (recur (rest opt) ((first opt) expr))
+      expr)))
 
 
 (defn optimize [expr]
   (->> expr optimize* eval-func))
-

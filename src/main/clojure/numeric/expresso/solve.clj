@@ -66,6 +66,8 @@
       (cond #_(isa? xs 'e/ca-op)
             (contains? (:properties (meta xs)) :commutative)
             (collabse-arguments-commutative xs args)
+            (contains? (:properties (meta xs)) :associative)
+            (collabse-arguments-associative xs args)
             (isa? xs 'e/ao-op) (collabse-arguments-associative xs args)
             :else expr))
     expr))
