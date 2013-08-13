@@ -101,11 +101,10 @@
     (reduce #(solve/differentiate %2 %1) expr symbv)))
 
 (defmacro compile-expr
-  "compiles the given expression to a clojure function which can be called with
-   a symbol-map"
-  [expr]
-  (->> expr
-       (opt/compile-expr*)))
+  "compiles the given expression to a clojure function which can be called
+   according to the bindings vector"
+  [bindings expr]
+  (opt/compile-expr* (list 'quote bindings) expr))
 
 (defn optimize
   "optimizes the given expression"

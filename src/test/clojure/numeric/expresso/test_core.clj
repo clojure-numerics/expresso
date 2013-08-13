@@ -45,8 +45,8 @@
          (differentiate '[x] (ex (* (** x 3) (* 3 x)))))))
 
 (deftest test-compile-expr
-  (is (= 4 ((compile-expr (ex (+ (* 1 2) (* 2 1)))) {})))
-  (is (= 8 ((compile-expr (ex (+ (* x 2) (* 2 x)))) {'x 2}))))
+  (is (= 4 ((compile-expr [] (ex (+ (* 1 2) (* 2 1)))))))
+  (is (= 8 ((compile-expr [x] (ex (+ (* x 2) (* 2 x)))) 2))))
 
 (deftest test-optimize
   (is (= 4 ((optimize (ex (+ (* 1 2) (* 2 1)))) {})))

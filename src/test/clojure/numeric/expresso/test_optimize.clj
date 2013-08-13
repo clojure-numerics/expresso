@@ -32,4 +32,4 @@
   (is (= 4 (evaluate (optimize* (ex (+ (* 1 2) (* 2 1)))) {}))))
 
 (deftest test-compile
-  (is (= 8 ((compile-expr (optimize* (ex (+ (* x 2) (* 2 x))))) {'x 2}))))
+  (is (= 8 ((compile-expr [x] (optimize* (ex (+ (* x 2) (* 2 x))))) 2))))

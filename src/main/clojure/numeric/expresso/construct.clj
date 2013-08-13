@@ -121,7 +121,16 @@
   (set-symbol-type symb args types/number))
 (defmethod create-special-expression '/ [[symb args]]
   (set-symbol-type symb args types/number))
-
+(defmethod create-special-expression 'sum [[symb args]]
+  (let [args (vec args)]
+    (case (count args)
+      3 (create-normal-expression 'sum args)
+      4 (create-normal-expression 'sum [(nth args 0)
+                                        (create-normal-expression
+                                         '<= [(nth args 1) (nth args 0)
+                                              (nth args 2)])
+                                        (nth args 3)]))))
+      
 
 
 (defmulti expresso-symb identity)

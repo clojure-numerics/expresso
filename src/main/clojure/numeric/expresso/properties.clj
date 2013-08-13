@@ -15,7 +15,7 @@
             [numeric.expresso.utils :as utils]
             [numeric.expresso.matcher :as match]))
 
-
+(declare evaluate-sum emit-sum)
 
 (defmulti props identity)
 (defmethod props :default [_] {})
@@ -59,7 +59,8 @@
 (defmethod props 'length-squared [_] {:exec-func mat/length-squared})
 (defmethod props 'pow [_] {:exec-func mat/pow})
 (defmethod props 'rank [_] {:exec-func mat/rank})
-
+(defmethod props 'sum [_] {:eval-func evaluate-sum
+                           :emit-func emit-sum})
 (defmulti matcher first)
 (defmethod matcher :default [_]
   (if (contains? (:properties (second _)) :commutative)
@@ -143,3 +144,30 @@
 
 (defn is-symbol? [x]
   (or (symbol? x) (instance? MatrixSymbol x)))
+
+
+(defn evaluate-sum [sum sm]
+  (let [[_ k i expr] sum
+        i (protocols/substitute-expr i sm)]
+    (if (and (or (= (first i) '<=) (= (first i) '<)) (= k (nth i 2)))
+      (let [start (if (= (first i) '<=) (second i) (inc (second i)))
+            end   (if (= (first i) '<=) (nth i 3)  (dec (nth i 3)))]
+        (loop [n start res 0]
+          (if (<= n end)
+            (recur (inc n) (mat/add res
+                                    (-> expr
+                                        (protocols/evaluate (merge sm {k n})))))
+            res)))
+      (throw (Exception. (str "Cant evaluate sum of the range " i))))))
+
+(defn emit-sum [sum]
+  (let [[_ k i expr] sum]
+    (if (and (or (= (first i) '<=) (= (first i) '<)) (= k (nth i 2)))
+      (let [start (if (= (first i) '<=) (second i) `(inc ~(second i)))
+            end   (if (= (first i) '<=) (nth i 3)  `(dec ~(nth i 3)))]
+        `(loop [n# ~start res# 0]
+           (if (<= n# ~end)
+             (let [~k n#]
+               (recur (inc n#) (mat/add res# ~expr)))
+               res#)))
+      (throw (Exception. (str "Cant emit code for sum of the range " i))))))

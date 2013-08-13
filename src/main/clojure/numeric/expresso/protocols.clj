@@ -57,6 +57,10 @@
 (defprotocol PConstraints
   (constraints [this])
   (add-constraint [this constraint]))
+
+(defprotocol PEmitCode
+  (emit-code [this]))
+
 (defmulti type-of-function first)
 (defmethod type-of-function :default [_] :Unknown)
 (defmethod type-of-function '+ [_] types/number)
@@ -70,6 +74,8 @@
 (defmethod type-of-function 'add [_] types/matrix)
 (defmethod type-of-function 'negate [_] types/matrix)
 
+(defmulti emit-func first)
+(defmethod emit-func :default [_] (:emit-func (meta (first _))))
 
 (defmulti rearrange-step-function first)
 
@@ -304,7 +310,9 @@
   java.lang.Object
   (evaluate [expr sm]
     (if-let [op (expr-op expr)]
-      (apply (exec-func expr) (map #(evaluate % sm) (expr-args expr)))
+      (if-let [eval-func (:eval-func (meta op))]
+        (eval-func expr sm)
+        (apply (exec-func expr) (map #(evaluate % sm) (expr-args expr))))
       (let [val (value expr)]
         (if (symbol? val)
           (if-let [evaled (val sm)]
@@ -555,3 +563,15 @@
   (rearrange-step [lhs pos rhs]
     (if-let [op (expr-op lhs)]
       (rearrange-step-function [op (vec (rest lhs)) pos rhs]))))
+
+(extend-protocol PEmitCode
+  java.lang.Object
+  (emit-code [this]
+    (if-let [op (expr-op this)]
+      (if-let [ef (emit-func this)]
+        (ef this)
+        (list* (exec-func this) (map emit-code (expr-args this))))
+      this))
+  LetExpression
+  (emit-code [this]
+    `(let ~(.-bindings this) ~@(map emit-code (.-code this)))))

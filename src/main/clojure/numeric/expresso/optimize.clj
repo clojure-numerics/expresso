@@ -70,7 +70,7 @@
                      expr locals)]
      (let-expr (vec (mapcat (fn [[l s]] [l (first s)]) locals))
                [(to-sexp expr)])))
-(construct-with [* + / - **]
+(construct-with [* + / - ** sum]
 (def optimize-rules [(rule (* ?x ?x ?&*) :=> (* (** ?x 2) ?&*))               
                      (rule (* ?x (/ ?x) ?&*) :=> (* ?&*))
                      (rule (+ (* ?x ?n1) (* ?x ?n2) ?&*) :==>
@@ -82,14 +82,17 @@
                      (rule (+ (* ?x ?&*) (- ?x) ?&*2)
                            :=> (+ (* ?x (- ?&* 1)) ?&*2))
                      (rule (+ (* ?x ?&*) ?x ?&*2) :=> (+ (* ?x (+ ?&* 1)) ?&*2))
-                     (rule (- (- ?x)) :=> ?x)]))
+                     (rule (- (- ?x)) :=> ?x)
+                     (rule (sum ?k ?i (* ?x ?&*)) :=> (* ?x (sum ?k ?i (* ?&*)))
+                           :if (guard (not= ?x ?k)))]))
 
 
 
 
 (defn optimize-by-rules [expr]
-  (transform-expression (concat cr/eval-rules cr/to-inverses-rules
-                                optimize-rules) expr))
+  (transform-expression (concat cr/universal-rules
+                                cr/eval-rules cr/to-inverses-rules
+                                cr/universal-rules optimize-rules) expr))
 
 (defn replace-with-special-operations [expr]
   (transform-expression [(rule (ex (** ?x 0.5)) :=> (ex (sqrt ?x)))
@@ -99,14 +102,16 @@
   (fn [sm]
     (evaluate expr sm)))
 
-(defmacro compile-expr [expr]
-  `(fn [sm#]
-     (evaluate ~expr sm#)))
 
-(defn compile-expr* [expr]
-  `(fn [sm#] (-> ~expr
-                 to-expression
-                 (evaluate sm#))))
+
+(defn compile-expr* [bindings expr]
+  `(let [expr# (to-expression ~expr)
+         code# (emit-code expr#)
+         c# (list `fn ~bindings code#)]
+     (eval c#)))
+
+(defmacro compile-expr [bindings expr]
+  (compile-expr* (list 'quote bindings) expr)) 
 
 (def optimizations
   (atom [optimize-by-rules
