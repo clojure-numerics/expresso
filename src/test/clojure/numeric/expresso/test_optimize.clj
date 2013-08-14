@@ -52,9 +52,9 @@
   (is (= '(_0)
          (run* [q] (fresh[n res]
                          (== `(loop [~n (long 0) ~res 0]
-                               (if (<= ~n 5)
-                                 (let [~'k ~n]
-                                   (recur (inc ~n)
-                                          (clojure.core.matrix/add ~res ~'k)))
-                                 ~res))
+                                (if (<= ~n 5)
+                                  (let [~'k ~n]
+                                    (recur (inc ~n)
+                                           (clojure.core.matrix/add ~res ~'k)))
+                                  ~res))
                              (emit-code (ex (sum k 0 5 k)))))))))
