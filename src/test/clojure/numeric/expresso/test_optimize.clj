@@ -27,9 +27,34 @@
          (common-subexpressions (ex (+ (* 1 2) (* 2 1)))))))
 
 
-
 (deftest test-evaluate-let
   (is (= 4 (evaluate (optimize* (ex (+ (* 1 2) (* 2 1)))) {}))))
 
 (deftest test-compile
   (is (= 8 ((compile-expr [x] (optimize* (ex (+ (* x 2) (* 2 x))))) 2))))
+
+(deftest test-optimize*
+  (is (= 3 (optimize* (ex (+ 1 2)))))
+  (is (= (ex (+ 3 x)) (optimize* (ex (+ 1 2 x)))))
+  (is (= (ex (* x (+ y z))) (optimize* (ex (+ (* x y) (* x z))))))
+  (is (= 0 (optimize* (ex (+ x (- x))))))
+  (is (= 0 (optimize* (ex (- x x)))))
+  (is (= 1 (optimize* (ex (/ x x)))))
+  (is (= 1 (optimize* (ex (* x (/ x))))))
+  (is (= 'x (optimize* (ex (- (- x))))))
+  (is (= (ex (sqrt x)) (optimize* (ex (** x 0.5)))))
+  (is (= (ex (* z (sum k 0 5 k) (** x 2)))
+         (optimize* (ex (sum k 0 5 (* x x z k)))))))
+
+
+(deftest test-emit-code*
+  (is (= (list * 'x (list + 'y 'z)) (emit-code (ex (* x (+ y z))))))
+  (is (= '(_0)
+         (run* [q] (fresh[n res]
+                         (== `(loop [~n 0 ~res 0]
+                               (if (<= ~n 5)
+                                 (let [~'k ~n]
+                                   (recur (inc ~n)
+                                          (clojure.core.matrix/add ~res ~'k)))
+                                 ~res))
+                             (emit-code (ex (sum k 0 5 k)))))))))

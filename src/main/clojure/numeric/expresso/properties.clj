@@ -168,6 +168,6 @@
         `(loop [n# ~start res# 0]
            (if (<= n# ~end)
              (let [~k n#]
-               (recur (inc n#) (mat/add res# ~expr)))
+               (recur (inc n#) (mat/add res# ~(protocols/emit-code expr))))
                res#)))
       (throw (Exception. (str "Cant emit code for sum of the range " i))))))

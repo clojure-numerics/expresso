@@ -14,7 +14,7 @@
   (:require [clojure.core.logic.unifier :as u]))
 
 
-#_(deftest test-matrix-simplification-rules
+(deftest test-matrix-simplification-rules
   (is (matrix/e== (matrix/broadcast 0 [2 2]) (apply-rules
                       matrix-simplification-rules
                       (ex (matrix/mul [[1 2][3 4]] [[0 0][0 0]])))))
@@ -32,7 +32,11 @@
   (is (= '()
          (solve-linear-system [(ex (= x (+ x 1)))] '[x])))
   (is (= '_0
-         (second (solve-linear-system [(ex (= x y))] '[x y])))))
+         (second (solve-linear-system [(ex (= x y))] '[x y]))))
+  (is (= [180/7 40/7]
+         (solve-linear-system [(ex (= (+ (* 3 x) (* 4 y)) 100))
+						   (ex (= (- x y) 20))]
+						  '[x y]))))
 
 (deftest test-solve-system
   (is (= {'y [3 6 9]}

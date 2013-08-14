@@ -236,6 +236,9 @@
         (create-extractor symb args)
         (create-normal-expression symb args))))
 
+(defn cev [symb args]
+  (apply (partial ce symb) args))
+
 (defn matrix-symb
   ([s] (matrix-symb s #{}))
   ([s additional-props] (matrix-symb s #{} [(lvar 'srows) (lvar 'scols)]))
@@ -583,5 +586,47 @@
 
 (defmethod protocols/rearrange-step-function '+ [[op args pos rhs]]
   (let [[left x right] (split-in-pos-args args pos)]
-    (apply (partial ce '-) (concat [rhs] left right))))
+    [x (cev '- (concat [rhs] left right))]))
+
+(defmethod protocols/rearrange-step-function '- [[op args pos rhs]]
+  (if (= (count args) 1)
+    [(first args) (ce '- rhs)]
+    (let [[left x right] (split-in-pos-args args pos)]
+      [x (if (= pos 0)
+           (cev '+ (concat [rhs] right))
+           (cev '- (concat left right [rhs])))])))
+
+(defmethod protocols/rearrange-step-function '* [[op args pos rhs]]
+  (let [[left x right] (split-in-pos-args args pos)]
+    [x (cev '/ (concat [rhs] left right))]))
+
+(defmethod protocols/rearrange-step-function '/ [[op args pos rhs]]
+  (if (= (count args) 1)
+    [(first args) (ce '/ rhs)]
+    (let [[left x right] (split-in-pos-args args pos)]
+      [x (if (= pos 0)
+           (cev '* (concat [rhs] right))
+           (cev '/ (concat left right [rhs])))])))
+
+
+(defn unary-rearrange-step [op invop args rhs]
+  [(first args) (ce invop rhs)])
+
+(defmethod protocols/rearrange-step-function 'sin [[op args pos rhs]]
+  (unary-rearrange-step 'sin 'arcsin args rhs))
+
+(defmethod protocols/rearrange-step-function 'arcsin [[op args pos rhs]]
+  (unary-rearrange-step 'arcsin 'sin args rhs))
+
+(defmethod protocols/rearrange-step-function 'cos [[op args pos rhs]]
+  (unary-rearrange-step 'cos 'arccos args rhs))
+
+(defmethod protocols/rearrange-step-function 'arccos [[op args pos rhs]]
+  (unary-rearrange-step 'arccos 'cos args rhs))
+
+(defmethod protocols/rearrange-step-function 'exp [[op args pos rhs]]
+  (unary-rearrange-step 'exp 'log args rhs))
+
+(defmethod protocols/rearrange-step-function 'log [[op args pos rhs]]
+  (unary-rearrange-step 'log 'exp args rhs))
 

@@ -68,15 +68,15 @@
         expr (reduce (fn [expr [s repl]]
                        (reduce #(substitute-expr %1 {%2 s}) expr repl))
                      expr locals)]
-     (let-expr (vec (mapcat (fn [[l s]] [l (first s)]) locals))
-               [(to-sexp expr)])))
+    (if (empty? cs)
+      expr
+      (let-expr (vec (mapcat (fn [[l s]] [l (first s)]) locals))
+                [(to-sexp expr)]))))
 (construct-with [* + / - ** sum]
 (def optimize-rules [(rule (* ?x ?x ?&*) :=> (* (** ?x 2) ?&*))               
                      (rule (* ?x (/ ?x) ?&*) :=> (* ?&*))
-                     (rule (+ (* ?x ?n1) (* ?x ?n2) ?&*) :==>
-                           (+ (* ?x (clojure.core/+ ?n1 ?n2)) ?&*))
                      (rule (+ (* ?a ?&*1) (* ?a ?&*2) ?&*r)
-                           :==> (+ (* ?a (+ ?&*1 ?&*2)) ?&*r))
+                           :=> (+ (* ?a (+ ?&*1 ?&*2)) ?&*r))
                      (rule (* ?x (/ ?x) ?&*) :=> (* ?&*))
                      (rule (+ ?x (- ?x) ?&*) :=> (+ ?&*))
                      (rule (+ (* ?x ?&*) (- ?x) ?&*2)
