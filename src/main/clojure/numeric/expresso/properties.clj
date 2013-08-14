@@ -165,9 +165,9 @@
     (if (and (or (= (first i) '<=) (= (first i) '<)) (= k (nth i 2)))
       (let [start (if (= (first i) '<=) (second i) `(inc ~(second i)))
             end   (if (= (first i) '<=) (nth i 3)  `(dec ~(nth i 3)))]
-        `(loop [n# ~start res# 0]
+        `(loop [n# (long ~start) res# 0]
            (if (<= n# ~end)
              (let [~k n#]
-               (recur (inc n#) (mat/add res# ~expr)))
+               (recur (inc n#) (mat/add res# ~(protocols/emit-code expr))))
                res#)))
       (throw (Exception. (str "Cant emit code for sum of the range " i))))))

@@ -323,7 +323,7 @@
 (defn swap-sides [[eq lhs rhs]]
   (list eq rhs lhs))
 
-(defn rearrange [v equation]
+#_(defn rearrange [v equation]
   (assert (only-one-occurrence v equation)
           "cant rearrange an equation with multiple occurrences of the variable")
   (if-let [pos (position-in-equation v equation)]
@@ -332,6 +332,19 @@
                                         (swap-sides equation)
                                         equation)])
          second)
+    equation))
+
+(defn rearrange [v equation]
+  (assert (only-one-occurrence v equation)
+          "cant rearrange an equation with multiple occurrences of the variable")
+  (if-let [pos (position-in-equation v equation)]
+    (loop [[lhs rhs]
+           [(nth (if (= (first pos) 1) (swap-sides equation) equation) 1)
+            (nth (if (= (first pos) 1) (swap-sides equation) equation) 2)]
+           pos (subvec pos 1)]
+      (if (seq pos)
+        (recur (rearrange-step lhs (first pos) rhs) (rest pos))
+        (ce `= lhs rhs)))
     equation))
 
 (defn simp-expr [expr]
