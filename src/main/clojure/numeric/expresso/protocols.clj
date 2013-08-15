@@ -87,10 +87,8 @@
 
 (defn to-relations [constraint]
   (let [[rel & args] constraint]
-    (conda
-     ((apply rel args))
-     ((project [] (throw (Exception.
-                          (str "Constraint " constraint " failed!"))))))))
+     (apply rel args)))
+
 
 (defn with-meta-informations [value]
   (let [type (type-of value)
@@ -124,12 +122,14 @@
    throws exception if they don't hold"
   [value]
   (let [cs (map to-relations (constraints value))
-        res (-run {:occurs-check true :n 1 :reify-vars (fn [v s] s)} [q]
+        res (-run {:occurs-check true :n 2 :reify-vars (fn [v s] s)} [q]
                   (fresh []
                          (all* cs)
                          (== q (with-meta-informations value))))]
     (if (not= res '())
-      (restore-expression (first res))
+      (if (= 1 (count res))
+        (restore-expression (first res))
+        value)
       (throw (Exception. "constraint check failed")))))
 
 
@@ -523,29 +523,34 @@
 (extend-protocol PConstraints
   java.lang.Number
   (constraints [this] #{})
-  (add-constraint [this] this)
+  (add-constraint [this constraint] this)
   java.lang.Object
   (constraints [this]
     (get (meta this) :constraints #{}))
   (add-constraint [this constraint]
-    (check-constraints (add-constraint-normal this constraint)))
+    (add-constraint-normal this constraint))
+  BasicExtractor
+  (constraints [this] #{})
+  (add-constraint [this constraint] this)
+  PolynomialExpression
+  (constraints [this] #{})
+  (add-constraint [this constraint] this)
   MatrixSymbol
   (constraints [this]
     (get (meta (.-symb this)) :constraints #{}))
   (add-constraint [this constraint]
-    (check-constraints
      (MatrixSymbol. (add-constraint-normal (.-symb this) constraint)
-                    (.-shape this) (.-properties this))))
+                    (.-shape this) (.-properties this)))
   clojure.lang.ISeq
   (add-constraint [this constraint]
-    (check-constraints (add-constraint-normal this constraint)))
+   (add-constraint-normal this constraint))
   (constraints [this]
     (let [cs (get (meta this) :constraints #{})]
       (if (not (empty? this))
         (apply (partial set/union cs) (map constraints this)))))
   Expression
   (add-constraint [this constraint]
-    (check-constraints (Expression. (add-constraint-normal (expr-op this)) (expr-args this))))
+    (Expression. (add-constraint-normal (expr-op this)) (expr-args this)))
   (constraints [this]
     (let [cs (get (meta this) :constraints #{})]
       (apply (partial set/union (set/union cs (constraints (expr-op this))))

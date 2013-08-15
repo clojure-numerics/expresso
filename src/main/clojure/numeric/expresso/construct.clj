@@ -13,7 +13,7 @@
             [clojure.core.matrix :as mat]
             [numeric.expresso.utils :as utils])
   (:import [numeric.expresso.protocols PolynomialExpression]))
-(declare ce)
+(declare ce cev)
 (defn add-constraints [x constraints]
   (reduce (fn [l r] (protocols/add-constraint l r)) x constraints))
 
@@ -94,7 +94,23 @@
         lv (lvar 'shape)]
     (-> expr (protocols/set-shape lv)
         (protocols/add-constraint [utils/inner-product-shape
-                                    sl sr lv]))))
+                                   sl sr lv]))))
+
+(defn create-elemwise-operation [symb args]
+  (if (empty? args)
+    (create-normal-expression symb args)
+    (let [lv (lvar 'shape)]
+      (protocols/add-constraint
+       (protocols/set-shape
+        (->> args
+             (map #(protocols/add-constraint % [utils/suffixo
+                                                (protocols/shape %) lv]))
+           (create-normal-expression symb)) lv)
+       [utils/longest-shapo (mapv protocols/shape args) lv]))))
+
+
+#_(defn create-elemwise-operation [symb args]
+  (create-normal-expression symb args))
       
 (defmulti create-special-expression first)
 (defmethod create-special-expression :default [_]  nil)
@@ -106,21 +122,21 @@
     (create-normal-expression 'negate (second _))))
 
 (defmethod create-special-expression 'add [[symb args]]
-  (create-matrix-operation 'add '+ args))
+  (create-elemwise-operation '+ args))
 (defmethod create-special-expression 'sub [[symb args]]
-  (create-matrix-operation 'sub '- args))
+  (create-elemwise-operation '- args))
 (defmethod create-special-expression 'emul [[symb args]]
-  (create-matrix-operation 'emul '* args))
+  (create-elemwise-operation '* args))
 (defmethod create-special-expression 'div [[symb args]]
-  (create-matrix-operation 'div '/ args))
+  (create-elemwise-operation '/ args))
 (defmethod create-special-expression '+ [[symb args]]
-  (set-symbol-type symb args types/number))
+  (create-elemwise-operation '+ args))
 (defmethod create-special-expression '- [[symb args]]
-  (set-symbol-type symb args types/number))
+  (create-elemwise-operation '- args))
 (defmethod create-special-expression '* [[symb args]]
-  (set-symbol-type symb args types/number))
+  (create-elemwise-operation '* args))
 (defmethod create-special-expression '/ [[symb args]]
-  (set-symbol-type symb args types/number))
+  (create-elemwise-operation '/ args))
 (defmethod create-special-expression 'sum [[symb args]]
   (let [args (vec args)]
     (case (count args)
@@ -141,10 +157,10 @@
 (defmethod expresso-symb 'clojure.core/- [_] '-)
 (defmethod expresso-symb 'clojure.core// [_] '/)
 (defmethod expresso-symb 'numeric.expresso.core/** [_] '**)
-(defmethod expresso-symb `mat/emul [_] 'emul)
-(defmethod expresso-symb `mat/div [_] 'div)
-(defmethod expresso-symb `mat/add [_] 'add)
-(defmethod expresso-symb `mat/sub [_] 'sub)
+(defmethod expresso-symb `mat/emul [_] '*)
+(defmethod expresso-symb `mat/div [_] '/)
+(defmethod expresso-symb `mat/add [_] '+)
+(defmethod expresso-symb `mat/sub [_] '-)
 (defmethod expresso-symb 'Math/abs [_] 'abs)
 (defmethod expresso-symb 'Math/acos [_] 'acos)
 (defmethod expresso-symb 'Math/asin [_] 'asinc)
@@ -159,7 +175,7 @@
 (defmethod expresso-symb 'Math/sqrt [_] 'sqrt)
 (defmethod expresso-symb 'Math/tan [_] 'tan)
 (defmethod expresso-symb 'Math/tanh [_] 'tanh)
-(defmethod expresso-symb 'mat/negate [_] 'negate)
+(defmethod expresso-symb 'mat/negate [_] '-)
 (defmethod expresso-symb `mat/mul [_] 'mul)
 (defmethod expresso-symb `mat/inner-product [_] 'inner-product)
 (defn expr-properties [s-exp]

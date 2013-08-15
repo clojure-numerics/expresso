@@ -122,3 +122,20 @@
          (butlasto sl a)
          (resto sr b)
          (appendo a b s)))
+
+
+(defn suffixo [a b]
+  (fresh [c]
+         (appendo c a b)))
+
+(defne longest-shapo [v l]
+  ([[?a . ?r] _] (!= ?r '())
+     (fresh [ls]
+            (longest-shapo ?r ls)
+            (conde
+             ((== ?a ls) (== ?a l))
+             ((!= ?a ls)
+              (conde ((suffixo ls ?a) (== l ?a))
+                     ((suffixo ?a ls) (== l ls)))))))
+  ([[?a] _] (== l ?a)))
+
