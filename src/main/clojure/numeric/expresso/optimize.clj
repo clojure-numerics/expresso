@@ -13,6 +13,7 @@
             [numeric.expresso.utils :as utils]
             [numeric.expresso.solve :as s]
             [clojure.core.matrix :as matrix]
+            [clojure.core.memoize :as memo]
             [clojure.core.matrix.operators :as mop]
             [numeric.expresso.matcher :as m]
             [numeric.expresso.common-rules :as cr]
@@ -20,7 +21,10 @@
 
 (declare remove-common-subexpressions)
 
-
+(defn map-elems [func expr]
+  (if-let [op (expr-op expr)]
+    (cev op (map (partial map-elems func) (expr-args expr)))
+    (func expr)))
 
 (defn zip [& colls]
   (apply (partial map (fn [& a] a)) colls))
@@ -99,7 +103,57 @@
   (transform-expression [(rule (ex (** ?x 0.5)) :=> (ex (sqrt ?x)))
                          (rule (ex (** ?x 1/2)) :=> (ex (sqrt ?x)))] expr))
 
+(defn add-parens [symb args i j]
+  (cev symb (concat (subvec args 0 i) [(cev symb (subvec args i j))]
+                    (subvec args j (count args)))))
+        
 
+(def matrix-chain-cost*
+  (memo/memo
+   (fn [shapes i j]
+     (if (= i j)
+       [0 [(dec i)]]
+       (loop [k (long i) minimum Long/MAX_VALUE expr []]
+         (if (< k j)
+           (let [[costl parensl] (matrix-chain-cost* shapes i k)
+                 [costr parensr] (matrix-chain-cost* shapes (inc k) j)
+                 cost (+ costl costr
+                         (* (nth shapes (dec i))
+                            (nth shapes k)
+                            (nth shapes j)))]
+             (recur (inc k) (if (< minimum cost) minimum cost)
+                    (if (< minimum cost) expr (cev 'inner-product
+                                                   (concat parensl parensr)))))
+           [minimum [expr]]))))))
+
+(defn matrix-chain-cost [shapes i j]
+  (let [res (matrix-chain-cost* shapes i j)]
+    (memo/memo-clear! matrix-chain-cost*)
+    res))
+
+   
+
+(defn optimize-matrix-chain-order [args]
+  (let [shapes (vec (concat (shape (first args))
+                            (map (comp second shape) (rest args))))]
+    (-> (first (second (matrix-chain-cost shapes 1 (dec (count shapes)))))
+        (substitute-expr args))))
+
+(def matrix-chain-rules
+  [(rule (ex (inner-product ?&+)) :==>
+         (let [args (matcher-args ?&+)
+                 args (partition-by (comp count shape) args)
+                 args (map #(if (= (count (shape (first %))) 2)
+                              (optimize-matrix-chain-order (vec %))
+                              (seq-matcher %)) args)]
+           (cev 'inner-product args))
+           :if (guard (> (count-sm ?&+) 2)))])
+
+(defn optimize-matrix-chain [expr]
+  (transform-expression
+   [(rule (ex (inner-product ?x)) :=> ?x)]
+   (walk/postwalk #(apply-rules matrix-chain-rules %) expr)))
+    
 
 (defn eval-func [expr]
   (fn [sm]
@@ -118,6 +172,7 @@
 
 (def optimizations
   (atom [optimize-by-rules
+         optimize-matrix-chain
          replace-with-special-operations
          remove-common-subexpressions]))
 

@@ -44,7 +44,17 @@
   (is (= 'x (optimize* (ex (- (- x))))))
   (is (= (ex (sqrt x)) (optimize* (ex (** x 0.5)))))
   (is (= (ex (* z (sum k 0 5 k) (** x 2)))
-         (optimize* (ex (sum k 0 5 (* x x z k)))))))
+         (optimize* (ex (sum k 0 5 (* x x z k))))))
+  (is (= (ex (inner-product (inner-product a (inner-product b c)) d))
+         (optimize* (ex (inner-product 	^{:shape [40 20]} a
+                                        ^{:shape [20 30]} b
+                                        ^{:shape [30 10]} c
+                                        ^{:shape [10 30]} d)))))
+  (is (= (ex (inner-product (inner-product (inner-product a b) c) d))
+         (optimize* (ex (inner-product 	^{:shape [10 20]} a
+                                        ^{:shape [20 30]} b
+                                        ^{:shape [30 40]} c
+                                        ^{:shape [40 30]} d))))))
 
 
 (deftest test-emit-code*

@@ -291,6 +291,16 @@
        (if (= tmp expr) tmp (recur rules tmp walkfn applyfn))))
   ([rules expr] (transform-with-rules rules expr walk/prewalk apply-rules)))
 
+(defn transform-with-rules-wo-recursion
+  "transforms the expr according to the rules in the rules vector until no rule
+   can be applied any more. Uses clojure.walk/prewalk to walk the expression tree
+   in the default case. A custom walkfn and applyfn can be specified defaults to
+   clojure.walk/postwalk and apply-rules"
+  ([rules expr walkfn applyfn]
+     (let [tmp (walkfn
+                (fn [a] (let [res (applyfn rules a)] res)) expr)]
+       tmp))
+  ([rules expr] (transform-with-rules rules expr walk/postwalk apply-rules)))
 
 (def transform-expression*
   (memo/memo
