@@ -6,6 +6,7 @@
         [clojure.core.logic :exclude [is] :as l]
         [clojure.test])
   (:require [clojure.core.logic.fd :as fd])
+  (:require [numeric.expresso.protocols :as protocols])
   (:require [clojure.core.logic.unifier :as u]))
 
 
@@ -32,3 +33,15 @@
 (deftest test-to-poly-normal-form
   (is (= 7 (to-poly-normal-form '(+ 3 x 4 (- x)))))
   (is (= (poly 'x (poly 'y 0 2) 2) (to-poly-normal-form '(+ x y y x)))))
+
+
+(deftest test-shape-inference
+  (is (= [] (protocols/shape (ex (+ 1 2 3)))))
+  (is (= [2 2] (protocols/shape (ex (+ [[1 2][3 4]] 5)))))
+  (is (protocols/expr-op (protocols/shape (ex (+ 1 x 2)))))
+  (is (= [] (let [expr (ex (+ 1 x 2))]
+              (protocols/shape (protocols/check-constraints
+                                (protocols/add-constraint expr
+                                                          [== (protocols/shape (nth expr 2)) []])))))))
+                                                                
+                                                        

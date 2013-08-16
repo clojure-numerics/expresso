@@ -307,6 +307,8 @@
       (throw (Exception. (str "no excecution function found for " expr))))))
 
 (extend-protocol PExprEvaluate
+  nil
+  (evaluate [expr sm] nil)
   java.lang.Object
   (evaluate [expr sm]
     (if-let [op (expr-op expr)]
@@ -321,6 +323,8 @@
           val)))))
 
 (extend-protocol PVars
+  nil
+  (vars [expr] #{})
   java.lang.Object
   (vars [expr]
     (if-let [op (expr-op expr)]
@@ -469,22 +473,39 @@
              (throw (Exception. (str "invalid type " type " for "
                                      (:type (meta this)) " of " this)))))))
 
+
+(defn all-execable [x]
+  (if-let [op (expr-op x)]
+    (and (or (exec-func x) (:eval-func (meta op)))
+         (every? all-execable (expr-args x)))
+    true))
+
+(defn no-symbol [x]
+  (and (= #{} (vars x))
+       (all-execable x)))
+
+(defn eval-if-determined [expr]
+  (if (no-symbol expr)
+    (evaluate expr {})
+    expr))
+
 (extend-protocol PShape
   nil
   (shape [this] [])
-  (set-shape [this shape] "not-supported")
+  (set-shape [this shape]
+    (if (= [] shape) this (throw (Exception. (str "invalid shape " shape "for nil")))))
   MatrixSymbol
-  (shape [this] (.-shape this))
+  (shape [this] (eval-if-determined (.-shape this)))
   (set-shape [this shape] (MatrixSymbol. (.-symb this)
                                          shape (.-properties this)))
   java.lang.Number
   (shape [this] [])
   (set-shape [this shape]
-    (if (= [] shape) this "invalid!"))
+    (if (= [] shape) this (throw (Exception. (str "invalid shape " shape "for a number")))))
   java.lang.Object
   (shape [this]
-    (get  (meta this) :shape
-          (mat/shape this)))
+    (eval-if-determined (get  (meta this) :shape
+                              (mat/shape this))))
   (set-shape [this shape]
     (with-meta this (assoc (meta this) :shape shape))))
       

@@ -112,16 +112,14 @@
 #_(defn create-elemwise-operation [symb args]
     (create-normal-expression symb args))
 
-(defn call-execable [x]
-  (if-let [op (protocols/expr-op x)]
-    (and (or (protocols/exec-func x) (:eval-func (meta op)))
-         (every? call-execable (protocols/expr-args x)))
-    true))
+(defn longest-shape [& args]
+  (first (sort-by (comp - count) args)))
 
-(defn cno-symbol [x]
-  (and (= #{} (protocols/vars x))
-       (call-execable x)))
-
+(defn create-elemwise-operation [symb args]
+  (let [se (create-normal-expression `longest-shape (map protocols/shape args))
+        se (if (protocols/no-symbol se) (protocols/evaluate se {}) se)]
+    (-> (create-normal-expression symb args)
+        (protocols/set-shape se))))
 
       
 (defmulti create-special-expression first)

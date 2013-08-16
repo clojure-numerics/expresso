@@ -21,11 +21,6 @@
     (project [x]
              (== (evaluate x nil) res))))
 
-(defn no-symbol [x]
-  (let [res (if (and (sequential? x) (symbol? (first x)))
-              (and (exec-func x) (every? no-symbol (rest x)))
-              (not (symbol? x)))]
-    res))
     
 (defn no-symbolso [x]
   (project [x]
