@@ -25,12 +25,22 @@
     (project [x]
              (== (evaluate x nil) res))))
 
-(defn no-symbol [x]
+#_(defn no-symbol [x]
   (let [res (if (and (sequential? x) (symbol? (first x)))
               (and (exec-func x) (every? no-symbol (rest x)))
               (not (symbol? x)))]
     res))
-    
+
+(defn all-execable [x]
+  (if-let [op (expr-op x)]
+    (and (or (exec-func x) (:eval-func (meta op)))
+         (every? all-execable (expr-args x)))
+    true))
+
+(defn no-symbol [x]
+  (and (= #{} (vars x))
+       (all-execable x)))
+
 (defn no-symbolso [x]
   (project [x]
            (== true (no-symbol x))))

@@ -124,11 +124,8 @@
          (appendo a b s)))
 
 
-(defn suffixo [a b]
-  (fresh [c]
-         (appendo c a b)))
 
-(defne longest-shapo [v l]
+#_(defne longest-shapo [v l]
   ([[?a . ?r] _] (!= ?r '())
      (fresh [ls]
             (longest-shapo ?r ls)
@@ -139,3 +136,16 @@
                      ((suffixo ?a ls) (== l ls)))))))
   ([[?a] _] (== l ?a)))
 
+
+(defn suffixo [a b]
+  (fresh [c]
+         (appendo c a b)))
+
+(defne all-suffixes [v l]
+  ([[?a . ?r] _] (suffixo ?a l) (all-suffixes ?r l))
+  ([[] _]))
+
+(defn longest-shapo [v l]
+  (fresh []
+         (membero l v)
+         (all-suffixes v l)))

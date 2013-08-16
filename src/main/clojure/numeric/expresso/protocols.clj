@@ -325,7 +325,7 @@
   (vars [expr]
     (if-let [op (expr-op expr)]
       (apply set/union (map vars (expr-args expr)))
-      (if (symbol? (value expr))
+      (if (or (symbol? (value expr)) (lvar? (value expr)))
         #{(value expr)}
         #{}))))
 

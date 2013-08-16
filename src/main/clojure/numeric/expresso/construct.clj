@@ -110,7 +110,19 @@
 
 
 #_(defn create-elemwise-operation [symb args]
-  (create-normal-expression symb args))
+    (create-normal-expression symb args))
+
+(defn call-execable [x]
+  (if-let [op (protocols/expr-op x)]
+    (and (or (protocols/exec-func x) (:eval-func (meta op)))
+         (every? call-execable (protocols/expr-args x)))
+    true))
+
+(defn cno-symbol [x]
+  (and (= #{} (protocols/vars x))
+       (call-execable x)))
+
+
       
 (defmulti create-special-expression first)
 (defmethod create-special-expression :default [_]  nil)
@@ -238,7 +250,7 @@
                     (= type types/matrix) (or (:shape (meta arg))
                                               [(lvar 'lshape) (lvar 'rshape)])
                     :else (lvar 'shape))]
-    (with-meta arg (assoc (meta arg) :type type :shape shape))))
+    (with-meta arg (merge {:type type :shape shape} (meta arg)))))
 
 (defn create-normal-expression [symb args]
   (list* (with-meta symb (add-information symb)) args))

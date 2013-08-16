@@ -30,7 +30,8 @@
 (defn no-symbolso [x]
   (project [x]
            (== true (no-symbol x))))
- 
+
+
 (defn zip [& colls]
   (apply (partial map (fn [& a] a)) colls))
 
