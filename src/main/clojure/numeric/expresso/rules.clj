@@ -250,7 +250,7 @@
     (let [nexpr (apply-rules rules expr)]
       (if (= expr nexpr)
         nexpr
-        (transform-expression* rules nexpr)))))
+        (transform-expression* nexpr)))))
 
 (defn apply-simp
   [rules expr]
@@ -278,6 +278,8 @@
         (recur (rest rules) expr))
       expr)))
 
+(def ^:dynamic *rules*)
+
 (defn transform-with-rules
   "transforms the expr according to the rules in the rules vector until no rule
    can be applied any more. Uses clojure.walk/prewalk to walk the expression tree
@@ -292,21 +294,22 @@
 
 (def transform-expression*
   (memo/memo
-   (fn [rules expr]
+   (fn [expr]
      (if-let [op (expr-op expr)]
-       (let [transformed (map (partial transform-expression* rules)
+       (let [transformed (map transform-expression*
                               (expr-args expr))
              ]
-         (apply-to-end rules (list* (first expr) transformed)))
-       (apply-to-end rules expr)))))
+         (apply-to-end *rules* (list* (first expr) transformed)))
+       (apply-to-end *rules* expr)))))
 
 (defn transform-expression
   "transforms the expression according to the rules in the rules vector in a
    bottom up manner until no rule can be applied to any subexpression anymore"
   [rules expr]
-  (let [res (transform-expression* rules expr)]
-    (memo/memo-clear! transform-expression*)
-    res))
+  (binding [*rules* rules]
+    (let [res (transform-expression* expr)]
+      (memo/memo-clear! transform-expression*)
+      res)))
 
 ;;See if it is possible to reinstantiate rules so that they can be applied all
 ;;in the core.logic context

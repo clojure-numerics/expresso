@@ -601,3 +601,6 @@
   LetExpression
   (emit-code [this]
     `(let ~(.-bindings this) ~@(map emit-code (.-code this)))))
+
+
+;;TODO protocol evaluable

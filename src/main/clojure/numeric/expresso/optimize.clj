@@ -99,6 +99,8 @@
   (transform-expression [(rule (ex (** ?x 0.5)) :=> (ex (sqrt ?x)))
                          (rule (ex (** ?x 1/2)) :=> (ex (sqrt ?x)))] expr))
 
+
+
 (defn eval-func [expr]
   (fn [sm]
     (evaluate expr sm)))

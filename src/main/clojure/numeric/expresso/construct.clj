@@ -87,14 +87,31 @@
           expr (create-normal-expression symb args)]
       (protocols/set-shape expr s))))
 
+(defn first-last-pos-mshape [args]
+  (let [args (vec args)
+        n (count args)
+        f (loop [i 0] (if (< i n) (if (< (count (nth args i)) 2)
+                                    (recur (inc i)) i) nil))
+        l (loop [i (dec n)] (if (<= 0 i) (if (< (count (nth args i)) 2)
+                                           (recur (dec i)) i) nil))]
+    (and f l [f l])))
+
+(defn inner-product-shape [& symb]
+  (if-let [[f l] (first-last-pos-mshape symb)]
+    (if (= f l) (if (or (= 0 f) (= (dec (count symb)) f))
+                  (nth symb f) [])
+        (vec (concat (butlast (nth symb f)) (rest (nth symb l)))))
+    (let [vs (remove empty? symb)]
+      (if (even? (count vs)) [] (last vs)))))
+
 (defn create-inner-product [[symb args]]
-  (let [sl (protocols/shape (first args))
-        sr (protocols/shape (last args))
-        expr (create-normal-expression symb args)
-        lv (lvar 'shape)]
-    (-> expr (protocols/set-shape lv)
-        (protocols/add-constraint [utils/inner-product-shape
-                                   sl sr lv]))))
+  (let [shapes (map protocols/shape args)
+        expr (create-normal-expression symb args)]
+    (-> expr (protocols/set-shape 
+              (protocols/eval-if-determined
+               (create-normal-expression
+                `inner-product-shape shapes))))))
+
 
 (defn create-elemwise-operation [symb args]
   (if (empty? args)
