@@ -18,7 +18,7 @@
             [clojure.core.matrix.operators :as mop]
             [numeric.expresso.matcher :as m]
             [numeric.expresso.construct :as c]))
-
+(set! *warn-on-reflection* true)
 
 (defn calc-reso [x]
   (fn [res]

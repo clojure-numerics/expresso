@@ -20,7 +20,6 @@
             [numeric.expresso.construct :as c]))
 
 (declare remove-common-subexpressions)
-
 (defn map-elems [func expr]
   (if-let [op (expr-op expr)]
     (cev op (map (partial map-elems func) (expr-args expr)))

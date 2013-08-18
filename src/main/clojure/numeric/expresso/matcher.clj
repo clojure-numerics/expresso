@@ -11,7 +11,7 @@
 (declare expression-matcho)
 (declare isao)
 (declare add-replacemento)
-
+(set! *warn-on-reflection* true)
 
 (extend-protocol PMatch
   numeric.expresso.protocols.Expression
@@ -118,7 +118,7 @@
 (defn seq-matcher?
   "A sequential matcher is a logic variable with a name starting with ?&"
   [elem]
-  (and (lvar? elem) (.startsWith (:name elem) "?&")))
+  (and (lvar? elem) (.startsWith ^String (:name elem) "?&")))
 
 (defn- counto
   "unifies q to the count of pat or 1 if it is not a collection"
@@ -145,7 +145,7 @@
 (defn +-seq-matcher?
   "a lvar starting with ?&+ is a +-seq-matcher. It matches one or more
    variables"
-  [psm] (.startsWith (:name psm) "?&+"))
+  [psm] (.startsWith ^String (:name psm) "?&+"))
 
 (defn- check-boundso
   "makes sequential matching fail if a ?&+ shall be unified with zero

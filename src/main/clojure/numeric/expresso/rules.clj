@@ -11,6 +11,7 @@
             [clojure.core.memoize :as memo]
             [numeric.expresso.utils :as utils]
             [numeric.expresso.construct :as c]))
+
 (defn- replace-?-with-lvar
   "replaces a symbol with a not gensymed lvar if it starts with a ?"
   [node]

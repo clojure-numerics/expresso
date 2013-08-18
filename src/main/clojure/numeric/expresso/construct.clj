@@ -14,6 +14,7 @@
             [numeric.expresso.utils :as utils])
   (:import [numeric.expresso.protocols PolynomialExpression]))
 (declare ce cev)
+(set! *warn-on-reflection* true)
 (defn add-constraints [x constraints]
   (reduce (fn [l r] (protocols/add-constraint l r)) x constraints))
 
@@ -48,8 +49,8 @@
         (if (and (is-number? (nth args akt))
                  (< (inc akt) (count args))
                  (is-number? (nth args (inc akt))))
-          (recur (find-next-matrix akt args) (conj ind akt))
-          (recur (find-next-numbers akt args) (conj ind akt)))
+          (recur (long (find-next-matrix akt args)) (conj ind akt))
+          (recur (long (find-next-numbers akt args)) (conj ind akt)))
         ind))))
 
 (defn sections [args indizes]
@@ -480,13 +481,15 @@
 
 (defn normalize-poly [p]
   (if (number? p) p
-      (let [coeffs (.-coeffs p)
+      (let [coeffs (.-coeffs ^PolynomialExpression p)
             pdeg (loop [i (degree p)]
                    (if (or (>= 0 i) (not (p== (nth coeffs i) 0)))
                      i (recur (dec i))))]
         (cond (<= pdeg 0) (normalize-poly (coef p 0))
               (< pdeg (degree p))
-              (protocols/make-poly (.-v p) (subvec (.-coeffs p) 0 pdeg))
+              (protocols/make-poly (.-v ^PolynomialExpression p)
+                                   (subvec (.-coeffs ^PolynomialExpression p)
+                                           0 pdeg))
               :else p))))
 
 (defn poly*same [p q]
@@ -603,8 +606,8 @@
 
 (defn poly-to-sexp [poly]
   (if (number? poly) poly
-      (let [v (.-v poly)
-            coeffs (.-coeffs poly)]
+      (let [v (.-v ^PolynomialExpression poly)
+            coeffs (.-coeffs ^PolynomialExpression poly)]
         (list* '+ (map #(list '* (poly-to-sexp %1) (list '** v %2))
                       coeffs (range))))))
 

@@ -172,19 +172,15 @@
   PProps
   (properties [this] (when-let [m (meta op)] (:properties m))))
 
+(declare polysexp)
 
-(defn polysexp [poly]
-  (if (number? poly) poly
-      (let [v (.-v poly)
-            coeffs (.-coeffs poly)]
-        (list* '+ (map #(list '* %1 (list '** v %2))
-                      coeffs (range))))))
 
 (deftype PolynomialExpression [v coeffs]
   Object
   (equals [this other]
     (and (instance? PolynomialExpression other)
-         (= v (.-v other)) (= coeffs (.-coeffs other))))
+         (= v (.-v ^PolynomialExpression other))
+         (= coeffs (.-coeffs ^PolynomialExpression other))))
   (toString [this]
     (str v coeffs))
   clojure.lang.Seqable
@@ -215,6 +211,12 @@
   (PolynomialExpression. v coeff))
 
 
+(defn polysexp [^PolynomialExpression poly]
+  (if (number? poly) poly
+      (let [v (.-v poly)
+            coeffs (.-coeffs poly)]
+        (list* '+ (map #(list '* %1 (list '** v %2))
+                      coeffs (range))))))
 
 (deftype MatrixSymbol [symb shape properties]
   java.lang.Object
@@ -378,7 +380,7 @@
                   (vec (second %))
                   [%]) args)))
 
-(defn walk-expresso-expression* [v f]
+(defn walk-expresso-expression* [^Expression v f]
   (Expression. (walk-term (f (.-op v)) f)
                  (expand-seq-matchers (mapv #(walk-term (f %) f) (.-args v)))))
 
