@@ -54,6 +54,9 @@
 (defprotocol PRearrange
   (rearrange-step [lhs pos rhs]))
 
+(defprotocol PDifferentiate
+  (differentiate-expr [this var]))
+
 (defprotocol PConstraints
   (constraints [this])
   (add-constraint [this constraint]))
@@ -78,6 +81,9 @@
 (defmethod emit-func :default [_] (:emit-func (meta (first _))))
 
 (defmulti rearrange-step-function first)
+
+(defmulti diff-function (comp first first))
+
 
 (defn all*
   "function version of all macro in logic.clj
@@ -585,10 +591,25 @@
 
 
 (extend-protocol PRearrange
+  Expression
+  (rearrange-step [lhs pos rhs]
+    (let [op (expr-op lhs)]
+      (rearrange-step-function [op (expr-args lhs) pos rhs])))
   clojure.lang.ISeq
   (rearrange-step [lhs pos rhs]
     (if-let [op (expr-op lhs)]
       (rearrange-step-function [op (vec (rest lhs)) pos rhs]))))
+
+(extend-protocol PDifferentiate
+  Number
+  (differentiate-expr [this v] 0)
+  clojure.lang.Symbol
+  (differentiate-expr [this v]
+    (if (= v this) 1 0))
+  clojure.lang.ISeq
+  (differentiate-expr [this v]
+    (if-let [op (expr-op this)]
+      (diff-function [this v]))))
 
 (extend-protocol PEmitCode
   java.lang.Object

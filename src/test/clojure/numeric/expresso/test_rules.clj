@@ -6,7 +6,8 @@
         [clojure.core.logic :exclude [is] :as l]
         clojure.test)
   (:require [clojure.core.logic.fd :as fd])
-  (:use [numeric.expresso.construct])
+  (:use [numeric.expresso.construct]
+        [numeric.expresso.protocols])
   (:require [clojure.core.logic.unifier :as u]))
 
 

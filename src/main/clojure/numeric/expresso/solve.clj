@@ -558,3 +558,8 @@
     (submap (into #{} symbv)
             (reduce (fn [l r]
                       (merge l (solve-system* r eqs l))) {} symbv))))
+
+
+(defmethod diff-function '+ [[expr v]]
+  (let [args (expr-args expr)]
+    (cev '+ (map #(differentiate-expr % v) args))))

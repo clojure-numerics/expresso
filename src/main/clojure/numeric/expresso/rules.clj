@@ -268,15 +268,26 @@
                             nexpr expr))
       expr)))
 
+(defn exp-isa? [ex-op rule-op]
+  (or (isa? ex-op rule-op) (isa? (symbol (str "e/" ex-op)) rule-op)))
+
 (defn apply-rules
   "returns the result of the first succesful application of a rule in rules "
   [rules expr]
+  (let [rules (into [] rules)]
   (loop  [rules rules expr expr]
     (if (seq rules)
-      (if-let [erg (apply-rule (first rules) expr)]
-        erg
-        (recur (rest rules) expr))
-      expr)))
+      (let [rule-op (expr-op (first (first rules)))
+            ex-op (expr-op expr)
+            ]
+        (if-let [erg (if (or (and (nil? rule-op)
+                                  (not (lvar? (first (first rules)))))
+                             (and ex-op rule-op (not (exp-isa? ex-op rule-op))))
+                       nil
+                       (apply-rule (first rules) expr))]
+            erg
+            (recur (rest rules) expr)))
+      expr))))
 
 (def ^:dynamic *rules*)
 
@@ -306,8 +317,8 @@
   (memo/memo
    (fn [expr]
      (if-let [op (expr-op expr)]
-       (let [transformed (map transform-expression*
-                              (expr-args expr))
+       (let [transformed (doall (map  transform-expression*
+                                      (expr-args expr)))
              ]
          (apply-to-end *rules* (list* (first expr) transformed)))
        (apply-to-end *rules* expr)))))
