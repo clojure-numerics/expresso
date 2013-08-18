@@ -332,5 +332,9 @@
       (memo/memo-clear! transform-expression*)
       res)))
 
+(defn transform-one-level
+  [rules expr]
+  (transform-with-rules rules expr (fn [f expr] (f expr)) apply-rules))
+
 ;;See if it is possible to reinstantiate rules so that they can be applied all
 ;;in the core.logic context

@@ -41,7 +41,7 @@
   (is (= (ex (* 2 x)) (differentiate '[x] (ex (** x 2)))))
   (is (= 2 (differentiate '[x x] (ex (** x 2)))))
   (is (= (ex (* 3 (** x 2))) (differentiate '[x] (ex (** x 3)))))
-  (is (= (ex (+ (* 3 (** x 3)) (* 9 (** x 2) x)))
+  (is (= (ex (* 12 (** x 3)))
          (differentiate '[x] (ex (* (** x 3) (* 3 x)))))))
 
 (deftest test-compile-expr

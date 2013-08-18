@@ -86,7 +86,7 @@
 
 
 
-(construct-with [+ - * / numeric.expresso.core/** diff ln sin cos]
+(construct-with [+ - * / ** diff ln sin cos]
 
 (def universal-rules
   [(rule (+) :=> 0)
@@ -96,7 +96,7 @@
    (rule (+ 0 ?&*) :=> (+ ?&*))
    (rule (* 0 ?&*) :=> 0)
    (rule (* 1 ?&*) :=> (* ?&*))
-   (rule (numeric.expresso.core/** ?x 1) :=> ?x)
+   (rule (** ?x 1) :=> ?x)
    (rule (* (* ?&*) ?&*r) :=> (* ?&* ?&*r))
    (rule (+ (+ ?&*) ?&*r) :=> (+ ?&* ?&*r))
    (rule (- 0 ?x) :=> (- ?x))
@@ -111,7 +111,7 @@
   
 (def normal-form-rules
   (concat universal-rules
-   [(rule (* ?x ?x ?&*) :=> (* (numeric.expresso.core/** ?x 2) ?&*))
+   [(rule (* ?x ?x ?&*) :=> (* (** ?x 2) ?&*))
    (rule (* ?x (/ ?x) ?&*) :=> (* ?&*))
    (rule (+ (* ?x ?n1) (* ?x ?n2) ?&*) :==>
          (+ (* ?x (clojure.core/+ ?n1 ?n2)) ?&*) :if
@@ -126,14 +126,15 @@
          (* (+ (seq-matcher (for [a (matcher-args ?&+)] (* a ?x)))) ?&*))]))
 
 (def simplify-rules
-  [(rule (* ?x ?x ?&*) :=> (* (numeric.expresso.core/** ?x 2) ?&*))
+  [(rule (* ?x ?x ?&*) :=> (* (** ?x 2) ?&*))
    (rule (* ?x (/ ?x) ?&*) :=> (* ?&*))
    (rule (+ ?x (- ?x) ?&*) :=> (+ ?&*))
    (rule (+ ?x ?x ?&*) :=> (+ (* 2 ?x) ?&*))
    (rule (+ (* ?x ?&*) (- ?x) ?&*2) :=> (+ (* ?x (- ?&* 1)) ?&*2))
    (rule (+ (* ?x ?&*) (* ?x ?&*2) ?&*3) :=> (+ (* ?x (+ ?&* ?&*2)) ?&*3))
    (rule (+ (* ?x ?&*) ?x ?&*2) :=> (+ (* ?x (+ ?&* 1)) ?&*2))
-   (rule (- (- ?x)) :=> ?x)])
+   (rule (- (- ?x)) :=> ?x)
+   (rule (* ?x (** ?x ?n) ?&*) :=> (* (** ?x (+ ?n 1)) ?&*))])
 
 (def to-inverses-rules
   [(rule (- ?x ?&+) :=> (trans (+ ?x (map-sm #(- %) ?&+))))
@@ -148,9 +149,9 @@
            (* ?&* (+ (seq-matcher (for [a args1 b args2] (* a b)))))))
    (rule (* (+ ?&+) ?x ?&*) :==>
          (* (+ (seq-matcher (for [a (matcher-args ?&+)] (* a ?x)))) ?&*))
-   (rule (numeric.expresso.core/** (* ?&+) ?n) :==> (* (map-sm #(numeric.expresso.core/** % ?n) ?&+)))
-   (rule (numeric.expresso.core/** (numeric.expresso.core/** ?x ?n1) ?n2) :==> (numeric.expresso.core/** ?x (clojure.core/* ?n1 ?n2)))
-   (rule (numeric.expresso.core/** (+ ?&+) ?n) :==> (multinomial ?n (matcher-args ?&+)))
+   (rule (** (* ?&+) ?n) :==> (* (map-sm #(** % ?n) ?&+)))
+   (rule (** (** ?x ?n1) ?n2) :==> (** ?x (clojure.core/* ?n1 ?n2)))
+   (rule (** (+ ?&+) ?n) :==> (multinomial ?n (matcher-args ?&+)))
    (rule (* ?x (/ ?x) ?&*) :=> (* ?&*))]
 )
 (def diff-rules
@@ -161,13 +162,13 @@
              (for [i (range (count-sm ?&+)) :let [[bv ith af] (split-in-pos-sm ?&+ i)]]
                (* (diff ith ?x) bv af)))))
    (rule (diff (- ?a) ?x) :=> (- (diff ?a ?x)))
-   (rule (diff (/ ?a) ?x) :=> (- (* (diff ?a ?x) (/ (numeric.expresso.core/** ?a 2)))))
-   (rule (diff (numeric.expresso.core/** ?a ?n) ?x) :==> (* ?n (numeric.expresso.core/** ?a (clojure.core/- ?n 1)) (diff ?a ?x))
+   (rule (diff (/ ?a) ?x) :=> (- (* (diff ?a ?x) (/ (** ?a 2)))))
+   (rule (diff (** ?a ?n) ?x) :==> (* ?n (** ?a (clojure.core/- ?n 1)) (diff ?a ?x))
          :if (guard (number? ?n)))
    (rule (diff (ln ?a) ?x) :=> (* (diff ?a ?x) (/ ?a)))
    (rule (diff (sin ?a) ?x) :=> (* (cos ?a) (diff ?a ?x)))
    (rule (diff (cos ?a) ?x) :=> (* (- (sin ?a)) (diff ?a ?x)))
-   (rule (diff (numeric.expresso.core/** 'e ?n) ?x) :=> (* (numeric.expresso.core/** 'e ?n) (diff ?n ?x)))
+   (rule (diff (** 'e ?n) ?x) :=> (* (** 'e ?n) (diff ?n ?x)))
    (rule (diff ?u ?x) :=> 0)])
 )
 (defn- binom [n k]
@@ -200,7 +201,7 @@
              (cond
               (= (first index) 0) ret
               (= (first index) 1) (conj ret (nth args i))
-               :else (conj ret (ex' (numeric.expresso.core/** ~(nth args i) ~(first index)))))))))
+               :else (conj ret (ex' (** ~(nth args i) ~(first index)))))))))
 
 (defn multinomial [n args]
   (let [args (vec args)
@@ -214,7 +215,7 @@
                               (ex' (* coeff factors)))))))))
     
 
-(construct-with [+ - * / numeric.expresso.core/**]
+(construct-with [+ - * / **]
   (def transform-to-polynomial-normal-form-rules
     (concat universal-rules
             [(rule (+ [?x ?y] [?z ?y] ?&*)
@@ -245,7 +246,7 @@
   (list* (first expr)
          (walk/postwalk #(if (and (sequential? %) (= (count %) 2) (expression? (first %)) (number? (second %)))
                            (if (= 0 (second %)) (first %)
-                               (ex' (* ~(first %) (numeric.expresso.core/** v ~(second %)))))
+                               (ex' (* ~(first %) (** v ~(second %)))))
                            %) (sort #(> (second %1) (second %2)) (rest expr)))))
 
 
@@ -385,6 +386,9 @@
           (str "Couldn't reduce the number of occurrences of " v " to one."))
   eq)
 
+(def solve-rules
+  [])
+
 (defn solve [v equation]
   (if (and (= (nth equation 1) v)
            (not= v (nth equation 2))
@@ -400,10 +404,12 @@
 
 (defn differentiate [v expr]
   (->> expr
-       (transform-expression (concat eval-rules universal-rules to-inverses-rules multiply-out-rules))
-       (#(ce 'diff % v))
-       (transform-expression diff-rules)
-       (transform-expression (concat eval-rules universal-rules))))
+     ;;  (transform-expression (concat eval-rules universal-rules to-inverses-rules multiply-out-rules))
+      ;; (#(ce 'diff % v))
+      ;;; (transform-expression diff-rules)
+       (#(differentiate-expr % v))
+       (transform-expression (concat eval-rules universal-rules
+                                     simplify-rules))))
 
 
 (defn infer-shape-zero-mat [sf x sl]
@@ -559,7 +565,81 @@
             (reduce (fn [l r]
                       (merge l (solve-system* r eqs l))) {} symbv))))
 
+(construct-with [+ * -]
+                (def diff-simp-rules
+                  (concat eval-rules
+                          [(rule (+) :=> 0)
+                           (rule (*) :=> 1)
+                           (rule (+ ?x) :=> ?x)
+                           (rule (* ?x) :=> ?x)
+                           (rule (+ 0 ?&*) :=> (+ ?&*))
+                           (rule (* 0 ?&*) :=> 0)
+                           (rule (* 1 ?&*) :=> (* ?&*))
+                           (rule (- 0) :=> 0)
+                           (rule (+ ?x (- ?x) ?&*) :=> (+ ?&*))
+                           (rule (* (* ?&*) ?&*r) :=> (* ?&* ?&*r))
+                           (rule (+ (+ ?&*) ?&*r) :=> (+ ?&* ?&*r))]
+                          simplify-rules)))
+   #_(rule (- 0 ?x) :=> (- ?x))
+   #_(rule (- ?x 0) :=> ?x)
+   
 
 (defmethod diff-function '+ [[expr v]]
   (let [args (expr-args expr)]
     (cev '+ (map #(differentiate-expr % v) args))))
+
+(defmethod diff-function '* [[expr v]]
+  (let [args (vec (expr-args expr))
+        c (count args)]
+    (cev '+ (loop [i 0 exprs []]
+                   (if (< i c)
+                     (recur (inc i)
+                            (conj exprs
+                                  (cev '* (concat (subvec args 0 i)
+                                                       [(differentiate-expr
+                                                         (nth args i) v)]
+                                                       (subvec args (inc i))))
+                                       ))
+                      exprs)))
+         ))
+
+
+(defmethod diff-function '- [[expr v]]
+  (let [args (vec (expr-args expr))]
+    (if (= 1 (count args))
+      (ce '- (differentiate-expr (first args) v))
+      (differentiate-expr
+       (cev '+ (concat [(first args)] (map #(ce '- %) (rest args)))) v))))
+
+(defmethod diff-function '/ [[expr v]]
+  (let [args (vec (expr-args expr))]
+    (if (= 1 (count args))
+      (differentiate-expr (ce '** (first args) -1) v)
+      (differentiate-expr
+       (cev '* (concat [(first args)] (map #(ce '/ %) (rest args)))) v))))
+
+(defmethod diff-function '** [[expr v]]
+  (let [args (vec (expr-args expr))]
+    (if (= (count args) 2)
+      (if (= (nth args 0) v)
+        (ce '* (nth args 1) (ce '** (nth args 0)
+                                     (apply-rules eval-rules
+                                                  (ce '- (nth args 1) 1)))
+                 (differentiate-expr (nth args 0) v))
+        (differentiate-expr
+         (ce 'exp (ce '* (nth args 1) (ce 'log (nth args 0)))) v))
+      (differentiate-expr
+       (cev '** (concat [(ce '** (nth args 0) (nth args 1))] (subvec args 2)))
+       v))))
+
+(defmethod diff-function 'log [[expr v]]
+  (ce '* (ce '/ (second expr)) (differentiate-expr (second expr) v)))
+
+(defmethod diff-function 'sin [[expr v]]
+  (ce '* (ce 'cos (second expr)) (differentiate-expr (second expr) v)))
+
+(defmethod diff-function 'cos [[expr v]]
+  (ce '* (ce '- (ce 'sin (second expr))) (differentiate-expr (second expr) v)))
+
+(defmethod diff-function 'exp [[expr v]]
+  (ce '* (cev 'exp (rest expr)) (differentiate-expr (second expr) v)))
