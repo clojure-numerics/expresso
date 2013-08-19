@@ -560,9 +560,9 @@
   (into #{} (remove sol-map var-set)))
 
 (defn solve-system*
-  ([v eqs] (solve-system* v eqs {}))
+  ([v eqs] (solve-system* v eqs [{}]))
   ([v eqs existing-sols]
-     (if (v existing-sols)
+     (if (v (first existing-sols))
        existing-sols
        ;;v is variable and eqs set of equations
        (let [eqv (map (fn [a] [a (vars a)]) eqs)
@@ -571,24 +571,22 @@
                                              a nil)) eqv)]
          (if equation-containing-v
            (let [depends-on (not-in-existing-sols
-                             existing-sols
+                             (first existing-sols)
                              (set/difference (second equation-containing-v)
                                              #{v}))
                  other-eqs (set/difference eqs #{(first equation-containing-v)})
-                 _ (prn "other eqs " other-eqs)
-                 other-sols (reduce (fn [l r]
-                                      (prn " l r " l r)
-                                      (let [s (solve-system* r other-eqs l)]
-                                        (merge l s)))
-                                    existing-sols depends-on)
-                 _ (prn "other sols " other-sols)
-                 equation-without-deps (substitute-expr
-                                        (first equation-containing-v)
-                                        (merge existing-sols
-                                               other-sols))
-                 sol (solve v equation-without-deps)
-                 _ (prn "sol " sol)]
-             (assoc other-sols v (first sol)))
+                 other-sols (reduce (fn [sols r]
+                                      (let [ss (solve-system* r other-eqs sols)]
+                                        (for [l sols s ss]
+                                          (merge l s))))
+                                    existing-sols depends-on)]
+             (mapcat (fn [os]
+               (let [equation-without-deps (substitute-expr
+                                            (first equation-containing-v)
+                                            os)
+                     sol (solve v equation-without-deps)]
+                 (for [s sol]
+                   (assoc os v s)))) other-sols))
            existing-sols)))))
 
 (defn submap [keys m]
@@ -597,9 +595,10 @@
 
 (defn solve-system [symbv eqs]
   (let [eqs (into #{} eqs)]
-    (submap (into #{} symbv)
-            (reduce (fn [l r]
-                      (merge l (solve-system* r eqs l))) {} symbv))))
+    (map #(submap (into #{} symbv) %1)
+         (reduce (fn [ls r]
+                   (for[l ls s (solve-system* r eqs ls)]
+                     (merge l s))) [{}] symbv))))
 
 (construct-with [+ * -]
                 (def diff-simp-rules
