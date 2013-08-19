@@ -516,7 +516,8 @@
   (let [lhs (nth eq 1) rhs (nth eq 2)
         polylhs (to-poly-normal-form (ex (- ~lhs ~rhs)))
         const (poly-const polylhs)
-        nlhs (to-poly-normal-form (ex (- ~polylhs ~const)))]
+        nlhs (to-poly-normal-form (ex (- ~polylhs ~const)))
+        _ (prn "nlhs " nlhs)]
     (ex (= ~nlhs ~(* -1 const)))))
 
 (defn search-coef [lhs v]
@@ -539,16 +540,28 @@
         (some expr-op sols) (mapv simp-expr sols)
         :else sols))
 
+(defn add-needed-vars [vars eqs]
+  (let [eqv (map (fn [a] [a (vars a)]) eqs)
+        needed-vars (filter (fn [a]
+                                      (if (some vars (second a))
+                                        (set/difference (second a) vars))) eqv)]
+    (set/union vars (apply set/union needed-vars))))
+        
 (defn solve-linear-system
   "solves a system of equations for the variables in the variable vector"
   [eqv vars]
-  (->> eqv
-       (map lhs-to-poly)
-       (map #(collect-params % vars))
-       build-matrix
-       symb/ff-gauss-echelon
-       symb/report-solution
-       simp-sols))
+  (let [vars vars ];;(add-needed-vars (into #{} vars) eqv)]
+    (->> eqv
+         (map lhs-to-poly)
+         dbg
+         (map #(collect-params % vars))
+         (dbg "collected ")
+         build-matrix
+         dbg
+         symb/ff-gauss-echelon
+         symb/report-solution
+         dbg
+         simp-sols)))
 
 (def rres (to-expression '(clojure.core// (clojure.core/+ (clojure.core/- _2) (clojure.core/- (clojure.core// (clojure.core/+ -1 (clojure.core/* -4 _2)) -1)) -3) 1)))
 

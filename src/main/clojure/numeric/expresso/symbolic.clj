@@ -173,9 +173,40 @@
     (/ a b)
     (c/ce `/ a b)))
 
+(defn pivot-index [row]
+  (loop [i 0]
+    (if (< i (count row))
+      (if (== (nth row i) 0) (recur (inc i)) i))))
+
+(defn sort-rows [m]
+  (let [rows (mat/rows m)]
+    (mat/matrix
+     (sort-by pivot-index rows))))
+
+(defn remove-zeros [m]
+  (->> (mat/rows m) (remove #(every? #{0} %)) mat/matrix))
+
+(defn add-zeros [m]
+  (let [rows (vec (mat/rows m))
+        cc (mat/column-count m)
+        rc (mat/row-count m)]
+    (loop [i 0 rows rows]
+      (if (< i rc)
+        (if-let [pi (pivot-index (nth rows i))]
+          (if (> pi i)
+            (recur (inc i) (vec (concat
+                                 (subvec rows 0 i)
+                                 (repeat (- pi i) (mat/new-vector cc))
+                                 (subvec rows i))))
+            (recur (inc i) rows))
+          (recur (inc i) rows))
+        (mat/matrix rows)))))
+
+
 (defn solution-vec [m]
   (let [cc (mat/column-count m)
-        row (- cc 2) col (- cc 2)]
+        row (- cc 2) col (- cc 2)
+        m (-> m remove-zeros sort-rows add-zeros)]
     (if (< 0 (- cc (mat/row-count m) 1))
       (solution-vec (mat/matrix (concat (mat/rows m)
                                         (repeat (- cc (mat/row-count m) 1)
