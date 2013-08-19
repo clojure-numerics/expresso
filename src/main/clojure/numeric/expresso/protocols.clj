@@ -331,6 +331,8 @@
           val)))))
 
 (extend-protocol PVars
+  PolynomialExpression
+  (vars [expr] (set/union #{(.-v expr)} (vars (first (.-coeffs expr)))))
   nil
   (vars [expr] #{})
   java.lang.Object

@@ -61,6 +61,7 @@
 (defmethod props 'rank [_] {:exec-func mat/rank})
 (defmethod props 'sum [_] {:eval-func evaluate-sum
                            :emit-func emit-sum})
+(defmethod props 'sqrt [_] {:exec-func mat/sqrt})
 (defmulti matcher first)
 (defmethod matcher :default [_]
   (if (contains? (:properties (second _)) :commutative)

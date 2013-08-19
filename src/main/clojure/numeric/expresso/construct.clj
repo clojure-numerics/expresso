@@ -13,7 +13,7 @@
             [clojure.core.matrix :as mat]
             [numeric.expresso.utils :as utils])
   (:import [numeric.expresso.protocols PolynomialExpression]))
-(declare ce cev)
+(declare ce cev to-poly-normal-form)
 (set! *warn-on-reflection* true)
 (defn add-constraints [x constraints]
   (reduce (fn [l r] (protocols/add-constraint l r)) x constraints))
@@ -436,6 +436,15 @@
       (list* symb nargs))
     (list* symb args)))
 
+(declare coef main-var poly poly+poly)
+
+(defn poly-in-x [x poly]
+  (to-poly-normal-form (protocols/to-sexp poly)
+                       (fn [v y] (if (= v x)
+                                   false
+                                   (if (= y x)
+                                     true
+                                     (< 0 (compare v y)))))))
 
 (defn main-var [^PolynomialExpression poly]
   (.-v poly))
@@ -462,8 +471,8 @@
   (protocols/make-poly (.-v poly) (assoc (.-coeffs poly) i val)))
 
 
-(defn var= [x y] (= x y))
-(defn var> [x y] (< 0 (compare x y)))
+(defn ^:dynamic var= [x y] (= x y))
+(defn ^:dynamic var> [x y] (< 0 (compare x y)))
 
 (declare poly+poly normalize-poly poly*poly)
 
@@ -595,7 +604,8 @@
 (defmethod construct-poly '** [_] poly**nc)
 
 
-(defn to-poly-normal-form [expr]
+(defn to-poly-normal-form
+  ([expr]
   (if (and (seq? expr) (symbol? (first expr)))
     (let [args (map to-poly-normal-form  (rest expr))]
       (if (some #{:error} args)
@@ -603,6 +613,9 @@
         (apply (construct-poly (first expr)) args)))
     (if (symbol? expr) (poly expr 0 1)
         (if (number? expr) expr :error))))
+  ([expr v>]
+     (binding [var> v>]
+               (to-poly-normal-form expr))))
 
 (defn poly-to-sexp [poly]
   (if (number? poly) poly

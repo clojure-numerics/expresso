@@ -403,12 +403,35 @@
 (defn polynomial? [x]
   (not= :error (to-poly-normal-form x)))
 
-(defn solve-factors [factors])
+(declare solve)
 
-(defn solve-polynomial [poly])
+(defn solve-factors [v factors]
+  (mapcat #(solve v %) factors))
 
-(defn solve-x [v equation])
+(defn solve-constant [poly]
+  )
 
+(defn solve-linear [poly]
+  [(simp-expr (ce '/ (ce '- (coef poly 0)) (coef poly 1)))])
+
+(defn solve-quadratic [poly]
+  (let [a (coef poly 2)
+        b (coef poly 1)
+        c (coef poly 0)]
+    (mapv simp-expr
+          [(ex' (/ (+ (- b) (sqrt (- (** b 2) (* 4 a c)))) (* 2 a)))
+           (ex' (/ (- (- b) (sqrt (- (** b 2) (* 4 a c)))) (* 2 a)))])))
+
+(defn solve-polynomial [x poly]
+  (let [poly (poly-in-x (to-poly-normal-form poly))
+        vs (vars poly)
+        deg (degree poly)]
+    (if (vs x)
+      (case deg
+        1 (solve-linear poly)
+        2 (solve-quadratic poly)
+        3 nil))))
+  
 (def solve-rules
   [(rule (ex (* ?&*)) :==> (solve-factors ?&*))
    (rule ?x :==> (solve-polynomial ?x)
