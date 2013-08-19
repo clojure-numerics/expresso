@@ -24,6 +24,8 @@
 
 
 (deftest test-solve-linear-system
+  (is (= '[{y 3 x 3}] (solve-linear-system '[x] [(ex (= x y))
+                                       (ex (= y 3))])))
   (is (= ['{z _1 y _0 x 3}]
          (solve-linear-system '[x y z] [(ex (= x 3))
                                (ex (= y y))

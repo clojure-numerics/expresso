@@ -543,12 +543,13 @@
         (some expr-op sols) (mapv simp-expr sols)
         :else sols))
 
-(defn add-needed-vars [vars eqs]
+(defn add-needed-vars [vs eqs]
   (let [eqv (map (fn [a] [a (vars a)]) eqs)
-        needed-vars (filter (fn [a]
-                              (if (some vars (second a))
-                                (set/difference (second a) vars))) eqv)]
-    (into #{} (concat vars (apply set/union needed-vars)))))
+        needed-vars (filter identity
+                            (map (fn [a]
+                                   (if (some vs (second a))
+                                     (set/difference (second a) vs))) eqv))]
+    (into #{} (concat vs (apply set/union needed-vars)))))
 
 (defn to-map [vars v]
   (if (empty? v)
