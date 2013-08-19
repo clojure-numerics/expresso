@@ -134,6 +134,7 @@
    (rule (+ (* ?x ?&*) (* ?x ?&*2) ?&*3) :=> (+ (* ?x (+ ?&* ?&*2)) ?&*3))
    (rule (+ (* ?x ?&*) ?x ?&*2) :=> (+ (* ?x (+ ?&* 1)) ?&*2))
    (rule (- (- ?x)) :=> ?x)
+   (rule (* -1 (- ?x) ?&*) :=> (* ?x ?&*))
    (rule (* ?x (** ?x ?n) ?&*) :=> (* (** ?x (+ ?n 1)) ?&*))])
 
 (def to-inverses-rules
@@ -516,8 +517,7 @@
   (let [lhs (nth eq 1) rhs (nth eq 2)
         polylhs (to-poly-normal-form (ex (- ~lhs ~rhs)))
         const (poly-const polylhs)
-        nlhs (to-poly-normal-form (ex (- ~polylhs ~const)))
-        _ (prn "nlhs " nlhs)]
+        nlhs (to-poly-normal-form (ex (- ~polylhs ~const)))]
     (ex (= ~nlhs ~(* -1 const)))))
 
 (defn search-coef [lhs v]
@@ -526,11 +526,14 @@
         (not (var> (main-var lhs) v)) (search-coef (coef lhs 0) v)
         :else 0))
 
+(defn to-vec [pos-coeffs]
+  (->> pos-coeffs (sort-by first) (mapv second)))
+
 (defn collect-params [eq vars]
   (let [lhs (nth eq 1)
         rhs (nth eq 2)]
-    (ce `= (for [v vars]
-             (search-coef lhs v)) rhs)))
+    (ce `= (to-vec (for [[p v] vars]
+                     [p (search-coef lhs v)])) rhs)))
 
 (defn build-matrix [eqs]
   (mapv #(conj (vec (nth %1 1)) (nth %1 2)) eqs))
@@ -543,25 +546,31 @@
 (defn add-needed-vars [vars eqs]
   (let [eqv (map (fn [a] [a (vars a)]) eqs)
         needed-vars (filter (fn [a]
-                                      (if (some vars (second a))
-                                        (set/difference (second a) vars))) eqv)]
-    (set/union vars (apply set/union needed-vars))))
-        
+                              (if (some vars (second a))
+                                (set/difference (second a) vars))) eqv)]
+    (into #{} (concat vars (apply set/union needed-vars)))))
+
+(defn to-map [vars v]
+  (if (empty? v)
+    {}
+    (into {} (map (fn [[pos var]] [var (nth v pos)]) vars))))
+(declare submap)
+
 (defn solve-linear-system
   "solves a system of equations for the variables in the variable vector"
-  [eqv vars]
-  (let [vars vars ];;(add-needed-vars (into #{} vars) eqv)]
+  [vars eqv]
+  (let [vs (add-needed-vars (into #{} vars) eqv)
+        vars (into {} (map (fn [a b] [a b]) (range) vs))]
     (->> eqv
          (map lhs-to-poly)
-         dbg
          (map #(collect-params % vars))
-         (dbg "collected ")
          build-matrix
-         dbg
          symb/ff-gauss-echelon
          symb/report-solution
-         dbg
-         simp-sols)))
+         simp-sols
+         (to-map vars)
+         (submap vs)
+         vector)))
 
 (def rres (to-expression '(clojure.core// (clojure.core/+ (clojure.core/- _2) (clojure.core/- (clojure.core// (clojure.core/+ -1 (clojure.core/* -4 _2)) -1)) -3) 1)))
 
@@ -604,7 +613,9 @@
 
 (defn submap [keys m]
   (into {} (reduce (fn [kvs symb]
-                      (conj kvs [symb (get m symb)])) [] keys)))
+                     (if (contains? m symb)
+                       (conj kvs [symb (get m symb)])
+                       kvs)) [] keys)))
 
 (defn solve-system [symbv eqs]
   (let [eqs (into #{} eqs)]

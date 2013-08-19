@@ -24,19 +24,17 @@
 
 
 (deftest test-solve-linear-system
-  (is (= '[3 _1 _0]
-         (solve-linear-system [(ex (= x 3))
+  (is (= ['{z _1 y _0 x 3}]
+         (solve-linear-system '[x y z] [(ex (= x 3))
                                (ex (= y y))
-                               (ex (= z z))]
-                              '[x y z])))
-  (is (= '()
-         (solve-linear-system [(ex (= x (+ x 1)))] '[x])))
-  (is (= '_0
-         (second (solve-linear-system [(ex (= x y))] '[x y]))))
-  (is (= [180/7 40/7]
-         (solve-linear-system [(ex (= (+ (* 3 x) (* 4 y)) 100))
-						   (ex (= (- x y) 20))]
-						  '[x y]))))
+                               (ex (= z z))])))
+  (is (= ['{}]
+         (solve-linear-system '[x] [(ex (= x (+ x 1)))])))
+  (is (= '[{y _0 x _0}]
+         (solve-linear-system '[x y] [(ex (= x y))])))
+  (is (= ['{x 180/7 y 40/7}]
+         (solve-linear-system '[x y] [(ex (= (+ (* 3 x) (* 4 y)) 100))
+						   (ex (= (- x y) 20))]))))
 
 (deftest test-solve-system
   (is (= [{'y [3 6 9]}]

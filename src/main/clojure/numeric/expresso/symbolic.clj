@@ -184,7 +184,7 @@
      (sort-by pivot-index rows))))
 
 (defn remove-zeros [m]
-  (->> (mat/rows m) (remove #(every? #{0} %)) mat/matrix))
+  (->> (mat/rows m) (remove #(every? (fn [x] (== x 0)) %)) mat/matrix))
 
 (defn add-zeros [m]
   (let [rows (vec (mat/rows m))
@@ -206,11 +206,12 @@
 (defn solution-vec [m]
   (let [cc (mat/column-count m)
         row (- cc 2) col (- cc 2)
-        m (-> m remove-zeros sort-rows add-zeros)]
-    (if (< 0 (- cc (mat/row-count m) 1))
-      (solution-vec (mat/matrix (concat (mat/rows m)
-                                        (repeat (- cc (mat/row-count m) 1)
-                                                (mat/new-array [cc])))))
+        m (-> m remove-zeros sort-rows add-zeros)
+        m (if (< 0 (- cc (mat/row-count m) 1))
+            (mat/matrix (concat (mat/rows m)
+                                (repeat (- cc (mat/row-count m) 1)
+                                        (mat/new-array [cc]))))
+            m)]   
       (loop [row row numbv 0 solv []]
         (if (< row 0)
           solv
@@ -223,9 +224,7 @@
                                             (recur (dec col) (inc i)
                                                    (s+ res (s* (mat/mget m row col)
                                                                (nth solv i)))))))
-                                  (mat/mget m row row))))))))))
-
-
+                                  (mat/mget m row row)))))))))
 (defn report-solution [echelon-matrix]
   (let [zero-inf? (check-zero-or-inf-sols echelon-matrix)]
     (cond
