@@ -12,6 +12,7 @@
             [numeric.expresso.utils :as utils]
             [numeric.expresso.construct :as c]))
 
+(declare exp-isa?)
 (defn- replace-?-with-lvar
   "replaces a symbol with a not gensymed lvar if it starts with a ?"
   [node]
@@ -202,21 +203,25 @@
   "applies the specified rule to the epxression returning a modified one if the
    rule was applicable of nil if the rule was not applicable"
   [rule exp]
-  (if-let [m (meta rule)]
-    (if (:syntactical m)
-      (apply-syntactic-rule rule exp)
-      (apply-semantic-rule rule exp))))
+  (let [ex-op (expr-op exp)
+        rule-op (expr-op (first rule))]
+    (if (not (or (and (nil? rule-op)
+                      (not (lvar? (first rule))))
+                 (and ex-op rule-op (not (exp-isa? ex-op rule-op)))))
+        (if (:syntactical (meta rule))
+          (apply-syntactic-rule rule exp)
+          (apply-semantic-rule rule exp)))))
 
 (defn apply-ruleo
   "core.logic relation of apply-rule - not relational, you can't generate all possible rules which transform an expression to the new-expression"
   [rule exp n-exp]
-  (project [rule]
-  (fresh [res]
-         (== res (apply-rule rule exp))
-         (conda ((nilo res) fail) ((== res n-exp))))))
+  (project [rule exp]
+           (if-let [res (apply-rule rule exp)]
+             (== res n-exp)
+             fail)))
 
 (declare apply-rules)
-(defn apply-ruleso [rules expr nexpr]
+#_(defn apply-ruleso [rules expr nexpr]
   (project [rules expr]
            (fresh [a]
                   (== a (apply-rules rules expr))
@@ -224,11 +229,11 @@
                    ((nilo a) fail)
                    ((== nexpr a))))))
 
-#_(defn apply-ruleso
+(defn apply-ruleso
   "non-relational core.logic equivalent of apply-rules"
-[expr nexpr]
+[rules expr nexpr]
   (matche [rules]
-          ([[?r . ?rs]] (conda
+          ([[?r . ?rs]] (conde
                          ((apply-ruleo ?r expr nexpr))
                          ((apply-ruleso ?rs expr nexpr))))))
 
@@ -281,11 +286,7 @@
       (let [rule-op (expr-op (first (first rules)))
             ex-op (expr-op expr)
             ]
-        (if-let [erg (if (or (and (nil? rule-op)
-                                  (not (lvar? (first (first rules)))))
-                             (and ex-op rule-op (not (exp-isa? ex-op rule-op))))
-                       nil
-                       (apply-rule (first rules) expr))]
+        (if-let [erg (apply-rule (first rules) expr)]
             erg
             (recur (rest rules) expr)))
       expr))))

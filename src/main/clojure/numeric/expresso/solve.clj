@@ -386,8 +386,19 @@
           (str "Couldn't reduce the number of occurrences of " v " to one."))
   eq)
 
+(defn polynomial? [x]
+  (not= :error (to-poly-normal-form x)))
+
+(defn solve-factors [factors])
+
+(defn solve-polynomial [poly])
+
+(defn solve-x [v equation])
+
 (def solve-rules
-  [])
+  [(rule (ex (* ?&*)) :==> (solve-factors ?&*))
+   (rule ?x :==> (solve-polynomial ?x)
+         :if (guard (polynomial? ?x)))])
 
 (defn solve [v equation]
   (if (and (= (nth equation 1) v)
