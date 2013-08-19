@@ -26,15 +26,15 @@
          (to-polynomial-normal-form 'x (ex (** (+ (* 3 x) 4 (* 3 (** x 2))) 5))))))
 
 (deftest test-rearrange
-  (is (= (ex (= x (- 4 1)))
+  (is (= [(ex (= x (- 4 1)))]
          (rearrange 'x (ex (= (+ 1 x) 4))))))
 
 
 (deftest test-solve
-  (is (= (ex (= x 2)) (solve 'x (ex (= (+ 1 x) 3)))))
+  (is (= [2] (solve 'x (ex (= (+ 1 x) 3)))))
   (is (= '() (solve 'x (ex (= x (+ x 1))))))
   (is (= '_0 (solve 'x (ex (= x x)))))
-  (is (= (ex (= x -4))
+  (is (= [-4]
          (solve 'x (ex (= (* 3 x) (+ (* 4 x) 4)))))))
 
 (deftest test-differentiate

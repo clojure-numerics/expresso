@@ -336,7 +336,7 @@
          second)
     equation))
 
-(defn rearrange [v equation]
+#_(defn rearrange [v equation]
   (assert (only-one-occurrence v equation)
           "cant rearrange an equation with multiple occurrences of the variable")
   (if-let [pos (position-in-equation v equation)]
@@ -349,6 +349,19 @@
         (ce `= lhs rhs)))
     equation))
 
+(defn rearrange [v equation]
+  (assert (only-one-occurrence v equation)
+          "cant rearrange an equation with multiple occurrences of the variable")
+  (if-let [pos (position-in-equation v equation)]
+    (loop [sols [(vec (rest (if (= (first pos) 1)
+                              (swap-sides equation) equation)))]
+           pos (subvec pos 1)]
+      (if (seq pos)
+        (recur (mapcat (fn [[lhs rhs]]
+                         (rearrange-step lhs (first pos) rhs)) sols)
+               (rest pos))
+        (map (fn [[lhs rhs]] (ce `= lhs rhs)) sols)))
+    [equation]))
 (defn simp-expr [expr]
   (->> expr 
        (transform-expression
@@ -374,12 +387,12 @@
 
 (defn report-res [v eq]
   (if (= (nth eq 1) v)
-    eq
+    (nth eq 2)
     (if (and (no-symbol (nth eq 1)) (no-symbol (nth eq 2)))
       (if (= (eval (nth eq 1)) (eval (nth eq 2)))
         '_0
         '())
-      eq)))
+      (nth eq 2))))
 
 (defn check-if-can-be-solved [v eq]
   (assert (only-one-occurrence v eq)
@@ -404,14 +417,22 @@
   (if (and (= (nth equation 1) v)
            (not= v (nth equation 2))
            (= 0 (->> (nth equation 2) flatten (filter #{v}) count)))
-    (report-res v (simplify-rhs equation))
+    (->> [(report-res v (simplify-rhs equation))]
+         (remove #{'()})
+         (#(if (some #{'_0} %)
+             '_0
+             %)))
     (->> equation
          lhs-rhs=0
          simplify-eq
          (check-if-can-be-solved v)
          (rearrange v)
-         simplify-rhs
-         (report-res v))))
+         (map simplify-rhs)
+         (mapv #(report-res v %))
+         (remove #{'()})
+         (#(if (some #{'_0} %)
+             '_0
+             %)))))
 
 (defn differentiate [v expr]
   (->> expr
@@ -554,16 +575,20 @@
                              (set/difference (second equation-containing-v)
                                              #{v}))
                  other-eqs (set/difference eqs #{(first equation-containing-v)})
+                 _ (prn "other eqs " other-eqs)
                  other-sols (reduce (fn [l r]
+                                      (prn " l r " l r)
                                       (let [s (solve-system* r other-eqs l)]
                                         (merge l s)))
                                     existing-sols depends-on)
+                 _ (prn "other sols " other-sols)
                  equation-without-deps (substitute-expr
                                         (first equation-containing-v)
                                         (merge existing-sols
                                                other-sols))
-                 sol (solve v equation-without-deps)]
-             (assoc other-sols v (nth sol 2)))
+                 sol (solve v equation-without-deps)
+                 _ (prn "sol " sol)]
+             (assoc other-sols v (first sol)))
            existing-sols)))))
 
 (defn submap [keys m]
@@ -654,3 +679,67 @@
 
 (defmethod diff-function 'exp [[expr v]]
   (ce '* (cev 'exp (rest expr)) (differentiate-expr (second expr) v)))
+
+
+
+(defn split-in-pos-args [args pos]
+  (let [args (vec args)]
+    [(subvec args 0 pos) (nth args pos) (subvec args (inc pos))]))
+
+
+(defmethod rearrange-step-function '+ [[op args pos rhs]]
+  (let [[left x right] (split-in-pos-args args pos)]
+    [[x (cev '- (concat [rhs] left right))]]))
+
+(defmethod rearrange-step-function '- [[op args pos rhs]]
+  (if (= (count args) 1)
+    [[(first args) (ce '- rhs)]]
+    (let [[left x right] (split-in-pos-args args pos)]
+      [[x (if (= pos 0)
+           (cev '+ (concat [rhs] right))
+           (cev '- (concat left right [rhs])))]])))
+
+(defmethod rearrange-step-function '* [[op args pos rhs]]
+  (let [[left x right] (split-in-pos-args args pos)]
+    [[x (cev '/ (concat [rhs] left right))]]))
+
+(defmethod rearrange-step-function '/ [[op args pos rhs]]
+  (if (= (count args) 1)
+    [[(first args) (ce '/ rhs)]]
+    (let [[left x right] (split-in-pos-args args pos)]
+      [[x (if (= pos 0)
+           (cev '* (concat [rhs] right))
+           (cev '/ (concat left right [rhs])))]])))
+
+
+(defn unary-rearrange-step [op invop args rhs]
+  [[(first args) (ce invop rhs)]])
+
+(defmethod rearrange-step-function 'sin [[op args pos rhs]]
+  (unary-rearrange-step 'sin 'arcsin args rhs))
+
+(defmethod rearrange-step-function 'arcsin [[op args pos rhs]]
+  (unary-rearrange-step 'arcsin 'sin args rhs))
+
+(defmethod rearrange-step-function 'cos [[op args pos rhs]]
+  (unary-rearrange-step 'cos 'arccos args rhs))
+
+(defmethod rearrange-step-function 'arccos [[op args pos rhs]]
+  (unary-rearrange-step 'arccos 'cos args rhs))
+
+(defmethod rearrange-step-function 'exp [[op args pos rhs]]
+  (unary-rearrange-step 'exp 'log args rhs))
+
+(defmethod rearrange-step-function 'log [[op args pos rhs]]
+  (unary-rearrange-step 'log 'exp args rhs))
+
+(defmethod rearrange-step-function '** [[op args pos rhs]]
+  (if (= pos 0)
+    (let [nrhs (ce '** rhs (ce '/ (second args)))]
+      (if (and (number? (second args)) (even? (second args)))
+          [[(first args) nrhs]
+           [(first args) (ce '- nrhs)]]
+          [[(first args) nrhs]]))
+    (rearrange-step (ce 'exp (ce '* (second args) (ce 'log (first args))))
+                    pos rhs)))
+        
