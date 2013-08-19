@@ -249,7 +249,8 @@
             (recur (rest rules) expr)))
       expr)))
 
-(declare apply-rules transform-with-rules transform-expression*)
+(declare apply-rules transform-with-rules transform-expression*
+         transform-expressiono)
 (defn apply-to-end
   [rules expr]
   (loop [rules rules expr expr]
@@ -257,6 +258,13 @@
       (if (= expr nexpr)
         nexpr
         (transform-expression* nexpr)))))
+
+(defn apply-to-endo [rules expr new-expr]
+  (fresh [nexpr]
+         (conda
+          ((apply-ruleso rules expr nexpr)
+           (transform-expressiono rules nexpr new-expr))
+          ((== new-expr expr)))))
 
 (defn apply-simp
   [rules expr]
@@ -313,7 +321,7 @@
      (let [tmp (walkfn
                 (fn [a] (let [res (applyfn rules a)] res)) expr)]
        tmp))
-  ([rules expr] (transform-with-rules rules expr walk/postwalk apply-rules)))
+  ([rules expr] (transform-with-rules rules expr walk/prewalk apply-rules)))
 
 (def transform-expression*
   (memo/memo
@@ -333,6 +341,20 @@
     (let [res (transform-expression* expr)]
       (memo/memo-clear! transform-expression*)
       res)))
+
+(defn transform-expressiono [rules expr nexpr]
+  (project [rules expr]
+           (fresh [res]
+                  (conda
+                   ((nilo (expr-op expr)) (apply-to-endo rules expr nexpr))
+                   ((fresh [transformed]
+                           (utils/mapo #(transform-expressiono rules %1 %2)
+                                       (expr-args expr)
+                                       transformed)
+                           (project [transformed]
+                                    (apply-to-endo
+                                     rules (list* (first expr)
+                                                  transformed) nexpr))))))))
 
 (defn transform-one-level
   [rules expr]
