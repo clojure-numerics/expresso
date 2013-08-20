@@ -206,6 +206,7 @@
   (let [ex-op (expr-op exp)
         rule-op (expr-op (first rule))]
     (if (not (or (and (nil? rule-op)
+                      (not (sequential? (first rule)))
                       (not (lvar? (first rule))))
                  (and ex-op rule-op (not (exp-isa? ex-op rule-op)))))
         (if (:syntactical (meta rule))
@@ -291,12 +292,9 @@
   (let [rules (into [] rules)]
   (loop  [rules rules expr expr]
     (if (seq rules)
-      (let [rule-op (expr-op (first (first rules)))
-            ex-op (expr-op expr)
-            ]
-        (if-let [erg (apply-rule (first rules) expr)]
-            erg
-            (recur (rest rules) expr)))
+      (if-let [erg (apply-rule (first rules) expr)]
+        erg
+        (recur (rest rules) expr))
       expr))))
 
 (def ^:dynamic *rules*)

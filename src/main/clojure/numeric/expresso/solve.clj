@@ -406,10 +406,15 @@
 (declare solve)
 
 (defn solve-factors [v factors]
-  (mapcat #(solve v %) factors))
+  (->> (mapcat #(solve v (ce `= % 0)) (matcher-args factors))
+       (map #(ce `= v %))))
 
 (defn solve-constant [poly]
-  )
+  (if (number? poly)
+    (if (clojure.core/== poly 0)
+      [0]
+      [])
+    ::undetermined))
 
 (defn solve-linear [poly]
   [(simp-expr (ce '/ (ce '- (coef poly 0)) (coef poly 1)))])
@@ -431,13 +436,25 @@
         1 (solve-linear poly)
         2 (solve-quadratic poly)
         3 nil))))
-  
-(def solve-rules
-  [(rule (ex (* ?&*)) :==> (solve-factors ?&*))
-   (rule ?x :==> (solve-polynomial ?x)
-         :if (guard (polynomial? ?x)))])
 
-(defn solve [v equation]
+(defn solve-by-simplification-rules [v expr]
+  (->> expr
+       simplify-eq
+       (check-if-can-be-solved v)
+       (rearrange v)
+       (map simplify-rhs)))
+       
+
+(def solve-rules
+  [(rule [?v (ex (= (* ?&*) 0))] :==> (solve-factors ?v ?&*))
+   (rule [?v ?x] :==> (solve-by-simplification-rules ?v ?x))])
+
+(defn apply-solve-rules [v expr]
+  (let [res (apply-rules solve-rules [v expr])]
+    (when (not= res [v expr])
+      res)))
+
+#_(defn solve [v equation]
   (if (and (= (nth equation 1) v)
            (not= v (nth equation 2))
            (= 0 (->> (nth equation 2) flatten (filter #{v}) count)))
@@ -457,6 +474,35 @@
          (#(if (some #{'_0} %)
              '_0
              %)))))
+
+
+(defn report-solution [v sols]
+  (if sols
+    (->> sols
+         (mapv #(report-res v %))
+         (remove #{'()})
+         (#(if (some #{'_0} %)
+             '_0
+             %)))
+    ::could-not-be-solved))
+       
+(defn solved? [v equation]
+  (and (= (nth equation 1) v)
+       (not= v (nth equation 2))
+       (= 0 (->> (nth equation 2) flatten (filter #{v}) count))))
+
+(defn transform-one-level-lhs [rules eq]
+  (ce `= (transform-one-level rules (nth eq 1)) (nth eq 2)))
+
+(defn solve [v equation]
+  (if (solved? v equation)
+    (report-solution v [(simplify-rhs equation)])
+    (->> equation
+         lhs-rhs=0
+         (transform-one-level-lhs universal-rules)
+         (apply-solve-rules v)
+         (report-solution v))))
+    
 
 (defn differentiate [v expr]
   (->> expr
