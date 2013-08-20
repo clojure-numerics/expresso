@@ -439,21 +439,25 @@
 (declare coef main-var poly poly+poly)
 
 (defn poly-in-x [x poly]
-  (to-poly-normal-form (protocols/to-sexp poly)
-                       (fn [v y] (if (= v x)
-                                   false
-                                   (if (= y x)
-                                     true
-                                     (< 0 (compare v y)))))))
+  (when poly
+    (to-poly-normal-form (protocols/to-sexp poly)
+                         (fn [v y] (if (= v x)
+                                     false
+                                     (if (= y x)
+                                       true
+                                       (< 0 (compare v y))))))))
 
 (defn main-var [^PolynomialExpression poly]
-  (.-v poly))
+  (if (number? poly) nil
+      (.-v poly)))
 
 (defn coef [^PolynomialExpression poly ^long i]
-  (nth (.-coeffs poly) i))
+  (if (number? poly) 0
+      (nth (.-coeffs poly) i)))
 
 (defn degree [^PolynomialExpression poly]
-  (- (count (.-coeffs poly)) 1))
+  (if (number? poly) 0
+      (- (count (.-coeffs poly)) 1)))
 
 (defn poly [x & coeffs]
   (protocols/make-poly x (into [] coeffs)))
@@ -544,6 +548,7 @@
    (cond
     (number? p) (k*poly p q)
     (number? q) (k*poly q p)
+    (some #{:error} [p q]) :error
     (var= (main-var p) (main-var q)) (poly*same p q)
     (var> (main-var q) (main-var p)) (k*poly q p)
     :else (k*poly p q))))
@@ -604,18 +609,26 @@
 (defmethod construct-poly '** [_] poly**nc)
 
 
-(defn to-poly-normal-form
+(defn to-poly-normal-form*
   ([expr]
-  (if (and (seq? expr) (symbol? (first expr)))
-    (let [args (map to-poly-normal-form  (rest expr))]
-      (if (some #{:error} args)
-        :error
-        (apply (construct-poly (first expr)) args)))
-    (if (symbol? expr) (poly expr 0 1)
-        (if (number? expr) expr :error))))
+     (let [res (if (and (seq? expr) (symbol? (first expr)))
+                 (let [args (map to-poly-normal-form*  (rest expr))]
+                   (if (some #{:error} args)
+                     :error
+                     (apply (construct-poly (first expr)) args)))
+                 (if (symbol? expr) (poly expr 0 1)
+                     (if (number? expr) expr :error)))]
+       res))
   ([expr v>]
      (binding [var> v>]
-               (to-poly-normal-form expr))))
+       (to-poly-normal-form* expr))))
+
+
+(defn to-poly-normal-form
+  ([expr] (when-let [res (to-poly-normal-form* expr)]
+            (when (not= res :error) res)))
+  ([expr v>] (when-let [res (to-poly-normal-form* expr v>)]
+               (when (not= res :error) res))))
 
 (defn poly-to-sexp [poly]
   (if (number? poly) poly

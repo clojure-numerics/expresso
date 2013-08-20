@@ -296,6 +296,14 @@
   (expr-args [obj] (vec (rest obj))))
 
 (extend-protocol PExprToSexp
+  PolynomialExpression
+  (to-sexp [poly]
+    (let [v (.-v poly) coeffs (.-coeffs poly)]
+      (list* '+ (to-sexp (nth coeffs 0))
+             (map #(list '* (to-sexp %1)
+                         (if (= 0 %2)
+                           v
+                           (list '** v (inc %2)))) (rest coeffs) (range)))))
   java.lang.Object
   (to-sexp [expr]
     (if-let [op (expr-op expr)]
@@ -337,8 +345,8 @@
   (vars [expr] #{})
   java.lang.Object
   (vars [expr]
-    (if-let [op (expr-op expr)]
-      (apply set/union (map vars (expr-args expr)))
+    (if-let [op (and (seq? expr) (first expr))]
+      (apply set/union (map vars (rest expr)))
       (if (or (symbol? (value expr)) (lvar? (value expr)))
         #{(value expr)}
         #{}))))
@@ -491,7 +499,7 @@
     true))
 
 (defn no-symbol [x]
-  (and (= #{} (vars x))
+  (and (empty? (vars x))
        (all-execable x)))
 
 (defn eval-if-determined [expr]
@@ -525,19 +533,12 @@
   (properties [this]
     (when-let [m (meta this)]
       (:properties m)))
-  (vars [expr]
-    (if-let [op (expr-op expr)]
-      (apply set/union (map vars (expr-args expr)))
-      (if (symbol? (value expr))
-        #{(value expr)}
-        #{})))
   java.lang.Number
   (properties [this]
     (cond
      (> this 0) #{:positive}
      (= this 0) #{:zero}
-     :else      #{:negative}))
-  (vars [expr] #{}))
+     :else      #{:negative})))
 
 (defn add-metadata [s m]
   (with-meta s (merge (meta s) m)))

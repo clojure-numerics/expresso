@@ -34,7 +34,8 @@
 
 (defn no-symbolso [x]
   (project [x]
-           (== true (no-symbol x))))
+           (fresh []
+                  (== true (no-symbol x)))))
  
 (defn zip [& colls]
   (apply (partial map (fn [& a] a)) colls))
@@ -97,6 +98,9 @@
    (rule (* 0 ?&*) :=> 0)
    (rule (* 1 ?&*) :=> (* ?&*))
    (rule (** ?x 1) :=> ?x)
+   (rule (** ?x 0) :=> 1
+         :if (guard (not= ?x 0)))
+   (rule (** (** ?x ?n1) ?n2) :=> (** ?x (* ?n1 ?n2)))
    (rule (* (* ?&*) ?&*r) :=> (* ?&* ?&*r))
    (rule (+ (+ ?&*) ?&*r) :=> (+ ?&* ?&*r))
    (rule (- 0 ?x) :=> (- ?x))
@@ -135,7 +139,8 @@
    (rule (+ (* ?x ?&*) ?x ?&*2) :=> (+ (* ?x (+ ?&* 1)) ?&*2))
    (rule (- (- ?x)) :=> ?x)
    (rule (* -1 (- ?x) ?&*) :=> (* ?x ?&*))
-   (rule (* ?x (** ?x ?n) ?&*) :=> (* (** ?x (+ ?n 1)) ?&*))])
+   (rule (* ?x (** ?x ?n) ?&*) :=> (* (** ?x (+ ?n 1)) ?&*))
+   #_(rule (** (** ?x ?n) ?n2) :=> (** ?x (* ?n ?n2)))])
 
 (def to-inverses-rules
   [(rule (- ?x ?&+) :=> (trans (+ ?x (map-sm #(- %) ?&+))))
@@ -150,10 +155,14 @@
            (* ?&* (+ (seq-matcher (for [a args1 b args2] (* a b)))))))
    (rule (* (+ ?&+) ?x ?&*) :==>
          (* (+ (seq-matcher (for [a (matcher-args ?&+)] (* a ?x)))) ?&*))
-   (rule (** (* ?&+) ?n) :==> (* (map-sm #(** % ?n) ?&+)))
-   (rule (** (** ?x ?n1) ?n2) :==> (** ?x (clojure.core/* ?n1 ?n2)))
-   (rule (** (+ ?&+) ?n) :==> (multinomial ?n (matcher-args ?&+)))
-   (rule (* ?x (/ ?x) ?&*) :=> (* ?&*))]
+   (rule (** (* ?&+) ?n) :==> (* (map-sm #(** % ?n) ?&+))
+         :if (guard (integer? ?n)))
+   (rule (** (** ?x ?n1) ?n2) :==> (** ?x (clojure.core/* ?n1 ?n2))
+         :if (guard (integer? ?n)))
+   (rule (** (+ ?&+) ?n) :==> (multinomial ?n (matcher-args ?&+))
+         :if (guard (integer? ?n)))
+   (rule (* ?x (/ ?x) ?&*) :=> (* ?&*)
+         :if (guard (not= 0 ?x)))]
 )
 (def diff-rules
   [(rule (diff ?x ?x) :=> 1)
@@ -337,18 +346,6 @@
          second)
     equation))
 
-#_(defn rearrange [v equation]
-  (assert (only-one-occurrence v equation)
-          "cant rearrange an equation with multiple occurrences of the variable")
-  (if-let [pos (position-in-equation v equation)]
-    (loop [[lhs rhs]
-           [(nth (if (= (first pos) 1) (swap-sides equation) equation) 1)
-            (nth (if (= (first pos) 1) (swap-sides equation) equation) 2)]
-           pos (subvec pos 1)]
-      (if (seq pos)
-        (recur (rearrange-step lhs (first pos) rhs) (rest pos))
-        (ce `= lhs rhs)))
-    equation))
 
 (defn rearrange [v equation]
   (assert (only-one-occurrence v equation)
@@ -387,13 +384,15 @@
   (ce `= (to-polynomial-normal-form v (nth equation 1)) (nth equation 2)))
 
 (defn report-res [v eq]
-  (if (= (nth eq 1) v)
-    (nth eq 2)
-    (if (and (no-symbol (nth eq 1)) (no-symbol (nth eq 2)))
-      (if (= (eval (nth eq 1)) (eval (nth eq 2)))
-        '_0
-        '())
-      (nth eq 2))))
+  (if (= '() eq)
+    eq
+    (if (= (nth eq 1) v)
+      (nth eq 2)
+      (if (and (no-symbol (nth eq 1)) (no-symbol (nth eq 2)))
+        (if (= (eval (nth eq 1)) (eval (nth eq 2)))
+          '_0
+          '())
+        (nth eq 2)))))
 
 (defn check-if-can-be-solved [v eq]
   (assert (only-one-occurrence v eq)
@@ -409,34 +408,34 @@
   (->> (mapcat #(solve v (ce `= % 0)) (matcher-args factors))
        (map #(ce `= v %))))
 
-(defn solve-constant [poly]
+(defn solve-constant [v poly]
   (if (number? poly)
     (if (clojure.core/== poly 0)
-      [0]
+      [(ex' (= v 0))]
       [])
     ::undetermined))
 
-(defn solve-linear [poly]
-  [(simp-expr (ce '/ (ce '- (coef poly 0)) (coef poly 1)))])
+(defn solve-linear [v poly]
+  [(ce `= v (simp-expr (ce '/ (ce '- (coef poly 0)) (coef poly 1))))])
 
-(defn solve-quadratic [poly]
-  (let [a (coef poly 2)
-        b (coef poly 1)
-        c (coef poly 0)]
+(defn solve-quadratic [v poly]
+  (let [a (simp-expr (to-expression (to-sexp (coef poly 2))))
+        b (simp-expr (to-expression (to-sexp (coef poly 1))))
+        c (simp-expr (to-expression (to-sexp (coef poly 0))))]
     (mapv simp-expr
-          [(ex' (/ (+ (- b) (sqrt (- (** b 2) (* 4 a c)))) (* 2 a)))
-           (ex' (/ (- (- b) (sqrt (- (** b 2) (* 4 a c)))) (* 2 a)))])))
+          [(ce `= v (ex' (/ (+ (- b) (sqrt(- (** b 2) (* 4 a c)))) (* 2 a))))
+           (ce `= v (ex' (/ (- (- b) (sqrt(- (** b 2) (* 4 a c)))) (* 2 a))))])))
 
-(defn solve-polynomial [x poly]
-  (let [poly (poly-in-x (to-poly-normal-form poly))
-        vs (vars poly)
-        deg (degree poly)]
-    (if (vs x)
-      (case deg
-        1 (solve-linear poly)
-        2 (solve-quadratic poly)
-        3 nil))))
-
+(defn solve-polynomial [x polyeq]
+  (when-let [poly (poly-in-x x (to-poly-normal-form (nth polyeq 1)))]
+    (let [vs (vars poly)
+          deg (degree poly)]
+      (if (vs x)
+        (cond
+         (= deg 1) nil
+         (= deg 2) (solve-quadratic x poly)
+         :else nil)))))
+  
 (defn solve-by-simplification-rules [v expr]
   (->> expr
        simplify-eq
@@ -447,6 +446,7 @@
 
 (def solve-rules
   [(rule [?v (ex (= (* ?&*) 0))] :==> (solve-factors ?v ?&*))
+   (rule [?v ?x] :==> (solve-polynomial ?v ?x))
    (rule [?v ?x] :==> (solve-by-simplification-rules ?v ?x))])
 
 (defn apply-solve-rules [v expr]
@@ -671,14 +671,15 @@
                                       (let [ss (solve-system* r other-eqs sols)]
                                         (for [l sols s ss]
                                           (merge l s))))
-                                    existing-sols depends-on)]
-             (mapcat (fn [os]
+                                    existing-sols depends-on)
+             res (mapcat (fn [os]
                (let [equation-without-deps (substitute-expr
                                             (first equation-containing-v)
                                             os)
                      sol (solve v equation-without-deps)]
                  (for [s sol]
-                   (assoc os v s)))) other-sols))
+                   (assoc os v s)))) other-sols)]
+             res)
            existing-sols)))))
 
 (defn submap [keys m]
@@ -687,12 +688,32 @@
                        (conj kvs [symb (get m symb)])
                        kvs)) [] keys)))
 
+(defn remove-dependencies [symbv m]
+  (let [symbs (into #{} symbv)]
+    (into {}
+          (reduce (fn [o [k v]]
+                    (if (contains? symbs k)
+                      (let [depends-on
+                            (set/difference (set/intersection (vars v) symbs)
+                                            #{k})]
+                        (conj o
+                              [k (reduce
+                                  (fn [l r]
+                                    (-> (substitute-expr l {r (get m r)})
+                                        simp-expr))
+                                   v depends-on)]))
+                      (conj o [k v]))) [] m))))
+
 (defn solve-system [symbv eqs]
   (let [eqs (into #{} eqs)]
-    (map #(submap (into #{} symbv) %1)
-         (reduce (fn [ls r]
-                   (for[l ls s (solve-system* r eqs ls)]
-                     (merge l s))) [{}] symbv))))
+    (->> (map #(submap (into #{} symbv) %1)
+              (reduce (fn [ls r]
+                        (if (r (first ls))
+                          ls
+                          (for[l ls s (solve-system* r eqs ls)]
+                            (merge l s)))) [{}] symbv))
+         (map #(remove-dependencies symbv %))
+         doall)))
 
 (construct-with [+ * -]
                 (def diff-simp-rules
