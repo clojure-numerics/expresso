@@ -64,19 +64,6 @@
 (defprotocol PEmitCode
   (emit-code [this]))
 
-(defmulti type-of-function first)
-(defmethod type-of-function :default [_] :Unknown)
-(defmethod type-of-function '+ [_] types/number)
-(defmethod type-of-function '- [_] types/number)
-(defmethod type-of-function '* [_] types/number)
-(defmethod type-of-function '/ [_] types/number)
-(defmethod type-of-function 'div [_] types/matrix)
-(defmethod type-of-function 'sub [_] types/number)
-(defmethod type-of-function '** [_] types/number)
-(defmethod type-of-function 'emul [_] types/matrix)
-(defmethod type-of-function 'add [_] types/matrix)
-(defmethod type-of-function 'negate [_] types/matrix)
-
 (defmulti emit-func first)
 (defmethod emit-func :default [_] (:emit-func (meta (first _))))
 
@@ -165,10 +152,8 @@
   (expr-op [this] op)
   (expr-args [this] args)
   PType
-  (type-of [this] (type-of-function op args))
-  (set-type [this type] (if (= type (type-of-function op args))
-                          this
-                          (throw (Exception. (str "invalid type " type "for " op)))))
+  (type-of [this] ::undetermined)
+  (set-type [this type] this)
   PProps
   (properties [this] (when-let [m (meta op)] (:properties m))))
 
@@ -394,21 +379,6 @@
   (Expression. (walk-term (f (.-op v)) f)
                  (expand-seq-matchers (mapv #(walk-term (f %) f) (.-args v)))))
 
-#_(defn walk-needed-terms [v f]
-  (if-let [op (expr-op v)]
-    (Expression. (if (lvar? op) (walk-term (f op) f) op)
-                 (mapv (fn [v] (walk-needed-terms v f)) (expr-args v)))
-    (if (or (sequential? v) (lvar? v))
-      (walk-term (f v) f)
-      v)))
-
-#_(defn walk-expresso-expression* [v f]
-  (walk-needed-terms v f))
-
-#_(defn substitute-expr [expr smap]
-  (if-let [op (expr-op expr)]
-    (Expression. op (mapv #(substitute-expr % smap) (expr-args expr)))
-    (get smap (value expr) expr)))
 
 (defn symbols-in-expr [expr]
   (if-let [op (expr-op expr)]
@@ -592,7 +562,7 @@
 (extend-protocol PType
   clojure.lang.ISeq
   (type-of [this]
-    (type-of-function [(first this) (rest this)])))
+    ::undetermined))
 
 
 (extend-protocol PRearrange

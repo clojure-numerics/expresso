@@ -287,9 +287,6 @@
   ([s] (matrix-symb s #{}))
   ([s additional-props] (matrix-symb s #{} [(lvar 'srows) (lvar 'scols)]))
   ([s additional-props shape]     
-     #_(add-metadata s {:type :matrix
-                      :properties (set additional-props)
-                        :shape shape })
      (numeric.expresso.protocols.MatrixSymbol. s shape additional-props)))
 
 (defn zero-matrix
@@ -306,9 +303,6 @@
                   [s s]
                   (set/union additional-props #{:midentity}))))
      
-
-(def °)
-
 (defn expo 
   "Creates an expression with the given operator and parameters"
   ([op params exp]
@@ -638,15 +632,4 @@
                       coeffs (range))))))
 
 
-(defmethod protocols/type-of-function :default [_] :Unknown)
-(defmethod protocols/type-of-function '+ [_] types/number)
-(defmethod protocols/type-of-function '- [_] types/number)
-(defmethod protocols/type-of-function '* [_] types/number)
-(defmethod protocols/type-of-function '/ [_] types/number)
-(defmethod protocols/type-of-function 'div [_] types/matrix)
-(defmethod protocols/type-of-function 'sub [_] types/number)
-(defmethod protocols/type-of-function '** [_] types/number)
-(defmethod protocols/type-of-function 'emul [_] types/matrix)
-(defmethod protocols/type-of-function 'add [_] types/matrix)
-(defmethod protocols/type-of-function 'negate [_] types/matrix)
 

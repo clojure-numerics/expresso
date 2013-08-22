@@ -78,7 +78,7 @@
 
 
 (deftest test-seq-matcher-in-associative-rule
-  (is (= '(numeric.expresso.construct/° 9 8 7 6 5 4 4 3 2 1)
+  (is (= (° 9 8 7 6 5 4 4 3 2 1)
          (transform-with-rules [sort-rule] (° 1 4 2 6 5 4 3 7 8 9))))))
 
 (def inline-trans

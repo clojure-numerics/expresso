@@ -222,13 +222,6 @@
              fail)))
 
 (declare apply-rules)
-#_(defn apply-ruleso [rules expr nexpr]
-  (project [rules expr]
-           (fresh [a]
-                  (== a (apply-rules rules expr))
-                  (conda
-                   ((nilo a) fail)
-                   ((== nexpr a))))))
 
 (defn apply-ruleso
   "non-relational core.logic equivalent of apply-rules"
@@ -361,3 +354,5 @@
 
 ;;See if it is possible to reinstantiate rules so that they can be applied all
 ;;in the core.logic context
+
+;;Idea: could add metadata to expression after transformed that it is already simplified

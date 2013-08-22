@@ -39,7 +39,7 @@
 
 
 (def matr-rules
-  [(rule (ex (mop/* ?&*1 (zero-matt?) ?&*2)) :=> (ex (mop/* ?&*1 ?&*2))
+  [(rule (ex (mop/* ?&*1 (zero-mat?) ?&*2)) :=> (ex (mop/* ?&*1 ?&*2))
     ;  :if (guard (= 0 ?x))
          )])
 

@@ -25,13 +25,6 @@
     (project [x]
              (== (evaluate x nil) res))))
 
-#_(defn no-symbol [x]
-  (let [res (if (and (sequential? x) (symbol? (first x)))
-              (and (exec-func x) (every? no-symbol (rest x)))
-              (not (symbol? x)))]
-    res))
-
-
 (defn no-symbolso [x]
   (project [x]
            (fresh []
@@ -248,16 +241,13 @@
       (apply (partial ce (first expr)) (map (partial transform-to-coefficients-form v) (rest expr))))
     (if (= v expr) [1 1] [expr 0])))
 
-#_(defn expression? [exp]
-  (or (and (sequential? exp) (symbol? (first exp))) (number? exp)))
-
 
 (defn translate-back [v expr]
-  (list* (first expr)
+  (conj
          (walk/postwalk #(if (and (sequential? %) (= (count %) 2) (expression? (first %)) (number? (second %)))
                            (if (= 0 (second %)) (first %)
                                (ex' (* ~(first %) (** v ~(second %)))))
-                           %) (sort #(> (second %1) (second %2)) (rest expr)))))
+                           %) (sort #(> (second %1) (second %2)) (rest expr))) (first expr)))
 
 
 
@@ -373,10 +363,6 @@
 
 (def simplify-rhs (fn [eq] (ce `= (nth eq 1) (simp-expr (nth eq 2)))))
 
-
-(defn substitute [repl-map expr]
-  (walk/postwalk-replace repl-map expr))
-
 (defn lhs-rhs=0 [equation]
   (ce `= (ce `- (nth equation 1) (nth equation 2)) 0))
 
@@ -389,7 +375,7 @@
     (if (= (nth eq 1) v)
       (nth eq 2)
       (if (and (no-symbol (nth eq 1)) (no-symbol (nth eq 2)))
-        (if (= (eval (nth eq 1)) (eval (nth eq 2)))
+        (if (= (evaluate (nth eq 1) {}) (evaluate (nth eq 2) {}))
           '_0
           '())
         (nth eq 2)))))
@@ -454,28 +440,6 @@
     (when (not= res [v expr])
       res)))
 
-#_(defn solve [v equation]
-  (if (and (= (nth equation 1) v)
-           (not= v (nth equation 2))
-           (= 0 (->> (nth equation 2) flatten (filter #{v}) count)))
-    (->> [(report-res v (simplify-rhs equation))]
-         (remove #{'()})
-         (#(if (some #{'_0} %)
-             '_0
-             %)))
-    (->> equation
-         lhs-rhs=0
-         simplify-eq
-         (check-if-can-be-solved v)
-         (rearrange v)
-         (map simplify-rhs)
-         (mapv #(report-res v %))
-         (remove #{'()})
-         (#(if (some #{'_0} %)
-             '_0
-             %)))))
-
-
 (defn report-solution [v sols]
   (if sols
     (->> sols
@@ -506,9 +470,6 @@
 
 (defn differentiate [v expr]
   (->> expr
-     ;;  (transform-expression (concat eval-rules universal-rules to-inverses-rules multiply-out-rules))
-      ;; (#(ce 'diff % v))
-      ;;; (transform-expression diff-rules)
        (#(differentiate-expr % v))
        (transform-expression (concat eval-rules universal-rules
                                      simplify-rules))))
@@ -547,11 +508,6 @@
 (defn simplify-matrix-expression [expr]
   (transform-expression matrix-simplification-rules expr))
 
-#_(-run {:occurs-check true :n false :reify-vars 
-         (fn [v s] s) }
-        [q] (== q [1 (lvar 'b) 2]))
-
-
 (defn update-expr [aa l r]
   (-run {:occurs-check true :n false :reify-vars 
          (fn [v s] s) }
@@ -570,12 +526,6 @@
 (def res (ex' (matrix/inner-product x y)))
 
 (def res (add-constraint res [== (second (shape x)) 3]))
-
-
-#_(solve-system [(ex (= (+ x y z) 3))
-				      (ex (= (- (* x 5) y z) 2))
-				      (ex (= (+ (* 4 z) (* -2 y) y) 1))]
-                '[x y z])
 
 (defn poly-const [poly]
   (cond (number? poly) poly
@@ -641,12 +591,6 @@
          (to-map vars)
          (submap vs)
          vector)))
-
-(def rres (to-expression '(clojure.core// (clojure.core/+ (clojure.core/- _2) (clojure.core/- (clojure.core// (clojure.core/+ -1 (clojure.core/* -4 _2)) -1)) -3) 1)))
-
-(def F1 (ex (= Y (+ X Z))))
-(def F2 (ex (= X [1 2 3])))
-(def F3 (ex (= Z (* 2.0 X))))
 
 (defn not-in-existing-sols [sol-map var-set]
   (into #{} (remove sol-map var-set)))
