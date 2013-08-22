@@ -269,7 +269,7 @@
     (with-meta arg (merge {:type type :shape shape} (meta arg)))))
 
 (defn create-normal-expression [symb args]
-  (list* (with-meta symb (add-information symb)) args))
+  (into '() (concat (reverse args) [(with-meta symb (add-information symb))])))
 
 (defn ce
   "constructs an expression from the symbol with the supplied args"

@@ -328,7 +328,8 @@
        (let [transformed (doall (map  transform-expression*
                                       (expr-args expr)))
              ]
-         (apply-to-end *rules* (list* (first expr) transformed)))
+         (apply-to-end *rules* (into '() (concat (reverse transformed)
+                                                 [(first expr)]))))
        (apply-to-end *rules* expr)))))
 
 (defn transform-expression
