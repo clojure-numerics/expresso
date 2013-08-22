@@ -37,27 +37,6 @@
                  [4 -3 4 -3 2]
                  [-1 1 6 -1 1]])
 
-
-#_(defn gaus-solve [m]
-  (let [rc (mat/row-count m)
-        cc (mat/column-count m)
-        mm (mat/mutable-matrix m)]
-    (loop [k 0 m m]
-      (if (== k rc)
-        m
-        (recur (+ k 1)
-               (let [p (mat/mget m k k)
-                     prow (mat/mget m k)]
-                 (loop [si (range (+ k 1) rc) m m]
-                   (if (seq si)
-                     (let [i (first si)
-                           aktrow (mat/mget m i)
-                           pakt (mat/mget m i k)]
-                       (recur (rest si) (->> aktrow (mapv #(- %2 (* (/ pakt p) %1)) prow)
-                                             (mat/mset m i))))
-                     m))))))))
-
-
 (defn swap-rows [mat i j]
   (if (== i j) mat
       (let [n (mat/row-count mat)]

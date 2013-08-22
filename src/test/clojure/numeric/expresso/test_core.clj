@@ -5,7 +5,7 @@
   (:use [clojure.core.logic.protocols]
         [clojure.core.logic :exclude [is] :as l]
         clojure.test)
-  (:require [clojure.core.logic.fd :as fd])
+  (:require [numeric.expresso.c :as protocols])
   (:require [clojure.core.logic.unifier :as u]))
 
 (deftest test-simplify

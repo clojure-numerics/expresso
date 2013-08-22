@@ -172,16 +172,16 @@
   (seq [this] this)
   clojure.lang.Sequential
   clojure.lang.ISeq
-  (next [this] (next (polysexp this)))
-  (first [this] (first (polysexp this)))
-  (more [this] (.more (polysexp this)))
-  (cons [this obj] (cons obj (polysexp this)))
+  (next [this] (next (to-sexp this)))
+  (first [this] (first (to-sexp this)))
+  (more [this] (.more (to-sexp this)))
+  (cons [this obj] (cons obj (to-sexp this)))
   (equiv [this that] (or (.equals this that)
-                         (= (polysexp this) that)))
+                         (= (to-sexp this) that)))
   (empty [this] false)
   PExpression
   (expr-op [this] `+)
-  (expr-args [this] (vec (rest (polysexp this))))
+  (expr-args [this] (vec (rest (to-sexp this))))
   PExprEvaluate
   (evaluate [poly sm]
     (if-let [vval (v sm)]
@@ -285,10 +285,12 @@
   (to-sexp [poly]
     (let [v (.-v poly) coeffs (.-coeffs poly)]
       (list* '+ (to-sexp (nth coeffs 0))
-             (map #(list '* (to-sexp %1)
-                         (if (= 0 %2)
-                           v
-                           (list '** v (inc %2)))) (rest coeffs) (range)))))
+             (->> (map #(if (clojure.core/== 0 (to-sexp %1))
+                          (list '* (to-sexp %1)
+                                (if (clojure.core/== 0 %2)
+                                  v
+                                  (list '** v (inc %2))))) (rest coeffs) (range))
+                  (filter identity)))))
   java.lang.Object
   (to-sexp [expr]
     (if-let [op (expr-op expr)]
