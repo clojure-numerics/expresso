@@ -14,9 +14,6 @@
             (do (when debug-mode
                   (prn ~@message)) (== 1 1))))
 
-
-
-
 (defn mapo [fo vs rs]
   (conda
     [(emptyo vs) (emptyo rs)]
@@ -122,19 +119,6 @@
          (butlasto sl a)
          (resto sr b)
          (appendo a b s)))
-
-
-
-#_(defne longest-shapo [v l]
-  ([[?a . ?r] _] (!= ?r '())
-     (fresh [ls]
-            (longest-shapo ?r ls)
-            (conde
-             ((== ?a ls) (== ?a l))
-             ((!= ?a ls)
-              (conde ((suffixo ls ?a) (== l ?a))
-                     ((suffixo ?a ls) (== l ls)))))))
-  ([[?a] _] (== l ?a)))
 
 
 (defn suffixo [a b]

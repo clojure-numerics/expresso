@@ -1,10 +1,12 @@
 (ns numeric.expresso.core
   (:refer-clojure :exclude [==])
   (:require [numeric.expresso.solve :as solve]
+            [numeric.expresso.simplify :as simp]
             [numeric.expresso.optimize :as opt]
             [numeric.expresso.protocols :as protocols]
             [numeric.expresso.matcher :as match]
             [numeric.expresso.rules :as rules]
+            [numeric.expresso.examples :as examples]
             [numeric.expresso.parse :as parse]
             [numeric.expresso.utils :as utils]
             [numeric.expresso.properties :as props]
@@ -66,17 +68,17 @@
   [expr]
   (->> expr
        constr/to-expression
-       solve/simp-expr))
+       simp/simp-expr))
 
 (defn to-polynomial-normal-form
-  "transforms the given expression to a fully expanded polynomial representation
-   regarding the variable v"
+  "transforms the given expression to a fully expanded (recursive) polynomial representation with v as
+   main variable"
   [v expr]
   (->> expr
        constr/to-expression
-       (solve/to-polynomial-normal-form v)))
+       (constr/poly-in-x v)))
 
-(defn rearrange
+(defn rearraneg
   "if the equation contains only one occurrence of v it will be rearranged so
    that v is the only symbol on the lhs of the equation."
   [v eq]
