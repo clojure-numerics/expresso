@@ -481,6 +481,7 @@
     (->> sols
          (mapv #(report-res v %))
          (remove #{'()})
+         (into #{})
          (#(if (some #{'_0} %)
              '_0
              %)))
@@ -501,8 +502,7 @@
          lhs-rhs=0
          (transform-one-level-lhs universal-rules)
          (apply-solve-rules v)
-         (report-solution v))))
-    
+         (report-solution v))))    
 
 (defn differentiate [v expr]
   (->> expr
@@ -584,14 +584,16 @@
 
 (defn lhs-to-poly [eq]
   (let [lhs (nth eq 1) rhs (nth eq 2)
-        polylhs (to-poly-normal-form (ex (- ~lhs ~rhs)))
-        const (poly-const polylhs)
-        nlhs (to-poly-normal-form (ex (- ~polylhs ~const)))]
-    (ex (= ~nlhs ~(* -1 const)))))
+        polylhs (to-poly-normal-form (ex (- ~lhs ~rhs)))]
+    (if polylhs
+      (let [const (poly-const polylhs)
+            nlhs (to-poly-normal-form (ex (- ~polylhs ~const)))]
+        (ex (= ~nlhs ~(* -1 const))))
+      nil)))
 
 (defn search-coef [lhs v]
   (cond (number? lhs) 0
-        (var= (main-var lhs) v) (coef lhs 1)
+        (var= (main-var lhs) v) (when (<= (degree lhs) 1) (coef lhs 1))
         (not (var> (main-var lhs) v)) (search-coef (coef lhs 0) v)
         :else 0))
 
@@ -626,21 +628,39 @@
     (into {} (map (fn [[pos var]] [var (nth v pos)]) vars))))
 (declare submap)
 
+(defn remove-unneeded-equations [vs eqv]
+  (map first (filter #(some vs (second %)) (map (fn [x] [x (vars x)]) eqv))))
+
+
+(defn check-if-linear [matrix]
+  (when (and (not (empty? matrix)) (not (some (comp not number?) (matrix/eseq matrix))))
+    matrix))
+
+(defn check-if-poly [v]
+  (when-not (some nil? v)
+    v))
+
 (defn solve-linear-system
   "solves a system of equations for the variables in the variable vector"
   [vars eqv]
-  (let [vs (add-needed-vars (into #{} vars) eqv)
+  (let [v (into #{} vars)
+        vs (add-needed-vars v eqv)
         vars (into {} (map (fn [a b] [a b]) (range) vs))]
-    (->> eqv
+    (some->> eqv
          (map lhs-to-poly)
+         ;;filter equations which do not depend on the eqs
+         check-if-poly
+         (remove-unneeded-equations vs)
          (map #(collect-params % vars))
          build-matrix
+         check-if-linear
          symb/ff-gauss-echelon
          symb/report-solution
          simp-sols
          (to-map vars)
-         (submap vs)
-         vector)))
+         (submap v)
+         vector
+         set)))
 
 (def rres (to-expression '(clojure.core// (clojure.core/+ (clojure.core/- _2) (clojure.core/- (clojure.core// (clojure.core/+ -1 (clojure.core/* -4 _2)) -1)) -3) 1)))
 
@@ -672,13 +692,13 @@
                                         (for [l sols s ss]
                                           (merge l s))))
                                     existing-sols depends-on)
-             res (mapcat (fn [os]
+             res (set (mapcat (fn [os]
                (let [equation-without-deps (substitute-expr
                                             (first equation-containing-v)
                                             os)
                      sol (solve v equation-without-deps)]
                  (for [s sol]
-                   (assoc os v s)))) other-sols)]
+                   (assoc os v s)))) other-sols))]
              res)
            existing-sols)))))
 
@@ -705,15 +725,17 @@
                       (conj o [k v]))) [] m))))
 
 (defn solve-system [symbv eqs]
-  (let [eqs (into #{} eqs)]
-    (->> (map #(submap (into #{} symbv) %1)
-              (reduce (fn [ls r]
-                        (if (r (first ls))
-                          ls
-                          (for[l ls s (solve-system* r eqs ls)]
-                            (merge l s)))) [{}] symbv))
-         (map #(remove-dependencies symbv %))
-         doall)))
+  (if-let [erg (solve-linear-system symbv eqs)]
+    erg
+    (let [eqs (into #{} eqs)]
+      (->> (map #(submap (into #{} symbv) %1)
+                (reduce (fn [ls r]
+                          (if (r (first ls))
+                            ls
+                            (for[l ls s (solve-system* r eqs ls)]
+                              (merge l s)))) [{}] symbv))
+           (map #(remove-dependencies symbv %))
+           (into #{})))))
 
 (construct-with [+ * -]
                 (def diff-simp-rules

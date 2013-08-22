@@ -101,7 +101,7 @@
                               (extract expr) expr)) express))
 
 (defn validate-eq [expr]
-  (if (not= 'clojure.core/= (first expr))
+  (if (and (not= '= (first expr)) (= (count expr) 3))
     (throw (Exception. "Input is no Equation"))
     expr))
 

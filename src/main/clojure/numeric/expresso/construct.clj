@@ -184,6 +184,7 @@
 (defmethod expresso-symb 'clojure.core/+ [_] '+)
 (defmethod expresso-symb 'clojure.core/- [_] '-)
 (defmethod expresso-symb 'clojure.core// [_] '/)
+(defmethod expresso-symb `= [_] '=)
 (defmethod expresso-symb 'numeric.expresso.core/** [_] '**)
 (defmethod expresso-symb `mat/emul [_] '*)
 (defmethod expresso-symb `mat/div [_] '/)

@@ -87,11 +87,17 @@
 
 (defn solve
   "solves the given equation in regard to the variable v"
-  [v eq]
-  (->> eq
-       constr/to-expression
-       utils/validate-eq
-       (solve/solve v)))
+  ([symbv eq]
+     (->> eq
+          constr/to-expression
+          utils/validate-eq
+          (solve/solve (first symbv))))
+  ([symbv eq & reqs]
+     (->> (conj reqs eq)
+          (map constr/to-expression)
+          (map utils/validate-eq)
+          (into #{})
+          (solve/solve-system symbv))))
 
 (defn differentiate
   "Differentiates the given expression regarding the symbols in the symbol
