@@ -12,7 +12,6 @@
             [clojure.walk :as walk]
             [clojure.core.logic.unifier :as u]
             [numeric.expresso.utils :as utils]
-            [numeric.expresso.solve :as s]
             [clojure.core.matrix :as matrix]
             [clojure.core.matrix.operators :as mop]
             [numeric.expresso.matcher :as m]

@@ -14,13 +14,6 @@
   (:require [clojure.core.logic.unifier :as u]))
 
 
-(deftest test-matrix-simplification-rules
-  (is (matrix/e== (matrix/broadcast 0 [2 2]) (apply-rules
-                      matrix-simplification-rules
-                      (ex (matrix/mul [[1 2][3 4]] [[0 0][0 0]])))))
-  (is (matrix/e== (matrix/broadcast 0 [3 2]) (apply-rules
-                      matrix-simplification-rules
-                      (ex (matrix/mul [[1 2][3 4] [5 6]] [[0 0][0 0]]))))))
 
 
 (deftest test-solve-linear-system

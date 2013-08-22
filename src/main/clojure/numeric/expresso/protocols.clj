@@ -283,15 +283,21 @@
 (extend-protocol PExprToSexp
   PolynomialExpression
   (to-sexp [poly]
-    (let [v (.-v poly) coeffs (.-coeffs poly)]
-      (list* '+ (to-sexp (nth coeffs 0))
-             (->> (map #(if (clojure.core/== 0 (to-sexp %1))
-                          (list '* (to-sexp %1)
-                                (if (clojure.core/== 0 %2)
-                                  v
-                                  (list '** v (inc %2))))) (rest coeffs) (range))
-                  (filter identity)))))
-  java.lang.Object
+    (let [v (.-v poly) coeffs (.-coeffs poly)
+          r (->> (map #(let [s (to-sexp %1)
+                             exp (if (clojure.core/== 0 %2)
+                                   v
+                                   (list '** v (inc %2)))]
+                         (if (not (and (number? s) (clojure.core/== 0 s)))
+                           (if (and (number? s) (clojure.core/== 1 s))
+                             exp
+                             (list '* s exp))))
+                      (rest coeffs) (range))
+                 (filter identity))]
+      (if (and (number? (nth coeffs 0)) (clojure.core/== (nth coeffs 0) 0))
+        (list* '+ r)
+        (list* '+ (to-sexp (nth coeffs 0)) r))))
+    java.lang.Object
   (to-sexp [expr]
     (if-let [op (expr-op expr)]
       (list* op (map to-sexp (expr-args expr)))

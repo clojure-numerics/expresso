@@ -78,7 +78,7 @@
        constr/to-expression
        (constr/poly-in-x v)))
 
-(defn rearraneg
+(defn rearrange
   "if the equation contains only one occurrence of v it will be rearranged so
    that v is the only symbol on the lhs of the equation."
   [v eq]
@@ -106,7 +106,7 @@
    vector symbv"
   [symbv expr]
   (let [expr (->> expr constr/to-expression)]
-    (reduce #(solve/differentiate %2 %1) expr symbv)))
+    (reduce #(simp/differentiate %2 %1) expr symbv)))
 
 (defmacro compile-expr
   "compiles the given expression to a clojure function which can be called

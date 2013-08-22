@@ -5,7 +5,7 @@
   (:use [clojure.core.logic.protocols]
         [clojure.core.logic :exclude [is] :as l]
         clojure.test)
-  (:require [numeric.expresso.c :as protocols])
+  (:require [numeric.expresso.protocols :as protocols])
   (:require [clojure.core.logic.unifier :as u]))
 
 (deftest test-simplify
@@ -18,11 +18,14 @@
   (is (= 7 (simplify (ex (+ x 3 4 (- x)))))))
 
 (deftest test-transform-to-polynomial-normal-form
-  (is (= (ex (** x 3))
+  (is (= (ex (+ (** x 3)))
          (to-polynomial-normal-form 'x (ex (+ (** x 3) (* 3 (** x 2))
                                               (- (* 2 (** x 2))
                                                  (* 5 (** x 2))))) )))
-  (is (= (ex (+ (* 243.0 (** x 10)) (* 1215.0 (** x 9)) (* 4050.0 (** x 8)) (* 8910.0 (** x 7)) (* 15255.0 (** x 6)) (* 19683.0 (** x 5)) (* 20340.0 (** x 4)) (* 15840.0 (** x 3)) (* 9600.0 (** x 2)) (* 3840.0 x) 1024.0))
+  (is (= (ex (+ 1024 (* 3840 x) (* 9600 (** x 2)) (* 15840 (** x 3))
+                (* 20340 (** x 4)) (* 19683 (** x 5)) (* 15255 (** x 6))
+                (* 8910 (** x 7)) (* 4050 (** x 8)) (* 1215 (** x 9))
+                (* 243 (** x 10))))
          (to-polynomial-normal-form 'x (ex (** (+ (* 3 x) 4 (* 3 (** x 2))) 5))))))
 
 (deftest test-rearrange

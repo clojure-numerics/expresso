@@ -7,6 +7,7 @@
         [numeric.expresso.protocols]
         [numeric.expresso.rules]
         [numeric.expresso.simplify]
+        [numeric.expresso.examples]
         [clojure.test])
   (:require [clojure.core.logic.fd :as fd]
             [clojure.walk :as walk]
