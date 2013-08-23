@@ -23,17 +23,13 @@
 (set! *warn-on-reflection* true)
 
 
-(defn only-one-occurrence-of [v expr]
-  (<= (count (filter #{v} (flatten expr))) 1))
-
-
 (defn only-one-occurrence [v equation]
   (>= 1 (->> equation flatten (filter #{v}) count)))
                   
 (defn position-in-equation
   ([v equation] (position-in-equation v equation []))
   ([v equation pos]
-     (if (and (sequential? equation) (symbol? (first equation)))
+     (if (and (seq? equation) (symbol? (first equation)))
        (some identity (map #(position-in-equation v %1 (conj pos %2))
                            (rest equation) (range)))
        (if (= v equation) pos nil))))
@@ -63,7 +59,7 @@
   (ce `= (ce `- (nth equation 1) (nth equation 2)) 0))
 
 (defn to-poly-nf [v equation]
-  (ce `= (to-polynomial-normal-form v (nth equation 1)) (nth equation 2)))
+  (ce `= (poly-in-x v (nth equation 1)) (nth equation 2)))
 
 (defn report-res [v eq]
   (if (= '() eq)
@@ -81,10 +77,8 @@
           (str "Couldn't reduce the number of occurrences of " v " to one."))
   eq)
 
-(defn polynomial? [x]
-  (not= :error (to-poly-normal-form x)))
 
-(declare solve)
+(declare solve solve-by-simplification-rules)
 
 (defn solve-factors [v factors]
   (->> (mapcat #(solve v (ce `= % 0)) (matcher-args factors))
@@ -114,7 +108,6 @@
           deg (degree poly)]
       (if (vs x)
         (cond
-         (= deg 1) nil
          (= deg 2) (solve-quadratic x poly)
          :else nil)))))
   
@@ -236,7 +229,6 @@
         vars (into {} (map (fn [a b] [a b]) (range) vs))]
     (some->> eqv
          (map lhs-to-poly)
-         ;;filter equations which do not depend on the eqs
          check-if-poly
          (remove-unneeded-equations vs)
          (map #(collect-params % vars))
@@ -254,8 +246,8 @@
 (defn not-in-existing-sols [sol-map var-set]
   (into #{} (remove sol-map var-set)))
 
-(defn solve-system*
-  ([v eqs] (solve-system* v eqs [{}]))
+(defn solve-general-system*
+  ([v eqs] (solve-general-system* v eqs [{}]))
   ([v eqs existing-sols]
      (if (v (first existing-sols))
        existing-sols
@@ -271,7 +263,7 @@
                                              #{v}))
                  other-eqs (set/difference eqs #{(first equation-containing-v)})
                  other-sols (reduce (fn [sols r]
-                                      (let [ss (solve-system* r other-eqs sols)]
+                                      (let [ss (solve-general-system* r other-eqs sols)]
                                         (for [l sols s ss]
                                           (merge l s))))
                                     existing-sols depends-on)
@@ -307,19 +299,22 @@
                                    v depends-on)]))
                       (conj o [k v]))) [] m))))
 
+(defn solve-general-system [symbv eqs]
+  (let [eqs (into #{} eqs)]
+    (->> (map #(submap (into #{} symbv) %1)
+              (reduce (fn [ls r]
+                        (if (r (first ls))
+                          ls
+                          (for[l ls s (solve-general-system* r eqs ls)]
+                            (merge l s)))) [{}] symbv))
+         (map #(remove-dependencies symbv %))
+         (into #{}))))
+
+
+
 (defn solve-system [symbv eqs]
   (if-let [erg (solve-linear-system symbv eqs)]
-    erg
-    (let [eqs (into #{} eqs)]
-      (->> (map #(submap (into #{} symbv) %1)
-                (reduce (fn [ls r]
-                          (if (r (first ls))
-                            ls
-                            (for[l ls s (solve-system* r eqs ls)]
-                              (merge l s)))) [{}] symbv))
-           (map #(remove-dependencies symbv %))
-           (into #{})))))
-
+    erg (solve-general-system symbv eqs)))
 
 
 (defn split-in-pos-args [args pos]

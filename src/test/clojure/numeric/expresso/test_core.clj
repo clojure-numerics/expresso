@@ -43,7 +43,13 @@
          (solve '#{x} (ex (= (* 3 x) (+ (* 4 x) 4))))))
   (is (= '#{(* 1/2 (+ (- a) (sqrt (+ (** a 2) -4))))
            (* 1/2 (+ (- a) (- (sqrt (+ (** a 2) -4)))))}
-         (solve '#{x} (ex (= (+ (** x 2) (* a x) 1) 0))))))
+         (solve '#{x} (ex (= (+ (** x 2) (* a x) 1) 0)))))
+  (is (= '#{{y (+ (* a 1/2) (* -1/4 (- (sqrt (+ (* -4.0 (** a 2)) 8))))),
+             x (+ (* 1/2 a) (* (- (sqrt (+ (* -4.0 (** a 2)) 8))) 1/4))}
+            {y (+ (* a 1/2) (* -1/4 (sqrt (+ (* -4.0 (** a 2)) 8)))),
+             x (+ (* 1/2 a) (* (sqrt (+ (* -4.0 (** a 2)) 8)) 1/4))}}
+       (solve '[x y] (ex (= (+ (** x 2) (** y 2)) 1))
+                (ex (= (+ x y) a))))))
 
 (deftest test-differentiate
   (is (= (ex (* 2 x)) (differentiate '[x] (ex (** x 2)))))
@@ -57,6 +63,6 @@
   (is (= 8 ((compile-expr [x] (ex (+ (* x 2) (* 2 x)))) 2))))
 
 (deftest test-optimize
-  (is (= 4 ((optimize (ex (+ (* 1 2) (* 2 1)))) {})))
-  (is (= 8 ((optimize (ex (+ (* x 2) (* 2 x)))) {'x 2}))))
+  (is (= 4 (evaluate (optimize (ex (+ (* 1 2) (* 2 1)))) {})))
+  (is (= 8 (evaluate (optimize (ex (+ (* x 2) (* 2 x)))) {'x 2}))))
 

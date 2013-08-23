@@ -16,7 +16,7 @@
             [clojure.core.memoize :as memo]
             [clojure.core.matrix.operators :as mop]
             [numeric.expresso.matcher :as m]
-            [numeric.expresso.common-rules :as cr]
+            [numeric.expresso.simplify :as simp]
             [numeric.expresso.construct :as c]))
 
 (declare remove-common-subexpressions)
@@ -94,9 +94,9 @@
 
 
 (defn optimize-by-rules [expr]
-  (transform-expression (concat cr/universal-rules
-                                cr/eval-rules cr/to-inverses-rules
-                                cr/universal-rules optimize-rules) expr))
+  (transform-expression (concat simp/universal-rules
+                                simp/eval-rules simp/to-inverses-rules
+                                simp/universal-rules optimize-rules) expr))
 
 (defn replace-with-special-operations [expr]
   (transform-expression [(rule (ex (** ?x 0.5)) :=> (ex (sqrt ?x)))
@@ -161,27 +161,23 @@
 
 
 (defn compile-expr* [bindings expr]
-  `(let [expr# (to-expression ~expr)
-         code# (emit-code expr#)
-         c# (list `fn ~bindings code#)]
-     (eval c#)))
+  (let [expr (to-expression expr)
+        code (emit-code expr)
+        c (list `fn bindings code)]
+     (eval c)))
 
 (defmacro compile-expr [bindings expr]
-  (compile-expr* (list 'quote bindings) expr)) 
+  `(compile-expr* ~(list 'quote bindings) ~expr)) 
 
 (def optimizations
-  (atom [optimize-by-rules
-         optimize-matrix-chain
-         replace-with-special-operations
-         remove-common-subexpressions]))
-
-
-(defn optimize* [expr]
-  (loop [opt @optimizations expr expr]
-    (if (seq opt)
-      (recur (rest opt) ((first opt) expr))
-      expr)))
+  [optimize-by-rules
+   optimize-matrix-chain
+   replace-with-special-operations
+   remove-common-subexpressions])
 
 
 (defn optimize [expr]
-  (->> expr optimize* eval-func))
+  (loop [opt optimizations expr expr]
+    (if (seq opt)
+      (recur (rest opt) ((first opt) expr))
+      expr)))

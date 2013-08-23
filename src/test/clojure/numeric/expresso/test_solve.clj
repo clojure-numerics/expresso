@@ -34,8 +34,8 @@
 (deftest test-solve-system
   (is (= #{{'y [3 6 9]}}
          (solve-system '[y]
-                       #{(ex (= z (mop/* 2 x)))
-                         (ex (= y (mop/+ x z)))
+                       #{(ex (= z (* 2 x)))
+                         (ex (= y (+ x z)))
                          (ex (== x [1 2 3]))})))
   (is (= #{{'y [3 6 9]
           'z [2 4 6]

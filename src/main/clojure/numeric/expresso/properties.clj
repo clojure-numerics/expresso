@@ -19,17 +19,20 @@
 
 (defmulti props identity)
 (defmethod props :default [_] {})
-(defmethod props '* [_] {:exec-func *
+(defmethod props '* [_] {:exec-func mat/emul
                          :properties #{:associative
                                       :commutative
                                       :n-ary}
                          })
-(defmethod props '+ [_] {:exec-func +
+(defmethod props '+ [_] {:exec-func mat/add
                          :properties #{:associative :commutative :n-ary}})
-(defmethod props '- [_] {:exec-func -
-                         :properties [:n-ary [:inverse-of 'clojure.core/+]]})
-(defmethod props '/ [_] {:exec-func /
-                         :properties #{:n-ary} :inverse-of 'clojure.core/*})
+(defmethod props '- [_] {:exec-func (fn [& s]
+                                      (if (= 1 (count s))
+                                        (mat/negate (first s))
+                                        (apply mat/sub s)))
+                         :properties [:n-ary [:inverse-of '+]]})
+(defmethod props '/ [_] {:exec-func mat/div
+                         :properties #{:n-ary} :inverse-of '*})
 (defmethod props 'e/ca-op [_] {:properties [:commutative]})
 (defmethod props '** [_] {:exec-func (fn [a b]
                                        (Math/pow a b))})

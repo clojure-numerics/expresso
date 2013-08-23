@@ -606,5 +606,11 @@
   (emit-code [this]
     `(let ~(.-bindings this) ~@(map emit-code (.-code this)))))
 
+;;quick fix to be able to handle seqs as values in core.logic
+(extend-protocol IWalkTerm 
+  clojure.lang.IPersistentSet 
+  (walk-term [v f] (with-meta (set (walk-term (seq v) f)) (meta v))))
+
+
 
 ;;TODO protocol evaluable

@@ -64,7 +64,7 @@
 
 
 (defn simplify
-  "simplifies the given expression to a shorter form"
+  "best heuristics approach to simplify the given expression to a 'simpler' form"
   [expr]
   (->> expr
        constr/to-expression
@@ -80,7 +80,8 @@
 
 (defn rearrange
   "if the equation contains only one occurrence of v it will be rearranged so
-   that v is the only symbol on the lhs of the equation."
+   that v is the only symbol on the lhs of the equation. returns a list of the possible
+   rearrangements"
   [v eq]
   (->> eq
        constr/to-expression
@@ -88,41 +89,61 @@
        (solve/rearrange v)))
 
 (defn solve
-  "solves the given equation in regard to the variable v"
+  "general solving function. Dispatches to different solving strategies based on the input equations.
+   Can solve one or more equations according to the variables in the symbol vector/set/list.
+   In case of only one symbol to solve for symbv can be the symbol itself.
+   examples:
+   (solve 'x (ex (= 2 (* 4 x)))) ;=> #{1/2}
+   (solve '[x y] (ex (= (+ (** x 2) (** y 2)) 1))
+                 (ex (= (+ x y) a)))
+   ;=>
+   #{{y (+ (* a 1/2) (* -1/4 (- (sqrt (+ (* -4.0 (** a 2)) 8))))),
+      x (+ (* 1/2 a) (* (- (sqrt (+ (* -4.0 (** a 2)) 8))) 1/4))}
+     {y (+ (* a 1/2) (* -1/4 (sqrt (+ (* -4.0 (** a 2)) 8)))),
+      x (+ (* 1/2 a) (* (sqrt (+ (* -4.0 (** a 2)) 8)) 1/4))}}"
   ([symbv eq]
-     (->> eq
-          constr/to-expression
-          utils/validate-eq
-          (solve/solve (first symbv))))
+     (let [symbv (if (coll? symbv) symbv [symbv])]
+       (->> eq
+            constr/to-expression
+            utils/validate-eq
+            (solve/solve (first symbv)))))
   ([symbv eq & reqs]
-     (->> (conj reqs eq)
-          (map constr/to-expression)
-          (map utils/validate-eq)
-          (into #{})
-          (solve/solve-system symbv))))
+     (let [symbv (if (coll? symbv) symbv [symbv])]
+       (->> (conj reqs eq)
+            (map constr/to-expression)
+            (map utils/validate-eq)
+            (into #{})
+            (solve/solve-system symbv)))))
+
 
 (defn differentiate
   "Differentiates the given expression regarding the symbols in the symbol
-   vector symbv"
+   vector symbv
+   example:
+   (differentiate '[x x] (ex (* (** x 3) (* 3 x))))
+   ;=> (* 36 (** x 2))"
   [symbv expr]
   (let [expr (->> expr constr/to-expression)]
     (reduce #(simp/differentiate %2 %1) expr symbv)))
 
 (defmacro compile-expr
   "compiles the given expression to a clojure function which can be called
-   according to the bindings vector"
+   according to the bindings vector. The compiled function will not have the overhead
+   of walking the expression to excecute it. Compile-expr transforms the expression to
+   clojure code which is then evaluated to a function
+   example:
+   ((compile-expr [x] (ex (+ 1 x))) 2) ;=> 3"
   [bindings expr]
-  (opt/compile-expr* (list 'quote bindings) expr))
+  `(opt/compile-expr* ~(list 'quote bindings) ~expr))
 
 (defn optimize
-  "optimizes the given expression"
+  "transforms the expr to a more optimized form for excecution. The optimized form can
+   be compiled with compile-expr. supports optimizations like compile time computation,
+   removing unneeded code, common-subexpression detection, matrix chain order optimization ...
+   example:
+   (optimize (ex (+ b (* 5 b) (** y (+ a b)) (** z (+ b a)))))
+   ;=> (let [local478813 (+ a b)] (+ (* b 6) (** y local478813) (** z local478813)))"
   [expr]
   (->> expr
        constr/to-expression
-       (opt/optimize )))
-
-(defn ^:dynamic **
-  "default exponentiation operator."
-  [a b]
-  (Math/pow a b))
-
+       opt/optimize))

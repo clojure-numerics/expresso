@@ -11,12 +11,6 @@
 
 
 
-(deftest test-expo 
-  (is (= [[1 2]] (run* [q] (fresh [ex op lhs rhs]
-                                  (expo '+ [1 2] ex)
-                                  (expo op [lhs rhs] ex)
-                                  (== q [lhs rhs]))))))
-
 
 (deftest test-ex
   (is (= '(+ 1 2 3) (ex (+ 1 2 3))))

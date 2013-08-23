@@ -166,7 +166,7 @@
         [pat to trans & rest] v
         trans (if (= to :==>) (make-inline-trans trans) trans)
         guard (if (and (seq rest) (= :if (first rest))) (second rest) succeed)]
-    (with-meta [(?-to-lvar pat) (?-to-lvar trans) (?-to-lvar guard)] {:syntactic (and (seq rest) (= (last rest) :syntactical))})))
+    (with-meta [(?-to-lvar pat) (?-to-lvar trans) (?-to-lvar guard)] {:syntactical (and (seq rest) (= (last rest) :syntactical))})))
   
 
 (defn define-extractor

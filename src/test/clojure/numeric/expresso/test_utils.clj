@@ -12,6 +12,12 @@
   (:require [clojure.core.logic.unifier :as u]))
 
 
+(deftest test-expo 
+  (is (= [[1 2]] (run* [q] (fresh [ex op lhs rhs]
+                                  (expo '+ [1 2] ex)
+                                  (expo op [lhs rhs] ex)
+                                  (== q [lhs rhs]))))))
+
 
 (deftest test-lifto-with-inverse
   (let [inco (lifto-with-inverse inc dec)]
