@@ -1,9 +1,8 @@
 expresso
 ========
 
-Experimental combination of core.logic and core.matrix to allow reasoning with vectors / mathematical expressions
+A clojure library for symbolic manipulation of Algebraic Expressions. 
 
-WORK IN PROGRESS: not much to see here yet!
 
 [![Build Status](https://travis-ci.org/clojure-numerics/expresso.png?branch=master)](https://travis-ci.org/clojure-numerics/expresso)
 
@@ -11,45 +10,94 @@ WORK IN PROGRESS: not much to see here yet!
 ### Objectives
 
 expresso aims to be a general library for manipulating mathematical expressions.
-In particular it should provide following features
+This are the key objectives:
 
  - Enable mathematical expressions to be encoded
- - Support arbitrary symbols as unknowns / variables in expression
- - Provide a standart (canonical?) form for expressions on which more sophisticated functionality can be built
- - An Optimizer, which optimizes expression for excecution on core.matrix
- - A Solver, which finds analytical (or numerical?) solutions to sets of expressions 
+ - Provide a powerful facility for general expression manipulation (aka term rewriting)
+ - Provida a range of very useful manipulations, which include
+   - simplifying mathematical expressions
+   - solving a (set of) equations in regard to unknowns
+   - differentiating expressions
+   - optimizing of an expression for performance
+   - compiling an expression to a clojure function
+ - Be extensible through adding domain knowledge
  - Full compatibility with [core.matrix](https://github.com/mikera/matrix-api)
  
  
-### Implementation ideas
+### Getting started
 
-Central concept is an *expression*, in the mathematical sense. Expresso is a library for defining, manipulating and analysing expressions.
+Add the following line to your leiningen dependencies:
+```clojure
+[expresso "0.1.0"]
+```
 
-Design questions:
+### Defining expressions
 
- - Is there a different between normal expressions and equations (expressions of equality)?
- - Feasible to use core.logic to search for solutions?
- - Expressions should be wrapped in deftypes?
- - Values can be any core.matrix n-dimensional array?
- - Need a way of handling vector / matrix expressions. 
- - Should an expression implement core.matrix protocols? If so how do semantics work: does multiplying an expression by a vector produce a new modified expression? 
- 
-### Syntax ideas
+expressos expressions are just normal clojure s-expressions. Expresso has various convenience functions/macros
+for creating expressions:
 
 ```clojure
-;; ex macro constructs expression data structures from regular s-expressions. 
+;;the ex macro constructs an expression with automatic quoting of variables
+(let [x 3]
+  (ex (+ x ~x))) ;=> (+ x 3)
+
+;;the ex' macro constructs an expression with explicit quoting of variables
+(let [x 3]
+  (ex' (+ x 'x))) ;=> (+ 3 x)
+
+;;all functions in the core namespace also support pure s-exp as parameters
+(solve '[x] '(= (+ 1 x) 3)) ;=> #{2}
+```
+### manipulations of algebraic expressions
+
+```clojure
+(use 'numeric.expresso.core)
+
+(simplify (ex (+ (* 4 a) (* 3 a) (* -1 (* 7 a))))) 
+=> 0
+
 (def F1 (ex (= Y (+ X Z)))
 (def F2 (ex (= X [1 2 3]))
 (def F3 (ex (= Z (* 2.0 X)))
 
-;; solver looks for numerical solutions to systems of equations
 (solve [Y] F1 F2 F3)
-=> ([3.0 6.0 9.0])         ;; single solution
+=> #{[3.0 6.0 9.0]}        
 
-;; solutions may have unknowns?
-(solve [X] F3)
-=> ((* 0.5 Z))
+(def opt (optimize (ex (+ b (* (+ 5 b) (** y (+ a b)) (** z (+ b a)))))))
+opt
+=> (let [local478813 (+ a b)] (+ (* b 6) (** y local478813) (** z local478813)))
+
+(def f (compile-expr [a b y z] opt))
+
+(f 1 2 3 4)
+=> 103.0
+```
+The public API is in numeric.expresso.core - go test it out!
+
+### General Manipulation of Expressions
+Expresso supports a powerful way to manipulate expressions with rewrite rules, which are built ontop of 
+core.logic. Here are a few example rules
+
+```clojure
+(use 'numeric.expresso.rules)
+
+;;?&* matches zero or more items
+(def r [(rule (ex (* 0 ?&*)) :=> 0)
+        (rule (ex (* 1 ?&*)) :=> (ex (* ?&*)))
+        ;;supports optional guard with :if
+        (rule (ex (/ ?x ?x)) :=> 1 :if (guard (not= ?x 0)))])
+
+;;rules match semantically. because * is commutative the rules match regardless of the order of arguments
+(transform-expression r (ex (+ (* 2 (/ 4 4) 3) a (* 4 0))))
+=> (+ (* 2 3) a 0)
+
+;;The right hand side and guard of a rule can be 'arbitrary core.logic relations'.
+;;The trans and guard macro create suitable core.logic relations out of normal clojure code.
+;;==> is a shorthand for trans
+
+(apply-rule (rule (ex (map ?f ?coll)) :==> (map ?f ?coll) :if (guard (coll? ?coll)))
+  	    (ex (map ~inc [1 2 3]))) ;=> (2 3 4)
 ```
 
-
-
+### Status 
+This library is in a 'very' early state. Don't expect it to be stable yet. Any bug-reports/feature recommendations are very welcome

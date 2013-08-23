@@ -1,4 +1,4 @@
-(defproject expresso "0.1.0-SNAPSHOT"
+(defproject expresso "0.1.0"
   :description "a general Algebraic Expression manipulation library in clojure"
   :url "https://github.com/clojure-numerics/expresso"
   :license {:name "Eclipse Public License"
