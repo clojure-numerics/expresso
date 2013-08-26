@@ -3,13 +3,13 @@
 	<modelVersion>4.0.0</modelVersion>
 	<artifactId>expresso</artifactId>
 	<version>0.0.1-SNAPSHOT</version>
-	
+
 	<parent>
 		<groupId>net.mikera</groupId>
 		<artifactId>clojure-pom</artifactId>
 		<version>0.0.4</version>
 	</parent>
-	
+
 	<dependencies>
 		<dependency>
 			<groupId>net.mikera</groupId>

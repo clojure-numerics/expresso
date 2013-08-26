@@ -377,4 +377,23 @@
           [[(first args) nrhs]]))
     (rearrange-step (ce 'exp (ce '* (second args) (ce 'log (first args))))
                     pos rhs)))
-        
+
+
+                                        ;(sem-substitute expr compount-term new-var)
+
+(def ^:dynamic ito)
+
+(def sem-rewrite-rules
+  [(rule [(ex (** ?a (* ?x ~?&+))) (ex (** ?a ?x))]
+         :=> (ex (** (** ?a ?x) ~?&+)))])
+
+(defn rewrite-in-terms-of [expr x]
+  (transform-expression
+   [(rule ?x :==> (let [res (apply-rules sem-rewrite-rules [?x x])]
+                    (when-not (= res [?x x]) res)))]
+   expr))
+
+(defn sem-substitute [expr old new]
+  (-> expr
+      (rewrite-in-terms-of old)
+      (substitute-expr {old new})))
