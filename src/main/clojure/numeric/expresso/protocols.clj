@@ -422,6 +422,9 @@
       (get repl (value expr) expr))))
 
 (extend-protocol PSubstitute
+  clojure.lang.Symbol
+  (substitute-expr [this repl]
+    (repl this this))
   clojure.lang.ISeq
   (substitute-expr [this repl]
     (let [res (walk/postwalk-replace repl this)]
