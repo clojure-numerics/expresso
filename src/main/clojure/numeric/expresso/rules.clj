@@ -315,7 +315,7 @@
   ([rules expr] (transform-with-rules rules expr walk/prewalk apply-rules)))
 
 (def transform-expression*
-  (memo/memo
+  ;(memo/memo
    (fn [expr]
      (if-let [op (expr-op expr)]
        (let [transformed (doall (map  transform-expression*
@@ -323,7 +323,7 @@
              ]
          (apply-to-end *rules* (into '() (concat (reverse transformed)
                                                  [(first expr)]))))
-       (apply-to-end *rules* expr)))))
+       (apply-to-end *rules* expr))));)
 
 (defn transform-expression
   "transforms the expression according to the rules in the rules vector in a
@@ -331,7 +331,7 @@
   [rules expr]
   (binding [*rules* rules]
     (let [res (transform-expression* expr)]
-      (memo/memo-clear! transform-expression*)
+      ;(memo/memo-clear! transform-expression*)
       res)))
 
 (defn transform-expressiono [rules expr nexpr]

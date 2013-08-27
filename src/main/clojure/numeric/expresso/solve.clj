@@ -1,7 +1,7 @@
 (ns numeric.expresso.solve
   (:refer-clojure :exclude [==])
   (:use [clojure.core.logic.protocols]
-        [clojure.core.logic :exclude [is] :as l]
+        [clojure.core.logic :exclude [is log] :as l]
         [numeric.expresso.construct]
         [numeric.expresso.properties :as props]
         [numeric.expresso.protocols]
@@ -73,12 +73,10 @@
         (nth eq 2)))))
 
 (defn check-if-can-be-solved [v eq]
-  (assert (only-one-occurrence v eq)
-          (str "Couldn't reduce the number of occurrences of " v " to one."))
-  eq)
+  (when (only-one-occurrence v eq) eq))
 
 
-(declare solve solve-by-simplification-rules)
+(declare solve solve-by-simplification-rules solve-by-homogenization)
 
 (defn solve-factors [v factors]
   (->> (mapcat #(solve v (ce `= % 0)) (matcher-args factors))
@@ -112,7 +110,7 @@
          :else nil)))))
   
 (defn solve-by-simplification-rules [v expr]
-  (->> expr
+  (some->> expr
        simplify-eq
        (check-if-can-be-solved v)
        (rearrange v)
@@ -122,7 +120,8 @@
 (def solve-rules
   [(rule [?v (ex (= (* ?&*) 0))] :==> (solve-factors ?v ?&*))
    (rule [?v ?x] :==> (solve-polynomial ?v ?x))
-   (rule [?v ?x] :==> (solve-by-simplification-rules ?v ?x))])
+   (rule [?v ?x] :==> (solve-by-simplification-rules ?v ?x))
+   (rule [?v ?x] :==> (solve-by-homogenization ?v ?x))])
 
 (defn apply-solve-rules [v expr]
   (let [res (apply-rules solve-rules [v expr])]
@@ -375,25 +374,67 @@
           [[(first args) nrhs]
            [(first args) (ce '- nrhs)]]
           [[(first args) nrhs]]))
-    (rearrange-step (ce 'exp (ce '* (second args) (ce 'log (first args))))
-                    pos rhs)))
+    [[(second args) (ce '/ (ce 'log rhs) (ce 'log (first args)))]]))
 
 
                                         ;(sem-substitute expr compount-term new-var)
 
 (def ^:dynamic ito)
 
+(construct-with [+ * ** exp log / -]
+
 (def sem-rewrite-rules
-  [(rule [(ex (** ?a (* ?x ~?&+))) (ex (** ?a ?x))]
-         :=> (ex (** (** ?a ?x) ~?&+)))])
+  [(rule [(** ?a (* ?x ?&+)) (** ?a ?x)]
+         :=> (** (** ?a ?x) (* ?&+)))
+   (rule [(** ?a (- ?x)) (** ?a ?x)]
+         :=> (/ (** ?a ?x)))
+   (rule [(** ?a (+ ?x ?&*)) (** ?a ?x)]
+         :=> (* (** ?a ?x) (** ?a (+ ?&*))))
+   (rule [(** ?a ?x) (exp ?x)]
+         :=> (exp (* ?x (log ?a))))
+   (rule [(** ?a (* ?x ?&*)) (exp ?x)]
+         :=> (exp (* (log ?a) ?&*)))
+   (rule [(exp (+ ?x ?&*)) (exp ?x)]
+         :=> (* (exp ?x) (exp (+ ?&*))))]))
 
 (defn rewrite-in-terms-of [expr x]
   (transform-expression
-   [(rule ?x :==> (let [res (apply-rules sem-rewrite-rules [?x x])]
-                    (when-not (= res [?x x]) res)))]
+   (concat arity-rules
+           [(rule ?x :==> (let [res (apply-rules sem-rewrite-rules [?x x])]
+                            (when-not (= res [?x x]) res)))])
    expr))
 
 (defn sem-substitute [expr old new]
   (-> expr
       (rewrite-in-terms-of old)
       (substitute-expr {old new})))
+
+(defn offenders [x expr]
+  (apply-rules
+   [(rule (ex (+ ?&*)) :==> (mapcat #(offenders x %) (matcher-args ?&*)))
+    (rule (ex (* ?&*)) :==> (mapcat #(offenders x %) (matcher-args ?&*)))
+    (rule (ex (- ?&*)) :==> (mapcat #(offenders x %) (matcher-args ?&*)))
+    (rule (ex (/ ?a ?b)) :==> (offenders x ?a) :if
+          (guard (is-number? ?b)))
+    (rule (ex (** ?a ?b)) :==> (offenders x ?a) :if
+          (guard (is-number? ?b)))
+    (rule ?x :=> [] :if (guard (is-number? ?x)))
+    (rule ?x :=> [?x])]
+   expr))
+
+
+(defn substitution-candidates [x offenders]
+  (and (every? #(= (expr-op %) '**) offenders)
+       (every? #{(second (first offenders))} (map second offenders))
+       (ce '** (second (first offenders)) x)))
+
+
+(defn solve-by-homogenization [x equation]
+  (let [lhs (second equation)
+        subs (->> lhs (offenders x) (substitution-candidates x))
+        v (gensym "var")]
+    (if subs
+      (let [sols (solve v (ce '= (sem-substitute lhs subs v) 0))]
+        (if sols
+          (into #{}
+                (map #(ce '= x %) (mapcat #(solve x (ce '= subs %)) sols))))))))

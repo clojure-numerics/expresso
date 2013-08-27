@@ -5,8 +5,8 @@
         [numeric.expresso.construct]
         [numeric.expresso.properties :as props]
         [numeric.expresso.protocols]
-        [numeric.expresso.simplify]
         [numeric.expresso.rules]
+        [numeric.expresso.simplify]
         [clojure.test])
   (:require [clojure.core.logic.fd :as fd]
             [clojure.walk :as walk]

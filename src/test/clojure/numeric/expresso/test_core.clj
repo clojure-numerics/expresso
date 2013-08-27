@@ -1,7 +1,7 @@
 (ns numeric.expresso.test-core
   (:use numeric.expresso.core)
   (:use clojure.test)
-  (:refer-clojure :exclude [==])
+  (:refer-clojure :exclude [== log])
   (:use [clojure.core.logic.protocols]
         [clojure.core.logic :exclude [is] :as l]
         clojure.test)
@@ -49,7 +49,9 @@
             {y (+ (* a 1/2) (* -1/4 (sqrt (+ (* -4.0 (** a 2)) 8)))),
              x (+ (* 1/2 a) (* (sqrt (+ (* -4.0 (** a 2)) 8)) 1/4))}}
        (solve '[x y] (ex (= (+ (** x 2) (** y 2)) 1))
-                (ex (= (+ x y) a))))))
+              (ex (= (+ x y) a)))))
+  (is (= '#{(* (log 8.0) (/ (log 2))) (* (log 2.0) (/ (log 2)))}
+         (solve 'x (ex (= (+ (** 2 (* 2 x)) (- (* 5 (** 2 (+ x 1)))) 16) 0))))))
 
 (deftest test-differentiate
   (is (= (ex (* 2 x)) (differentiate '[x] (ex (** x 2)))))

@@ -481,7 +481,10 @@
   (reduce polydk args))
 
 (defn poly**nc [& args]
-  (poly**n (first args) (second args)))
+  (if (or (> (count args) 2)
+          (not (number? (second args))))
+    :error
+    (poly**n (first args) (second args))))
 
 (defmulti construct-poly identity)
 (defmethod construct-poly :default [_] (fn [& a] :error))

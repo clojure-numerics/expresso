@@ -81,6 +81,12 @@
 
 (construct-with [+ - * / ** diff ln sin cos]
 
+(def arity-rules
+  [(rule (+) :=> 0)
+   (rule (*) :=> 1)
+   (rule (+ ?x) :=> ?x)
+   (rule (* ?x) :=> ?x)])
+                
 (def universal-rules
   [(rule (+) :=> 0)
    (rule (*) :=> 1)
