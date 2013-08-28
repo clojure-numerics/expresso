@@ -222,13 +222,23 @@
                               factors
                               (ex' (* coeff factors)))))))))
 
+(def simp-expr-rules
+  (with-meta
+     (concat eval-rules universal-rules to-inverses-rules
+             multiply-out-rules)
+     {:id :simp-expr-rules1}))
+
+(def simp-expr-rules2
+  (with-meta
+    (concat universal-rules
+            eval-rules simplify-rules)
+    {:id :simp-expr-rules2}))
+
 (defn simp-expr [expr]
   (->> expr 
        (transform-expression
-        (concat eval-rules universal-rules to-inverses-rules
-                multiply-out-rules ))
-       (transform-expression (concat universal-rules
-                                     eval-rules simplify-rules))))
+        simp-expr-rules)
+       (transform-expression simp-expr-rules2)))
 
 
 
@@ -251,17 +261,19 @@
      :else (matrix/identity-matrix (first s)))))
 
 (def matrix-simplification-rules
-  [(rule (ex (matrix/add (mzero? ?x) ?&*)) :=> (ex (matrix/add ?&*)))
-   (rule (ex (matrix/sub ?x ?x)) :==> (let [s (shape ?x)]
-                                        (if (symbol? ?x)
-                                          (zero-matrix s)
-                                          (matrix/broadcast 0 s))))
-   (rule (ex (matrix/mul ?&*1 (mzero? ?x) ?&*2))
-         :==> (infer-shape-zero-mat ?&*1 ?x ?&*2))
-   (rule (ex (matrix/mul ?&*1 (midentity? ?x) ?&*2))
-         :=> (ex (matrix/mul ?&*1 ?&*2)))
-   (rule (ex (matrix/div ?a ?a)) :==> (identity-right-shape ?a))
-   (rule (ex (matrix/mul ?a (matrix/div ?a) ?&*)) :=> (ex (matrix/mul ?&*)))])
+  (with-meta 
+    [(rule (ex (matrix/add (mzero? ?x) ?&*)) :=> (ex (matrix/add ?&*)))
+     (rule (ex (matrix/sub ?x ?x)) :==> (let [s (shape ?x)]
+                                          (if (symbol? ?x)
+                                            (zero-matrix s)
+                                            (matrix/broadcast 0 s))))
+     (rule (ex (matrix/mul ?&*1 (mzero? ?x) ?&*2))
+           :==> (infer-shape-zero-mat ?&*1 ?x ?&*2))
+     (rule (ex (matrix/mul ?&*1 (midentity? ?x) ?&*2))
+           :=> (ex (matrix/mul ?&*1 ?&*2)))
+     (rule (ex (matrix/div ?a ?a)) :==> (identity-right-shape ?a))
+     (rule (ex (matrix/mul ?a (matrix/div ?a) ?&*)) :=> (ex (matrix/mul ?&*)))]
+    {:id :matrix-simplification-rules}))
 
 (defn simplify-matrix-expression [expr]
   (transform-expression matrix-simplification-rules expr))
@@ -344,9 +356,13 @@
 (defmethod diff-function 'exp [[expr v]]
   (ce '* (cev 'exp (rest expr)) (differentiate-expr (second expr) v)))
 
+(def dr
+  (with-meta
+    (concat eval-rules universal-rules
+            simplify-rules)
+    {:id :dr}))
 
 (defn differentiate [v expr]
   (->> expr
        (#(differentiate-expr % v))
-       (transform-expression (concat eval-rules universal-rules
-                                     simplify-rules))))
+       (transform-expression dr)))

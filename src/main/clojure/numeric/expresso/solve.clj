@@ -399,9 +399,11 @@
 
 (defn rewrite-in-terms-of [expr x]
   (transform-expression
-   (concat arity-rules
-           [(rule ?x :==> (let [res (apply-rules sem-rewrite-rules [?x x])]
-                            (when-not (= res [?x x]) res)))])
+   (with-meta
+     (concat arity-rules
+             [(rule ?x :==> (let [res (apply-rules sem-rewrite-rules [?x x])]
+                              (when-not (= res [?x x]) res)))])
+     {:id :rewrite-in-terms-of-rules})
    expr))
 
 (defn sem-substitute [expr old new]
