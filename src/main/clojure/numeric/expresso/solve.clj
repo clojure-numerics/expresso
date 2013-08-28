@@ -136,8 +136,7 @@
          (into #{})
          (#(if (some #{'_0} %)
              '_0
-             %)))
-    ::could-not-be-solved))
+             %)))))
        
 (defn solved? [v equation]
   (and (= (nth equation 1) v)
@@ -395,7 +394,10 @@
    (rule [(** ?a (* ?x ?&*)) (exp ?x)]
          :=> (exp (* (log ?a) ?&*)))
    (rule [(exp (+ ?x ?&*)) (exp ?x)]
-         :=> (* (exp ?x) (exp (+ ?&*))))]))
+         :=> (* (exp ?x) (exp (+ ?&*))))
+   (rule [(** ?x ?b) (** ?x ?c)]
+         :==> (** (** ?x ?c) (clojure.core// ?b ?c))
+         :if (guard (and (number? ?b) (number? ?c) (> ?b ?c))))]))
 
 (defn rewrite-in-terms-of [expr x]
   (transform-expression
@@ -417,21 +419,32 @@
     (rule (ex (/ ?a ?b)) :==> (offenders x ?a) :if
           (guard (is-number? ?b)))
     (rule (ex (** ?a ?b)) :==> (offenders x ?a) :if
-          (guard (is-number? ?b)))
+          (guard (and (number? ?b) (< ?b 3))))
     (rule ?x :=> [] :if (guard (is-number? ?x)))
     (rule ?x :=> [?x])]
    expr))
 
 
+(def substitution-candidate-heuristics
+  [(fn [x offenders]
+     (and (every? #(= (expr-op %) '**) offenders)
+          (every? #{(second (first offenders))} (map second offenders))
+          (ce '** (second (first offenders)) x)))
+   (fn [x offenders]
+     (let [off (map #(poly-in-x x %) offenders)]
+       (and (every? identity off)
+            (let [m (apply max (map degree off))]
+              (when (> m 2)
+                (ce '** x (if (> (- m 2) 1) (- m 2) (- m 1))))))))])
+   
+
 (defn substitution-candidates [x offenders]
-  (and (every? #(= (expr-op %) '**) offenders)
-       (every? #{(second (first offenders))} (map second offenders))
-       (ce '** (second (first offenders)) x)))
+  (filter identity (map #(%1 x offenders) substitution-candidate-heuristics)))
 
 
 (defn solve-by-homogenization [x equation]
   (let [lhs (second equation)
-        subs (->> lhs (offenders x) (substitution-candidates x))
+        subs (->> lhs (offenders x) (substitution-candidates x) first)
         v (gensym "var")]
     (if subs
       (let [sols (solve v (ce '= (sem-substitute lhs subs v) 0))]

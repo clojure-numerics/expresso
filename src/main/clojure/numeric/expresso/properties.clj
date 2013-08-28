@@ -61,6 +61,7 @@
 (defmethod props 'length [_] {:exec-func mat/length})
 (defmethod props 'length-squared [_] {:exec-func mat/length-squared})
 (defmethod props 'pow [_] {:exec-func mat/pow})
+(defmethod props 'log [_] {:exec-func mat/log})
 (defmethod props 'rank [_] {:exec-func mat/rank})
 (defmethod props 'sum [_] {:eval-func evaluate-sum
                            :emit-func emit-sum})
