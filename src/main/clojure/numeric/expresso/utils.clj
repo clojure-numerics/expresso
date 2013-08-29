@@ -144,3 +144,9 @@
   (fresh []
          (membero l v)
          (all-suffixes v l)))
+
+(defn get-in-expression [expr posv]
+  (loop [expr expr posv posv]
+    (if (empty? posv)
+      expr
+      (recur (nth expr (inc (first posv))) (rest posv)))))

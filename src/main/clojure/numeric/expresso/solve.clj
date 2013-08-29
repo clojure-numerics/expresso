@@ -136,8 +136,7 @@
          (into #{})
          (#(if (some #{'_0} %)
              '_0
-             %)))
-    ::could-not-be-solved))
+             %)))))
        
 (defn solved? [v equation]
   (and (= (nth equation 1) v)
@@ -375,6 +374,9 @@
            [(first args) (ce '- nrhs)]]
           [[(first args) nrhs]]))
     [[(second args) (ce '/ (ce 'log rhs) (ce 'log (first args)))]]))
+
+(defmethod rearrange-step-function 'sqrt [[op args pos rhs]]
+  [[(first args) (ce '** rhs 2)]])
 
 
                                         ;(sem-substitute expr compount-term new-var)

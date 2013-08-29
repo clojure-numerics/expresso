@@ -10,6 +10,7 @@
             [clojure.walk :as walk]
             [clojure.core.memoize :as memo]
             [numeric.expresso.utils :as utils]
+            [clojure.set :as set]
             [numeric.expresso.construct :as c]))
 
 (declare exp-isa?)
@@ -315,7 +316,19 @@
 
 (defn simplified? [expr rules]
   (and (instance? clojure.lang.IObj expr)
-       (= (:id (meta rules)) (:simplified-by (meta expr)))))
+       (contains? (:simplified-by (meta expr)) (:id (meta rules)))))
+
+(defn annotate-simplified [expr *rules*]
+  (if (instance? clojure.lang.IObj expr)
+    (with-meta expr (assoc (meta expr)
+                      :simplified-by #{(:id (meta *rules*))}))
+    expr))
+
+(defn add-simp-annotations [res expr]
+  (if (instance? clojure.lang.IObj res)
+    (with-meta res (update-in (meta res)
+                              [:simplified-by]
+                              #(set/union % (:simplified-by (meta expr)))))))
 
 (def transform-expression*
   (fn [expr]
@@ -325,17 +338,14 @@
             (if-let [op (expr-op expr)]
               (let [transformed (doall (map  transform-expression*
                                              (expr-args expr)))
-                    res (apply-to-end *rules* (into '() (concat (reverse transformed)
-                                                                [(first expr)])))]
-                (if (instance? clojure.lang.IObj res)
-                  (with-meta res (assoc (meta res)
-                                   :simplified-by (:id (meta *rules*))))
-                  res))
-              (if (instance? clojure.lang.IObj expr)
-                (with-meta (apply-to-end *rules* expr)
-                  (assoc (meta expr) :simplified-by (:id (meta *rules*))))
-                (apply-to-end *rules*
-                              expr)))]
+                    res (apply-to-end *rules*
+                                      (into '() (concat (reverse transformed)
+                                                        [(first expr)])))]
+                (if (= expr res)
+                  (add-simp-annotations
+                   (annotate-simplified res *rules*) expr)
+                  (annotate-simplified res *rules*)))
+              (annotate-simplified (apply-to-end *rules* expr) *rules*))]
         res))))
 
 (defn transform-expression
