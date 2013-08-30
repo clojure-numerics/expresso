@@ -37,18 +37,21 @@
 (defn swap-sides [[eq lhs rhs]]
   (list eq rhs lhs))
 
-(defn rearrange [v equation]
-  (assert (only-one-occurrence v equation)
-          "cant rearrange an equation with multiple occurrences of the variable")
-  (if-let [pos (position-in-equation v equation)]
-    (loop [sols [(vec (rest (if (= (first pos) 1)
+(defn rearrange-to-position [equation pos]
+  (loop [sols [(vec (rest (if (= (first pos) 1)
                               (swap-sides equation) equation)))]
            pos (subvec pos 1)]
       (if (seq pos)
         (recur (mapcat (fn [[lhs rhs]]
                          (rearrange-step lhs (first pos) rhs)) sols)
                (rest pos))
-        (map (fn [[lhs rhs]] (ce `= lhs rhs)) sols)))
+        (map (fn [[lhs rhs]] (ce `= lhs rhs)) sols))))
+
+(defn rearrange [v equation]
+  (assert (only-one-occurrence v equation)
+          "cant rearrange an equation with multiple occurrences of the variable")
+  (if-let [pos (position-in-equation v equation)]
+    (rearrange-to-position equation pos)
     [equation]))
 
 (def simplify-eq (fn [eq] (ce `= (simp-expr (nth eq 1))  (nth eq 2))))
@@ -61,6 +64,9 @@
 (defn to-poly-nf [v equation]
   (ce `= (poly-in-x v (nth equation 1)) (nth equation 2)))
 
+(defn num= [a b]
+  (or (= a b) (and (number? a) (number? b) (clojure.core/== a b))))
+
 (defn report-res [v eq]
   (prn "report " v eq)
   (if (= '() eq)
@@ -68,7 +74,7 @@
     (if (= (nth eq 1) v)
       (nth eq 2)
       (if (and (no-symbol (nth eq 1)) (no-symbol (nth eq 2)))
-        (if (= (evaluate (nth eq 1) {}) (evaluate (nth eq 2) {}))
+        (if (num= (evaluate (nth eq 1) {}) (evaluate (nth eq 2) {}))
           '_0
           '())
         (nth eq 2)))))
@@ -110,6 +116,8 @@
           deg (degree poly)]
       (if (vs x)
         (cond
+         (= deg 1) (solve-by-simplification-rules
+                    x (ce '= (to-expression (to-sexp poly)) 0))
          (= deg 2) (solve-quadratic x poly)
          :else nil)))))
   
@@ -172,7 +180,6 @@
              (check-if-was-solved v)
              lhs-rhs=0
              (transform-one-level-lhs universal-rules)
-             simp-expr
              (apply-solve-rules v)
              (report-solution v))))    
 
@@ -531,7 +538,25 @@
         [res (subvec pos 0 n)]
         (recur (dec n))))))
         
-  
+
+(defn solve-square-roots [x equation]
+  (let [positions (positions-of-x x equation)
+        r (rule (ex (sqrt ?x)) :=> true)]
+    (loop [sqrts (filter identity (map #(surrounded-by equation % r) positions))
+           equation equation i 0]
+      (prn "equation " equation " sqrts " sqrts)
+      (if (and (empty? sqrts) (< i 10))
+        (do (prn "empty " equation)
+            (solve x equation))
+        (let [[_ pos] (first sqrts)
+              rearr (first (rearrange-to-position equation pos))
+              new-equation (transform-expression
+                            (with-meta square-solve-rules {:id 'morssqrt})
+                            (ce '= (ce '** (nth rearr 1) 2)
+				       (ce '** (nth rearr 2) 2)))]
+          (recur (filter identity (map #(surrounded-by new-equation % r)
+                                       (positions-of-x x new-equation)))
+                 new-equation (inc i)))))))
 
 (def strategy-choose-heuristics
   [(fn [positions equation]
@@ -544,6 +569,12 @@
              (fn [x eq]
                (solve-by-substitution x (nth eq 1) s)))))))
    (fn [positions equation]
+     (let [r (rule (ex (sqrt ?x)) :=> true)]
+       (if (some #(surrounded-by equation % r) positions)
+         solve-square-roots)))
+   ])
+
+#_(fn [positions equation]
      (let [x (utils/get-in-expression equation (first positions))
            r (rule (ex (sqrt ?x)) :=> true)
            sb (map #(surrounded-by equation % r) positions)]
@@ -560,7 +591,8 @@
                                           (ce '= (ce '** sub 2)
                                               (ce '** (first nneq) 2)))))
                    _ (prn "res " res)]
-               #{res}))))))])
+               #{res}))))))
+
 (defn position-strategy [positions equation]
   (some identity (map #(%1 positions equation) strategy-choose-heuristics)))
 
@@ -569,4 +601,7 @@
         strategy (position-strategy positions equation)]
     (if strategy
       (strategy x equation))))
-;;partly rearrange
+
+
+(defn check-solutions [x equation solutions]
+  (map #(solve (gensym "var") (substitute-expr equation {x %1})) solutions))
