@@ -62,6 +62,7 @@
   (ce `= (poly-in-x v (nth equation 1)) (nth equation 2)))
 
 (defn report-res [v eq]
+  (prn "report " v eq)
   (if (= '() eq)
     eq
     (if (= (nth eq 1) v)
@@ -171,6 +172,7 @@
              (check-if-was-solved v)
              lhs-rhs=0
              (transform-one-level-lhs universal-rules)
+             simp-expr
              (apply-solve-rules v)
              (report-solution v))))    
 
@@ -521,16 +523,44 @@
           (recur (dec l)))
         []))))
 
+(defn surrounded-by [equation pos rule]
+  (loop [n (count pos)]
+    (if (> n 0)
+      (if-let [res (apply-rule rule (utils/get-in-expression equation
+                                                             (subvec pos 0 n)))]
+        [res (subvec pos 0 n)]
+        (recur (dec n))))))
+        
+  
+
 (def strategy-choose-heuristics
   [(fn [positions equation]
      (if (> (count positions) 1)
        (let [cs (common-prefix positions)
              _ (prn "common-prefix cs")]
-         (if (> (count cs) 1)
+         (if (> (count cs) 2)
            (let [s (utils/get-in-expression equation cs)
                  _ (prn "substituiere " s)]
              (fn [x eq]
-               (solve-by-substitution x (nth eq 1) s)))))))])
+               (solve-by-substitution x (nth eq 1) s)))))))
+   (fn [positions equation]
+     (let [x (utils/get-in-expression equation (first positions))
+           r (rule (ex (sqrt ?x)) :=> true)
+           sb (map #(surrounded-by equation % r) positions)]
+       (if-let [[_ pos] (some identity sb)]
+         (let [var (gensym "var")
+               sub (utils/get-in-expression equation pos)
+               neq (substitute-expr equation {sub var})
+               _ (prn " neq " neq)
+               nneq (solve* var neq)
+               _ (prn " nneq " nneq)]
+           (fn [x equation]
+             (let [res (ce '= x
+                           (first (solve* x
+                                          (ce '= (ce '** sub 2)
+                                              (ce '** (first nneq) 2)))))
+                   _ (prn "res " res)]
+               #{res}))))))])
 (defn position-strategy [positions equation]
   (some identity (map #(%1 positions equation) strategy-choose-heuristics)))
 

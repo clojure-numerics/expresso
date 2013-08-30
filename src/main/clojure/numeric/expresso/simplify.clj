@@ -79,7 +79,7 @@
 
 
 
-(construct-with [+ - * / ** diff ln sin cos]
+(construct-with [+ - * / ** diff ln sin cos sqrt]
 
 (def arity-rules
   [(rule (+) :=> 0)
@@ -143,6 +143,7 @@
    (rule (- (- ?x)) :=> ?x)
    (rule (* -1 (- ?x) ?&*) :=> (* ?x ?&*))
    (rule (* ?x (** ?x ?n) ?&*) :=> (* (** ?x (+ ?n 1)) ?&*))
+   (rule (** (sqrt ?x) 2) :=> ?x)
    #_(rule (** (** ?x ?n) ?n2) :=> (** ?x (* ?n ?n2)))])
 
 (def to-inverses-rules
