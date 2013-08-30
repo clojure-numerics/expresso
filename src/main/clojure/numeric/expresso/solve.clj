@@ -76,10 +76,11 @@
   (when (only-one-occurrence v eq) eq))
 
 
-(declare solve solve-by-simplification-rules solve-by-homogenization)
+(declare solve* solve-by-simplification-rules solve-by-homogenization
+         solve-by-strategy)
 
 (defn solve-factors [v factors]
-  (->> (mapcat #(solve v (ce `= % 0)) (matcher-args factors))
+  (->> (mapcat #(solve* v (ce `= % 0)) (matcher-args factors))
        (map #(ce `= v %))))
 
 (defn solve-constant [v poly]
@@ -101,7 +102,9 @@
            (ce `= v (ex' (/ (- (- b) (sqrt(- (** b 2) (* 4 a c)))) (* 2 a))))])))
 
 (defn solve-polynomial [x polyeq]
-  (when-let [poly (poly-in-x x (to-poly-normal-form (nth polyeq 1)))]
+  (when-let [poly (poly-in-x x (to-poly-normal-form
+                                (transform-expression
+                                 eval-rules (nth polyeq 1))))]
     (let [vs (vars poly)
           deg (degree poly)]
       (if (vs x)
@@ -121,7 +124,8 @@
   [(rule [?v (ex (= (* ?&*) 0))] :==> (solve-factors ?v ?&*))
    (rule [?v ?x] :==> (solve-polynomial ?v ?x))
    (rule [?v ?x] :==> (solve-by-simplification-rules ?v ?x))
-   (rule [?v ?x] :==> (solve-by-homogenization ?v ?x))])
+   (rule [?v ?x] :==> (solve-by-homogenization ?v ?x))
+   (rule [?v ?x] :==> (solve-by-strategy ?v ?x))])
 
 (defn apply-solve-rules [v expr]
   (let [res (apply-rules solve-rules [v expr])]
@@ -146,14 +150,29 @@
 (defn transform-one-level-lhs [rules eq]
   (ce `= (transform-one-level rules (nth eq 1)) (nth eq 2)))
 
+(def ^:dynamic *solve-attempts*)
+(def ^:dynamic *symbolv*)
+
 (defn solve [v equation]
+  (binding [*solve-attempts* (atom #{})
+            *symbolv* (gensym "var")]
+    (solve* v equation)))
+
+(defn check-if-was-solved [v equation]
+  (let [eq (substitute-expr equation {v *symbolv*})]
+    (when-not (some #{eq} @*solve-attempts*)
+      (swap! *solve-attempts* #(set/union % #{eq}))
+      equation)))
+
+(defn solve* [v equation]
   (if (solved? v equation)
     (report-solution v [(simplify-rhs equation)])
-    (->> equation
-         lhs-rhs=0
-         (transform-one-level-lhs universal-rules)
-         (apply-solve-rules v)
-         (report-solution v))))    
+    (some->> equation
+             (check-if-was-solved v)
+             lhs-rhs=0
+             (transform-one-level-lhs universal-rules)
+             (apply-solve-rules v)
+             (report-solution v))))    
 
 
 (defn poly-const [poly]
@@ -378,7 +397,9 @@
 (defmethod rearrange-step-function 'sqrt [[op args pos rhs]]
   [[(first args) (ce '** rhs 2)]])
 
-
+(defmethod rearrange-step-function 'abs [[op args pos rhs]]
+  [[(first args) rhs]
+   [(first args) (ce '- rhs)]])
                                         ;(sem-substitute expr compount-term new-var)
 
 (def ^:dynamic ito)
@@ -397,7 +418,15 @@
    (rule [(** ?a (* ?x ?&*)) (exp ?x)]
          :=> (exp (* (log ?a) ?&*)))
    (rule [(exp (+ ?x ?&*)) (exp ?x)]
-         :=> (* (exp ?x) (exp (+ ?&*))))]))
+         :=> (* (exp ?x) (exp (+ ?&*))))
+   (rule [(exp (* ?x ?&+)) (exp ?x)]
+         :=> (** (exp ?x) (* ?&+)))
+   (rule [(exp (- ?x)) (exp ?x)]
+         :=> (/ (exp ?x)))
+   (rule [(** ?x ?b) (** ?x ?c)]
+         :==> (** (** ?x ?c) (clojure.core// ?b ?c))
+         :if (guard (and (number? ?b) (number? ?c) (> ?b ?c))))]))
+
 
 (defn rewrite-in-terms-of [expr x]
   (transform-expression
@@ -427,18 +456,87 @@
    expr))
 
 
-(defn substitution-candidates [x offenders]
-  (and (every? #(= (expr-op %) '**) offenders)
-       (every? #{(second (first offenders))} (map second offenders))
-       (ce '** (second (first offenders)) x)))
+(def substitution-candidate-heuristics
+  [#_(fn [x offenders]
+     (and (= (count offenders) 1)
+          (= (expr-op (first offenders)) 'log)
+          (not= (nth (first offenders) 1) x)
+          (nth (first offenders) 1)))
+   #_(fn [x offenders]
+     (and (= (count offenders) 1)
+          (= (expr-op (first offenders)) '**)
+          (not= (nth (first offenders) 2) x)
+          (nth (first offenders) 2)))
+   (fn [x offenders]
+     (and (every? #(= (expr-op %) '**) offenders)
+          (every? #{(second (first offenders))} (map second offenders))
+          (ce '** (second (first offenders)) x)))
+   (fn [x offenders]
+     (and (every? #(= (expr-op %) 'exp) offenders)
+          (ce 'exp x)))
+   (fn [x offenders]
+     (let [off (map #(poly-in-x x %) offenders)]
+       (and (every? identity off)
+            (let [m (apply max (map degree off))]
+              (when (> m 2)
+                (ce '** x (if (> (- m 2) 1) (- m 2) (- m 1))))))))])
+   
 
+(defn substitution-candidates [x offenders]
+  (filter identity (map #(%1 x offenders) substitution-candidate-heuristics)))
+
+(defn solve-by-substitution [x lhs subs]
+  (if subs
+    (let [v (gensym "var")
+          sols (solve* v (ce '= (sem-substitute lhs subs v) 0))]
+        (if sols
+          (into #{}
+                (map #(ce '= x %) (mapcat #(solve* x (ce '= subs %)) sols)))))))
+  
 
 (defn solve-by-homogenization [x equation]
   (let [lhs (second equation)
-        subs (->> lhs (offenders x) (substitution-candidates x))
-        v (gensym "var")]
-    (if subs
-      (let [sols (solve v (ce '= (sem-substitute lhs subs v) 0))]
-        (if sols
-          (into #{}
-                (map #(ce '= x %) (mapcat #(solve x (ce '= subs %)) sols))))))))
+        subs (->> lhs (offenders x) (substitution-candidates x) first)
+        _ (prn "subs " subs)]
+    (solve-by-substitution x lhs subs)))
+(defn multiply-equation [eq factor]
+  (ce '= (ce '* (nth eq 1) factor) (ce '* (nth eq 2) factor)))
+
+(defn positions-of-x
+  ([v equation] (positions-of-x v equation []))
+  ([v equation pos]
+     (if-let [op (expr-op equation)]
+       (filter identity
+               (mapcat #(positions-of-x v %1 (conj pos %2))
+                       (rest equation) (range)))
+       (if (= v equation) [pos] nil))))
+
+(defn common-prefix [positions]
+  (let [minl (apply min (map count positions))]
+    (loop [l minl]
+      (if (> l 0)
+        (if (every? #{(subvec (first positions) 0 l)}
+                    (map #(subvec % 0 l) (rest positions)))
+          (subvec (first positions) 0 l)
+          (recur (dec l)))
+        []))))
+
+(def strategy-choose-heuristics
+  [(fn [positions equation]
+     (if (> (count positions) 1)
+       (let [cs (common-prefix positions)
+             _ (prn "common-prefix cs")]
+         (if (> (count cs) 1)
+           (let [s (utils/get-in-expression equation cs)
+                 _ (prn "substituiere " s)]
+             (fn [x eq]
+               (solve-by-substitution x (nth eq 1) s)))))))])
+(defn position-strategy [positions equation]
+  (some identity (map #(%1 positions equation) strategy-choose-heuristics)))
+
+(defn solve-by-strategy [x equation]
+  (let [positions (positions-of-x x equation)
+        strategy (position-strategy positions equation)]
+    (if strategy
+      (strategy x equation))))
+;;partly rearrange
