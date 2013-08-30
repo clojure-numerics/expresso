@@ -66,6 +66,7 @@
                            :emit-func emit-sum})
 (defmethod props 'sqrt [_] {:exec-func mat/sqrt})
 (defmethod props 'log [_] {:exec-func mat/log})
+(defmethod props 'abs [_] {:exec-func mat/abs})
 (defmethod props 'exp [_] {:exec-func mat/exp})
 
 (defmulti matcher first)

@@ -21,7 +21,7 @@
             [numeric.expresso.matcher :as m]
             [numeric.expresso.construct :as c]))
 (set! *warn-on-reflection* true)
-
+(declare check-solution)
 
 (defn only-one-occurrence [v equation]
   (>= 1 (->> equation flatten (filter #{v}) count)))
@@ -64,8 +64,12 @@
 (defn to-poly-nf [v equation]
   (ce `= (poly-in-x v (nth equation 1)) (nth equation 2)))
 
+(def ^:dynamic *treshold* 1e-6)
+
 (defn num= [a b]
-  (or (= a b) (and (number? a) (number? b) (clojure.core/== a b))))
+  (or (= a b) (and (number? a) (number? b)
+                   (or (clojure.core/== a b)
+                       (< (- (Math/abs a) (Math/abs b)) *treshold*)))))
 
 (defn report-res [v eq]
   (prn "report " v eq)
@@ -558,6 +562,27 @@
                                        (positions-of-x x new-equation)))
                  new-equation (inc i)))))))
 
+(defn solve-abs [x equation]
+  (let [positions (positions-of-x x equation)
+        r (rule (ex (abs ?x)) :=> true)
+        sb (some #(surrounded-by equation % r) positions)]
+    (loop [equations [equation]]
+      (if (some (fn [eq] (some #(surrounded-by eq % r) (positions-of-x x eq)))
+                equations)
+        (recur
+         (mapcat (fn [eq]
+                   (if-let [[_ pos] (some #(surrounded-by eq % r)
+                                    (positions-of-x x eq))]
+                     (let [abs (utils/get-in-expression eq pos)
+                           _ (prn "abs " abs)]
+                       [(substitute-expr eq {abs (nth abs 1)})
+                        (substitute-expr eq {abs (ce '- (nth abs 1))})])
+                     [eq])) equations))
+        #_equations
+        
+        (set (filter #(check-solution x equation %) (mapcat #(solve 'x %)
+                                                            equations)))))))
+  
 (def strategy-choose-heuristics
   [(fn [positions equation]
      (if (> (count positions) 1)
@@ -572,6 +597,10 @@
      (let [r (rule (ex (sqrt ?x)) :=> true)]
        (if (some #(surrounded-by equation % r) positions)
          solve-square-roots)))
+   (fn [positions equation]
+     (let [r (rule (ex (abs ?x)) :=> true)]
+       (if (some #(surrounded-by equation % r) positions)
+         solve-abs)))
    ])
 
 #_(fn [positions equation]
@@ -605,3 +634,10 @@
 
 (defn check-solutions [x equation solutions]
   (map #(solve (gensym "var") (substitute-expr equation {x %1})) solutions))
+
+(defn check-solution [x equation solution]
+  (let [res 
+        (if-let [x (solve (gensym "var")
+                          (substitute-expr equation {x solution}))]
+              (not (= x #{})))]
+    res))
