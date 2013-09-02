@@ -1,7 +1,7 @@
 (ns numeric.expresso.simplify
   (:refer-clojure :exclude [==])
   (:use [clojure.core.logic.protocols]
-        [clojure.core.logic :exclude [is] :as l]
+        [clojure.core.logic :exclude [is log] :as l]
         [numeric.expresso.construct]
         [numeric.expresso.properties :as props]
         [numeric.expresso.protocols]
@@ -79,7 +79,7 @@
 
 
 
-(construct-with [+ - * / ** diff ln sin cos sqrt]
+(construct-with [+ - * / ** diff ln sin cos sqrt exp log]
 
 (def arity-rules
   [(rule (+) :=> 0)
@@ -133,7 +133,7 @@
 
 (def simplify-rules
   [(rule (* ?x ?x ?&*) :=> (* (** ?x 2) ?&*))
-   (rule (/ (* ?&*)) :==> (* (map-sm #(/ %) ?&*)))
+   #_(rule (/ (* ?&*)) :==> (* (map-sm #(/ %) ?&*)))
    (rule (* ?x (/ ?x) ?&*) :=> (* ?&*))
    (rule (+ ?x (- ?x) ?&*) :=> (+ ?&*))
    (rule (+ ?x ?x ?&*) :=> (+ (* 2 ?x) ?&*))
@@ -176,8 +176,24 @@
    (rule (** (/ ?a) ?x) :=> (/ (** ?a ?x)))
    (rule (sqrt (/ ?a ?b)) :=> (/ (sqrt ?a) (sqrt ?b)))
    (rule (* (sqrt ?a) (sqrt ?b) ?&*) :=> (* (sqrt (* ?a ?b)) ?&*))
-   (rule (** (- ?x) 2) :=> (** ?x 2))]
+   (rule (** (- ?x) 2) :=> (** ?x 2))
+   (rule (* (/ ?x) (/ ?y) ?&*) :=> (/ (* ?x ?y)))]
   )
+
+(def log-solve-rules
+  (with-meta
+    (concat universal-rules
+            eval-rules
+            to-inverses-rules
+            multiply-out-rules
+            [(rule (+ (log ?x) (log ?y)) :=> (log (* ?x ?y)))
+             (rule (- (log ?x) (log ?y)) :=> (log (/ ?x ?y)))
+             (rule (log (exp ?x)) :=> ?x)
+             (rule (exp (log ?x)) :=> ?x)
+             (rule (exp (- ?x)) :=> (/ (exp ?x)))
+             (rule (exp (+ ?&*)) :==> (* (map-sm #(exp %) ?&*)))
+             (rule (exp (* (log ?x) ?&*)) :=> (** ?x (* ?&*)))])
+    {:id 'log-solve-rules}))
 
 (def square-solve-rules
   (with-meta
@@ -421,3 +437,4 @@
   (->> expr
        (#(differentiate-expr % v))
        (transform-expression dr)))
+

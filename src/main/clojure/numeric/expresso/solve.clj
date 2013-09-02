@@ -22,7 +22,7 @@
             [numeric.expresso.construct :as c]))
 (set! *warn-on-reflection* true)
 (declare check-solution)
-
+(declare contains-expr?)
 (defn only-one-occurrence [v equation]
   (>= 1 (->> equation flatten (filter #{v}) count)))
                   
@@ -73,15 +73,19 @@
 
 (defn report-res [v eq]
   (prn "report " v eq)
-  (if (= '() eq)
-    eq
-    (if (= (nth eq 1) v)
-      (nth eq 2)
-      (if (and (no-symbol (nth eq 1)) (no-symbol (nth eq 2)))
-        (if (num= (evaluate (nth eq 1) {}) (evaluate (nth eq 2) {}))
-          '_0
-          '())
-        (nth eq 2)))))
+  (if (not (seq? eq))
+    (report-res v (ce '= v eq))
+    (if (= '() eq)
+      eq
+      (if (= (nth eq 1) v)
+        (if (number? (nth eq 2))
+          (when-not (Double/isNaN (nth eq 2)) (nth eq 2))
+          (nth eq 2))
+        (if (and (no-symbol (nth eq 1)) (no-symbol (nth eq 2)))
+          (if (num= (evaluate (nth eq 1) {}) (evaluate (nth eq 2) {}))
+            '_0
+            '())
+          (nth eq 2))))))
 
 (defn check-if-can-be-solved [v eq]
   (when (only-one-occurrence v eq) eq))
@@ -107,10 +111,11 @@
 (defn solve-quadratic [v poly]
   (let [a (simp-expr (to-expression (to-sexp (coef poly 2))))
         b (simp-expr (to-expression (to-sexp (coef poly 1))))
-        c (simp-expr (to-expression (to-sexp (coef poly 0))))]
+        c (simp-expr (to-expression (to-sexp (coef poly 0))))
+        _ (prn "a b c " a b c)]
     (mapv simp-expr
-          [(ce `= v (ex' (/ (+ (- b) (sqrt(- (** b 2) (* 4 a c)))) (* 2 a))))
-           (ce `= v (ex' (/ (- (- b) (sqrt(- (** b 2) (* 4 a c)))) (* 2 a))))])))
+          [(ce `= v (ex' (/ (+ (- b) (sqrt (- (** b 2) (* 4 a c)))) (* 2 a))))
+           (ce `= v (ex' (/ (- (- b) (sqrt (- (** b 2) (* 4 a c)))) (* 2 a))))])))
 
 (defn solve-polynomial [x polyeq]
   (when-let [poly (poly-in-x x (to-poly-normal-form
@@ -123,7 +128,11 @@
          (= deg 1) (solve-by-simplification-rules
                     x (ce '= (to-expression (to-sexp poly)) 0))
          (= deg 2) (solve-quadratic x poly)
-         :else nil)))))
+         :else (let [factors (ratio-root poly)
+                     _ (prn "factors " factors)]
+                 (and (every? #(<= (degree %) 2) factors)
+                      (map #(ce '= x %) (mapcat #(solve* x (ce '= % 0))
+                                                factors)))))))))
   
 (defn solve-by-simplification-rules [v expr]
   (some->> expr
@@ -149,6 +158,7 @@
   (if sols
     (->> sols
          (mapv #(report-res v %))
+         (filter identity)
          (remove #{'()})
          (into #{})
          (#(if (some #{'_0} %)
@@ -172,10 +182,12 @@
     (solve* v equation)))
 
 (defn check-if-was-solved [v equation]
-  (let [eq (substitute-expr equation {v *symbolv*})]
-    (when-not (some #{eq} @*solve-attempts*)
-      (swap! *solve-attempts* #(set/union % #{eq}))
-      equation)))
+  (if (not (and (bound? #'*symbolv*) (bound? #'*solve-attempts*)))
+    equation
+    (let [eq (substitute-expr equation {v *symbolv*})]
+      (when-not (some #{eq} @*solve-attempts*)
+        (swap! *solve-attempts* #(set/union % #{eq}))
+        equation))))
 
 (defn solve* [v equation]
   (if (solved? v equation)
@@ -392,6 +404,12 @@
 (defmethod rearrange-step-function 'arccos [[op args pos rhs]]
   (unary-rearrange-step 'arccos 'cos args rhs))
 
+(defmethod rearrange-step-function 'tan [[op args pos rhs]]
+  (unary-rearrange-step 'tan 'arctan args rhs))
+
+(defmethod rearrange-step-function 'arctan [[op args pos rhs]]
+  (unary-rearrange-step 'arctan 'tan args ))
+
 (defmethod rearrange-step-function 'exp [[op args pos rhs]]
   (unary-rearrange-step 'exp 'log args rhs))
 
@@ -417,7 +435,7 @@
 
 (def ^:dynamic ito)
 
-(construct-with [+ * ** exp log / -]
+(construct-with [+ * ** exp log / - sin cos]
 
 (def sem-rewrite-rules
   [(rule [(** ?a (* ?x ?&+)) (** ?a ?x)]
@@ -438,7 +456,11 @@
          :=> (/ (exp ?x)))
    (rule [(** ?x ?b) (** ?x ?c)]
          :==> (** (** ?x ?c) (clojure.core// ?b ?c))
-         :if (guard (and (number? ?b) (number? ?c) (> ?b ?c))))]))
+         :if (guard (and (number? ?b) (number? ?c) (> ?b ?c))))
+   (rule [(** (sin ?x) 2) (cos ?x)]
+         :=> (- 1 (** (cos ?x) 2)))
+   (rule [(** (cos ?x) 2) (sin ?x)]
+         :=> (- 1 (** (sin ?x) 2)))]))
 
 
 (defn rewrite-in-terms-of [expr x]
@@ -455,7 +477,7 @@
       (rewrite-in-terms-of old)
       (substitute-expr {old new})))
 
-(defn offenders [x expr]
+(defn offenders [x  expr]
   (apply-rules
    [(rule (ex (+ ?&*)) :==> (mapcat #(offenders x %) (matcher-args ?&*)))
     (rule (ex (* ?&*)) :==> (mapcat #(offenders x %) (matcher-args ?&*)))
@@ -480,14 +502,32 @@
           (= (expr-op (first offenders)) '**)
           (not= (nth (first offenders) 2) x)
           (nth (first offenders) 2)))
-   (fn [x offenders]
+   (fn [x eq offenders]
      (and (every? #(= (expr-op %) '**) offenders)
           (every? #{(second (first offenders))} (map second offenders))
           (ce '** (second (first offenders)) x)))
-   (fn [x offenders]
+   (fn [x eq offenders]
      (and (every? #(= (expr-op %) 'exp) offenders)
           (ce 'exp x)))
-   (fn [x offenders]
+   (fn [x eq offenders]
+     (and (every? #(= (expr-op %) 'sin) offenders)
+          (every? #{(second (first offenders))} (map second offenders))
+          (ce 'sin (second (first offenders)))))
+   (fn [x eq offenders]
+     (and (every? #(or (= (expr-op %) 'cos)
+                       (= (expr-op %) 'sin)
+                       (and
+                        (= (expr-op %) '**)
+                        (num= (nth % 2) 2)
+                        (or (= (expr-op (nth % 1)) 'sin)
+                            (= (expr-op (nth % 1)) 'cos)))) offenders))
+     (if (contains-expr? eq (rule (ex (** (sin ?x) 2)) :=> true))
+       (ex (cos x))
+       (if (contains-expr? eq (rule (ex (** (cos ?x) 2)) :=> true))
+         (ex (sin x))
+         (some (fn [x] (if (= (expr-op x) 'sin) 'sin
+                           (if (= (expr-op x) 'cos) 'cos))) offenders))))
+   (fn [x eq offenders ]
      (let [off (map #(poly-in-x x %) offenders)]
        (and (every? identity off)
             (let [m (apply max (map degree off))]
@@ -495,8 +535,9 @@
                 (ce '** x (if (> (- m 2) 1) (- m 2) (- m 1))))))))])
    
 
-(defn substitution-candidates [x offenders]
-  (filter identity (map #(%1 x offenders) substitution-candidate-heuristics)))
+(defn substitution-candidates [x equation offenders]
+  (filter identity (map #(%1 x equation offenders)
+                        substitution-candidate-heuristics)))
 
 (defn solve-by-substitution [x lhs subs]
   (if subs
@@ -509,7 +550,8 @@
 
 (defn solve-by-homogenization [x equation]
   (let [lhs (second equation)
-        subs (->> lhs (offenders x) (substitution-candidates x) first)
+        _ (prn "offenders " (offenders x lhs))
+        subs (->> lhs (offenders x ) (substitution-candidates x equation) first)
         _ (prn "subs " subs)]
     (solve-by-substitution x lhs subs)))
 (defn multiply-equation [eq factor]
@@ -541,7 +583,21 @@
                                                              (subvec pos 0 n)))]
         [res (subvec pos 0 n)]
         (recur (dec n))))))
-        
+
+(defn solve-logarithms [x eq]
+  (loop [equation (transform-expression log-solve-rules eq) i 0]
+    (prn "equation " equation)
+    (if (< i 5)
+      (let [positions (positions-of-x x equation)
+            r (rule (ex (log ?x)) :=> ?x)
+            log (some #(surrounded-by equation % r) positions)]
+        (if-let [[x pos] log]
+          (let [rearr (first (rearrange-to-position equation pos))]
+            (recur (transform-expression
+                    log-solve-rules
+                    (ce '= (ce 'exp (nth rearr 1)) (ce 'exp (nth rearr 2))))
+                   (inc i)))
+          (set (filter #(check-solution x eq %) (solve* x equation))))))))
 
 (defn solve-square-roots [x equation]
   (let [positions (positions-of-x x equation)
@@ -551,7 +607,7 @@
       (prn "equation " equation " sqrts " sqrts)
       (if (and (empty? sqrts) (< i 10))
         (do (prn "empty " equation)
-            (solve x equation))
+            (solve* x equation))
         (let [[_ pos] (first sqrts)
               rearr (first (rearrange-to-position equation pos))
               new-equation (transform-expression
@@ -561,6 +617,65 @@
           (recur (filter identity (map #(surrounded-by new-equation % r)
                                        (positions-of-x x new-equation)))
                  new-equation (inc i)))))))
+
+(defn square-number [a]
+  (let [sq (Math/sqrt ^long a)]
+    (num= sq (Math/floor sq))))
+
+(def fraction-rules
+  (construct-with [+ - * / **]
+    (concat universal-rules
+            to-inverses-rules
+            eval-rules
+            [(rule (/ (* ?&*)) :==> (* (map-sm #(/ %) ?&*)))
+             (rule (/ (+ (** ?x 2) ?a))
+                   :==> (let [sqrt (long (Math/sqrt ^long (clojure.core/- ?a)))]
+                          (* (/ (+ ?x sqrt)) (/ (- ?x sqrt))))
+                   :if (guard (and (integer? ?a) (< ?a 0)
+                                   (square-number (clojure.core/- ?a)))))])))
+
+
+(def cancel-fraction-rules
+  (construct-with [+ - * / **]
+    (concat universal-rules
+            to-inverses-rules
+            eval-rules
+            [(rule (* (+ ?&*1) ?&*2) :==>  (+ (map-sm #(* ?&*2 %) ?&*1)))
+             (rule (* ?x (/ ?x) ?&*) :=> (* ?&*))])))
+
+(defn rdf [frac]
+  (into #{}
+        (map (fn [x] [x (:pos (meta x))])
+             (into #{} (map #(with-meta (first %) {:pos (second %)}) frac)))))
+
+(declare multiply-equation)
+(defn solve-fractions [x equation]
+  (loop [equation (transform-expression fraction-rules equation)]
+    (let [positions (positions-of-x x equation)
+          r (rule (ex (/ ?x)) :=> ?x)
+          frac (filter identity (map #(surrounded-by equation % r) positions))
+          varmap (into {} (map (fn [[exp pos]] [exp (gensym "var")]) frac))
+          symbal (doall (map  (fn [frac] [(get varmap (first frac)) frac])
+                              (into #{} frac)))
+          _ (prn "symbal " symbal)
+          rsymbm (into {} (map (fn [[k v]] [k (first v)]) symbal))
+          symbm (into {} (map (fn [[x y]] [(concat (second y) [0]) x]) symbal))
+          _ (prn "symbm " symbm " rsymbm " rsymbm)
+          factor (cev '* (into #{} (map first symbal)))
+          ;;bug into #{} nützt hier momentan nichts 
+          _ (prn "factor " factor)
+          wof (utils/substitute-in-positions equation symbm)
+          _ (prn "wof " wof)
+          wof (multiply-equation wof factor)
+          _ (prn "wof " wof)
+          wof (transform-expression
+               cancel-fraction-rules wof)
+          _ (prn "wof " wof)
+          wof (substitute-expr wof rsymbm)
+          _ (prn "wof " wof)]
+      (when-not (some #(surrounded-by wof % r) (positions-of-x x wof))
+        (into #{} (filter #(check-solution x equation %)
+                                        (solve* x wof)))))))
 
 (defn solve-abs [x equation]
   (let [positions (positions-of-x x equation)
@@ -578,9 +693,7 @@
                        [(substitute-expr eq {abs (nth abs 1)})
                         (substitute-expr eq {abs (ce '- (nth abs 1))})])
                      [eq])) equations))
-        #_equations
-        
-        (set (filter #(check-solution x equation %) (mapcat #(solve 'x %)
+        (set (filter #(check-solution x equation %) (mapcat #(solve* x %)
                                                             equations)))))))
   
 (def strategy-choose-heuristics
@@ -601,43 +714,120 @@
      (let [r (rule (ex (abs ?x)) :=> true)]
        (if (some #(surrounded-by equation % r) positions)
          solve-abs)))
+   (fn [positions equation]
+     (prn "check-for-fraction solving")
+     (let [r1 (rule (ex (/ ?x)) :=> ?x)
+           r2 (rule (ex (/ ?x ?y)) :=> true)]
+       (if (or (some #(surrounded-by equation % r1) positions)
+               (some #(surrounded-by equation % r2) positions))
+         solve-fractions)))
+   (fn [positions equation]
+     (let [r (rule (ex (ln ?x)) :=> ?x)]
+       (if (some #(surrounded-by equation % r) positions)
+         solve-logarithms)))
    ])
 
-#_(fn [positions equation]
-     (let [x (utils/get-in-expression equation (first positions))
-           r (rule (ex (sqrt ?x)) :=> true)
-           sb (map #(surrounded-by equation % r) positions)]
-       (if-let [[_ pos] (some identity sb)]
-         (let [var (gensym "var")
-               sub (utils/get-in-expression equation pos)
-               neq (substitute-expr equation {sub var})
-               _ (prn " neq " neq)
-               nneq (solve* var neq)
-               _ (prn " nneq " nneq)]
-           (fn [x equation]
-             (let [res (ce '= x
-                           (first (solve* x
-                                          (ce '= (ce '** sub 2)
-                                              (ce '** (first nneq) 2)))))
-                   _ (prn "res " res)]
-               #{res}))))))
 
 (defn position-strategy [positions equation]
   (some identity (map #(%1 positions equation) strategy-choose-heuristics)))
 
 (defn solve-by-strategy [x equation]
+  (prn "solve-by-strategy " x equation)
   (let [positions (positions-of-x x equation)
-        strategy (position-strategy positions equation)]
+        strategy (position-strategy positions equation)
+        _ (prn "strategy " strategy)]
     (if strategy
       (strategy x equation))))
 
 
 (defn check-solutions [x equation solutions]
-  (map #(solve (gensym "var") (substitute-expr equation {x %1})) solutions))
+  (map #(solve* (gensym "var") (substitute-expr equation {x %1})) solutions))
 
 (defn check-solution [x equation solution]
-  (let [res 
-        (if-let [x (solve (gensym "var")
-                          (substitute-expr equation {x solution}))]
-              (not (= x #{})))]
-    res))
+  (try 
+    (let [res 
+          (if-let [x (solve* (gensym "var")
+                            (substitute-expr equation {x solution}))]
+            (not (= x #{})))]
+      res)
+    (catch Exception e nil)))
+
+
+(defn gcd [m n]
+  (loop [m (long m) n (long n)]
+    (if (> n 0)
+      (recur n (rem m n))
+      m)))
+(declare common-factors)
+(construct-with [* + - / **]
+ (def common-factor-rules                 
+   [(rule [?m ?n] :==> (gcd (Math/abs ?m) (Math/abs ?n))
+         :if (guard (and (integer? ?m) (integer? ?n))))
+    (rule [?m ?m] :=> ?m)
+    (rule [(** ?a ?m) ?a] :=> ?a)
+    (rule [(** ?a ?m) (** ?a ?n)] :==> (** ?a (min ?m ?n))
+          :if (guard (and (integer? ?m) (integer? ?n))))
+   (rule [(* ?a ?&*1) (* ?a ?&*2)] :==> (* ?a
+                                           (common-factors
+                                            (utils/splice-in-seq-matchers
+                                             (* ?&*1))
+                                            (utils/splice-in-seq-matchers
+                                             (* ?&*2)))))
+   (rule [(* ?a ?&*1) (* ?b ?&*2)] :==> (let [cf (common-factors ?a ?b)]
+                                          (when (not (num= cf 1))
+                                            (* cf
+                                               (common-factors
+                                                (utils/splice-in-seq-matchers
+                                                 (* ?&*1))
+                                                (utils/splice-in-seq-matchers
+                                                 (* ?&*2)))))))
+   (rule [(* ?a ?&*) ?b] :==> (let [cf (common-factors ?a ?b)]
+                                (when (not (num= cf 1))
+                                  cf)))
+   (rule [?m ?n] :=> 1)])
+)
+
+(defn common-factors
+  ([a b]
+  (let [trans (mapv #(transform-expression (concat universal-rules
+                                            eval-rules
+                                           ; multiply-out-rules
+                                            simplify-rules) %) [a b])
+        _ (prn "trans " trans)]
+    (->> (transform-expression common-factor-rules trans)
+         (transform-expression (concat universal-rules eval-rules)))))
+  ([a b & more]
+     (reduce common-factors (common-factors a b) more)))
+
+
+(construct-with [+ * / **]
+(defn cancel-factor [exp factor]
+  (transform-expression
+   (concat universal-rules
+           to-inverses-rules
+           eval-rules
+           [(rule [(+ ?&*) ?f] :==> (do (prn "hi ") (map-sm #(/ % ?f) ?&*)))
+            (rule [(ex (* ?a ~?&*1)) (ex (* ?a ~?&*2))] :=> [(ex (* ~?&*1))
+                                                             (ex (* ~?&*2))])
+            (rule [(ex (* ?a ~?&*1)) (ex (* ?b ~?&*1))] :==>
+                  (let [q (quot ?a ?b)]
+                    [(ex (* q ~?&*1)) (ex (* ~?&*1))]))
+            (rule [?a ?b] ?a)])
+   [exp factor]))
+)
+(defn factor-poly [polyexp]
+  (apply-rule
+   (rule (ex (+ ?&+)) :==> (let [cf (apply common-factors (matcher-args ?&+))]
+                             (ce '* cf (cancel-factor
+                                        (utils/splice-in-seq-matchers
+                                         (ce '+ ?&+)) cf))))
+   polyexp))
+
+;;to effectively cancel factors out replace them by variables then eliminate
+;;and replace back
+
+(defn contains-expr? [expr r]
+  (or (and (not= expr (apply-rules [r] expr))
+           (apply-rules [r] expr))
+      (some #{true}
+            (flatten (transform-expression [r] expr)))))

@@ -372,11 +372,13 @@
     (clojure.core/== x y)
     (= x y)))
 
-(defn poly**n [p ^long n]
-  (cond
-   (p== n 0) (do (assert (not (= p 0))) 1)
-   (integer? p) (Math/pow p n)
-   :else (poly*poly p (poly**n p (- n 1)))))
+(defn poly**n [p  n]
+  (if (integer? n)
+    (cond
+     (p== n 0) (do (assert (not (= p 0))) 1)
+     (integer? p) (Math/pow p n)
+     :else (poly*poly p (poly**n p (- ^long n 1))))
+    :error))
    
 
 (defn normalize-poly [p]
@@ -389,7 +391,7 @@
               (< pdeg (degree p))
               (protocols/make-poly (.-v ^PolynomialExpression p)
                                    (subvec (.-coeffs ^PolynomialExpression p)
-                                           0 pdeg))
+                                           0 (inc pdeg)))
               :else p))))
 
 (defn poly*same [p q]
@@ -529,3 +531,44 @@
                                      (if (= y x)
                                        true
                                        (< 0 (compare v y))))))))
+
+
+(defn pd [u v]
+  (let [m (- (count u) 1) n (- (count v) 1)]
+    (loop [k (- m n) u u q (mat/new-vector (+ (- m n) 1))]
+      (if (>= k 0)
+        (let [q (assoc q k (/ (nth u (+ n k)) (nth v n)))
+              u (loop [u u j (+ n k )]
+                  (if (>= j k)
+                    (recur
+                     (let []
+                       (assoc u j (- (nth u j) (* (nth q k) (nth v (- j k))))))
+                     (dec j))
+                    u))]
+          (recur (dec k) u q))
+        [q (subvec u 0 n)]))))
+
+
+(defn poly-division [u v]
+  (and (= (main-var u) (main-var v))
+       (let [[q r] (pd (.-coeffs u) (.-coeffs v))]
+         [(normalize-poly (protocols/make-poly (main-var u) q))
+          (normalize-poly (protocols/make-poly (main-var u) r))])))
+
+(defn factors [n] (map #(/ n %) (filter #(zero? (rem n %)) (range 1 (+ n 1)))))
+
+(defn ratio-root-guesses [poly]
+  (if (every? integer? (.-coeffs poly))
+    (apply concat (for [n (factors (Math/abs (coef poly 0)))
+                        d (factors (Math/abs (coef poly (degree poly))))]
+                    [(/ n d) (/ (- n) d)]))
+    '()))
+
+(defn ratio-root [poly]
+  (reduce (fn [factors guess]
+            (let [p (first factors)
+                  div (to-poly-normal-form (ce '- (main-var poly) guess))
+                  [quot r] (poly-division p div)]
+              (if (or (= r 0) (= r 0.0))
+                (list* quot div (rest factors))
+                factors))) (list poly) (ratio-root-guesses poly)))

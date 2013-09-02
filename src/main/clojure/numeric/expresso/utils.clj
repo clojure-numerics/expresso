@@ -150,3 +150,19 @@
     (if (empty? posv)
       expr
       (recur (nth expr (inc (first posv))) (rest posv)))))
+
+(defn set-elem-in-pos [l pos sub]
+  ;;todo use cev here and resolve cyclic dependency
+  (apply list (concat (take pos l) [sub] (drop (inc pos) l))))
+
+(defn set-in-expression [expr posv sub]
+  (loop [posv posv sub sub]
+    (if (< (count posv) 2)
+      (set-elem-in-pos expr (inc (first posv)) sub)
+      (let [p (get-in-expression expr (butlast posv))
+            nsub (set-elem-in-pos p (inc (last posv)) sub)]
+        (recur (butlast posv) nsub)))))
+
+(defn substitute-in-positions [expr pos-map]
+  (reduce (fn [expr [k v]]
+            (set-in-expression expr k v)) expr pos-map))
