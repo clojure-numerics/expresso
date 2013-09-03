@@ -42,14 +42,14 @@
         var (gb false)]
     (if (or (empty? fix) (< (count fix) 2))
             (list* xs args)
-            (list* xs (eval (list* xs fix)) var))))
+            (list* xs (evaluate (list* xs fix) {}) var))))
 
 (defn collabse-arguments-associative [xs args]
   (let [parts (partition-by contains-no-var? args)
         eval-parts (fn [part]
                      (if (and (and (coll? part) (> (count part) 1))
                               (or (= nil (contains-no-var? part)) (contains-no-var? part)))
-                       [(eval (list* xs part))]
+                       [(evaluate (list* xs part) nil)]
                        part))
         mc (mapcat eval-parts parts)]
     (list* xs mc)))

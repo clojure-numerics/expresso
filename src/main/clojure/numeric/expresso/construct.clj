@@ -15,7 +15,6 @@
             [numeric.expresso.utils :as utils])
   (:import [numeric.expresso.protocols PolynomialExpression]))
 (declare ce cev to-poly-normal-form)
-(set! *warn-on-reflection* true)
 
 ;;(experimental) shape inference
 
@@ -549,7 +548,7 @@
         [q (subvec u 0 n)]))))
 
 
-(defn poly-division [u v]
+(defn poly-division [^PolynomialExpression u ^PolynomialExpression v]
   (and (= (main-var u) (main-var v))
        (let [[q r] (pd (.-coeffs u) (.-coeffs v))]
          [(normalize-poly (protocols/make-poly (main-var u) q))
@@ -557,10 +556,10 @@
 
 (defn factors [n] (map #(/ n %) (filter #(zero? (rem n %)) (range 1 (+ n 1)))))
 
-(defn ratio-root-guesses [poly]
+(defn ratio-root-guesses [^PolynomialExpression poly]
   (if (every? integer? (.-coeffs poly))
-    (apply concat (for [n (factors (Math/abs (coef poly 0)))
-                        d (factors (Math/abs (coef poly (degree poly))))]
+    (apply concat (for [n (factors (Math/abs ^double (coef poly 0)))
+                        d (factors (Math/abs ^double (coef poly (degree poly))))]
                     [(/ n d) (/ (- n) d)]))
     '()))
 

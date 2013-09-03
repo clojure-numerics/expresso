@@ -59,35 +59,35 @@
                                 (ex (= (+ x y) a))}))))
 
 (deftest test-solve-square-roots
-  (is (= #{9.0} (solve-square-roots 'x (ex (= (+ (sqrt x) (sqrt (- x 5))) 1)))))
+  (is (= #{9.0} (solve 'x (ex (= (+ (sqrt x) (sqrt (- x 5))) 1)))))
   (is (= #{1.0 -4.2444444444444445}
-         (solve-square-roots
+         (solve
           'x (ex (= (+ (sqrt (+ x 8)) (sqrt (+ x 15))) (sqrt (+ (* 9 x) 40)))))))
   (is (= #{1.0 -0.017994858611825194}
-         (solve-square-roots
+         (solve
           'x (ex (= (+ (sqrt (+ (* 5 x) 4))
                        (sqrt (+ (* 7 x) 2)))
                     (sqrt (+ (* 35 x) 1)))))))
   (is (= #{4.999999999999999 0.39167589808513964}
-         (solve-square-roots
+         (solve
           'x (ex (= (- (* 7 (sqrt (- (* 2 x) 1)))
                        (* 8 (sqrt (- x 1))))
                     (* 10 (sqrt (/ (- x 4) 4))))))))
   (is (= #{8.165253628132167 4.890301927423389}
-         (solve-square-roots
+         (solve
           'x (ex (= (- (sqrt (- (* 9 x) 14)) (sqrt (+ (* 3 x) 6)))
                     (sqrt (/ (- (* 6 x) 25) 5))))))))
 
 (deftest test-solve-fractions
-  (is (= #{5} (solve-fractions
+  (is (= #{5} (solve
                'x (ex (= (+ (/ (- x 3))
                             (/ (+ x 3)))
                          (/ 10 (- (** x 2) 9)))))))
-  (is (= #{} (solve-fractions 
+  (is (= #{} (solve
               'x (ex (= (/ 1 (- x 2))
                         (- (/ 3 (+ x 2))
                            (/ (* 6 x) (- (** x 2) 4))))))))
   (is (= #{0.7588723439378913 -0.6588723439378913}
-         (solve-fractions
+         (solve
           'x (ex (= (/ (- (* 2 x) 1) (+ x 1))
                     (+ (/ (* 2 x) (- x 1)) (/ 5 x))))))))
