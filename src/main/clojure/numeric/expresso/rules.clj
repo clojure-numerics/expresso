@@ -10,6 +10,7 @@
             [clojure.walk :as walk]
             [clojure.core.memoize :as memo]
             [numeric.expresso.utils :as utils]
+            [clojure.set :as set]
             [numeric.expresso.construct :as c]))
 
 (declare exp-isa?)
@@ -180,7 +181,7 @@
 (defn apply-semantic-rule
   "applies rule to expression. The first succesful application of the rule gets performed"
   [rule exp]
-  (first (-run {:occurs-check true :n 1 :reify-vars (fn [v s] s)} [q]
+  (first (-run {:occurs-check false :n 1 :reify-vars (fn [v s] s)} [q]
                (fresh [pat trans guard tmp]
                       (== rule [pat trans guard])
                       (match-expressiono pat exp)
@@ -247,11 +248,10 @@
          transform-expressiono)
 (defn apply-to-end
   [rules expr]
-  (loop [rules rules expr expr]
     (let [nexpr (apply-rules rules expr)]
       (if (= expr nexpr)
         nexpr
-        (transform-expression* nexpr)))))
+        (transform-expression* nexpr))))
 
 (defn apply-to-endo [rules expr new-expr]
   (fresh [nexpr]
@@ -314,24 +314,48 @@
        tmp))
   ([rules expr] (transform-with-rules rules expr walk/prewalk apply-rules)))
 
+(defn simplified? [expr rules]
+  (and (instance? clojure.lang.IObj expr)
+       (contains? (:simplified-by (meta expr)) (:id (meta rules)))))
+
+(defn annotate-simplified [expr *rules*]
+  (if (instance? clojure.lang.IObj expr)
+    (with-meta expr (assoc (meta expr)
+                      :simplified-by #{(:id (meta *rules*))}))
+    expr))
+
+(defn add-simp-annotations [res expr]
+  (if (instance? clojure.lang.IObj res)
+    (with-meta res (update-in (meta res)
+                              [:simplified-by]
+                              #(set/union % (:simplified-by (meta expr)))))))
+
 (def transform-expression*
-  ;(memo/memo
-   (fn [expr]
-     (if-let [op (expr-op expr)]
-       (let [transformed (doall (map  transform-expression*
-                                      (expr-args expr)))
-             ]
-         (apply-to-end *rules* (into '() (concat (reverse transformed)
-                                                 [(first expr)]))))
-       (apply-to-end *rules* expr))));)
+  (fn [expr]
+    (if (simplified? expr *rules*)
+      expr
+      (let [res
+            (if-let [op (expr-op expr)]
+              (let [transformed (doall (map  transform-expression*
+                                             (expr-args expr)))
+                    res (apply-to-end *rules*
+                                      (into '() (concat (reverse transformed)
+                                                        [(first expr)])))]
+                (if (= expr res)
+                  (add-simp-annotations
+                   (annotate-simplified res *rules*) expr)
+                  (annotate-simplified res *rules*)))
+              (annotate-simplified (apply-to-end *rules* expr) *rules*))]
+        res))))
 
 (defn transform-expression
   "transforms the expression according to the rules in the rules vector in a
    bottom up manner until no rule can be applied to any subexpression anymore"
   [rules expr]
-  (binding [*rules* rules]
+  (binding [*rules* (if (:id (meta rules))
+                      rules
+                      (with-meta rules (assoc (meta rules) :id (gensym "id"))))]
     (let [res (transform-expression* expr)]
-      ;(memo/memo-clear! transform-expression*)
       res)))
 
 (defn transform-expressiono [rules expr nexpr]

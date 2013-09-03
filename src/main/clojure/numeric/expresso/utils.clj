@@ -72,12 +72,6 @@
      (conso op params exp)))
 
 
-(defn extract [c]
-  (mapcat #(if (and (coll? %) (= (first %) :numeric.expresso.construct/seq-match)) (second %) [%]) c))
-
-
-(defn splice-in-seq-matchers [expr]
-  (walk/postwalk (fn [expr] (if (coll? expr) (extract expr) expr)) expr))
 (defn expo 
   "Creates an expression with the given operator and parameters"
   ([op params exp]
@@ -93,9 +87,26 @@
         res)))
 
 
+#_(defn splice-in-seq-matchers [express]
+  (with-meta 
+    (walk/postwalk  (fn [expr]
+                     (if (and (coll? expr))
+                       (with-meta (extract expr) (meta expr))
+                       expr)) express)
+    (meta express)))
+
 (defn splice-in-seq-matchers [express]
-  (walk/postwalk (fn [expr] (if (and (coll? expr))
-                              (extract expr) expr)) express))
+  (let [nexpress
+        (cond
+         (vector? express) (mapv splice-in-seq-matchers express)
+         (list? express) (apply list (map splice-in-seq-matchers express))
+         (seq? express) (doall (map splice-in-seq-matchers express))
+         :else express)
+        expr (if (instance? clojure.lang.IObj nexpress)
+               (with-meta nexpress (meta express)) nexpress)]
+    (if (and (coll? expr))
+      (with-meta (extract expr) (meta expr))
+      expr)))
 
 (defn validate-eq [expr]
   (if (and (not= '= (first expr)) (= (count expr) 3))
@@ -133,3 +144,26 @@
   (fresh []
          (membero l v)
          (all-suffixes v l)))
+
+(defn get-in-expression [expr posv]
+  (loop [expr expr posv posv]
+    (if (empty? posv)
+      expr
+      (recur (nth expr (inc (first posv))) (rest posv)))))
+
+(defn set-elem-in-pos [l pos sub]
+  ;;todo use cev here and resolve cyclic dependency
+  (apply list (concat (take pos l) [sub] (drop (inc pos) l))))
+
+(defn set-in-expression [expr posv sub]
+  (loop [posv posv sub sub]
+    (if (< (count posv) 2)
+      (set-elem-in-pos expr (inc (first posv)) sub)
+      (let [p (get-in-expression expr (butlast posv))
+            nsub (set-elem-in-pos p (inc (last posv)) sub)]
+        (recur (butlast posv) nsub)))))
+
+(defn substitute-in-positions [expr pos-map]
+  (reduce (fn [expr [k v]]
+            (set-in-expression expr k v)) expr pos-map))
+
