@@ -156,10 +156,10 @@
                    (:double (meta arg)) types/double
                    (:long   (meta arg)) types/long
                    (:int    (meta arg)) types/integer
-                   :else (lvar 'type))
+                   :else types/number)
         shape (cond (isa? type types/number) []
                     (= type types/matrix) (or (:shape (meta arg))
-                                              [(lvar 'lshape) (lvar 'rshape)])
+                                              (lvar 'shape))
                     :else (lvar 'shape))]
     (with-meta arg (merge {:type type :shape shape} (meta arg)))))
 

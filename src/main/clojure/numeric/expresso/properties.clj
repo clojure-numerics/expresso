@@ -80,10 +80,10 @@
 
 (defn zero-matrix? [expr]
   (if (symbol? expr)
-    false
+    (if (contains? (protocols/properties expr) :mzero) true false)
     (loop [elem (mat/eseq expr)]
       (if (seq elem)
-        (if (clojure.core/== 0 (first elem))
+        (if (and (number? (first elem)) (clojure.core/== 0 (first elem)))
           (recur (rest elem))
           false)
         true))))

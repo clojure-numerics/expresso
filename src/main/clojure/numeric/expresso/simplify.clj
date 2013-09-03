@@ -92,10 +92,18 @@
    (rule (*) :=> 1)
    (rule (+ ?x) :=> ?x)
    (rule (* ?x) :=> ?x)
-   (rule (+ 0 ?&*) :=> (+ ?&*))
-   (rule (+ 0.0 ?&*) :=> (+ ?&*))
-   (rule (* 0.0 ?&*) :=> 0)
-   (rule (* 0 ?&*) :=> 0)
+   (rule (+ ?x ?&*) :=> (+ ?&*) :if (guard (zero-matrix? ?x)))
+   (rule ?x :==> (when-let [op (expr-op ?x)]
+                   (and (= op '*)
+                        (let [args (expr-args ?x)]
+                          (when (some #(zero-matrix? %) args)
+                            (if (= [] (shape ?x))
+                              0 (-> (gensym "zeromat")
+                                    (with-meta {:shape (shape ?x)
+                                                :matrix true
+                                                :properties #{:mzero}})
+                                    (construct-symbol))))))))
+   #_(rule (* 0 ?&*) :=> 0)
    (rule (* 1 ?&*) :=> (* ?&*))
    (rule (* 1.0 ?&*) :=> (* ?&*))
    (rule (* ?x (- ?x) ?&*) :=> (* -1 (** ?x 2) ?&*))

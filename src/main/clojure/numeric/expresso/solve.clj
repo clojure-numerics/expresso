@@ -22,7 +22,7 @@
             [numeric.expresso.construct :as c]))
 
 (declare check-solution)
-(declare contains-expr?)
+(declare contains-expr? positions-of-x surrounded-by)
 (defn only-one-occurrence [v equation]
   (>= 1 (->> equation flatten (filter #{v}) count)))
                   
@@ -516,8 +516,11 @@
          (some (fn [x] (if (= (expr-op x) 'sin) 'sin
                            (if (= (expr-op x) 'cos) 'cos))) offenders))))
    (fn [x eq offenders ]
-     (let [off (map #(poly-in-x x %) offenders)]
-       (and (every? identity off)
+     (let [r (rule (ex (** ?x ?y)) :=> (ex (** ?x ?y)) :if (guard (number? ?y)))
+           pos (positions-of-x x eq)
+           off (map #(surrounded-by eq % r) pos)
+          off (map #(poly-in-x x (first %)) off)]
+       (and (not (empty? off)) (every? identity off)
             (let [m (apply max (map degree off))]
               (when (> m 2)
                 (ce '** x (if (> (- m 2) 1) (- m 2) (- m 1))))))))])
@@ -537,8 +540,11 @@
 
 (defn solve-by-homogenization [x equation]
   (let [lhs (second equation)
-        subs (->> lhs (offenders x ) (substitution-candidates x equation) first)]
+        subs (->> lhs (offenders x ) (substitution-candidates x equation) last)]
+    #_(some #(let [res (solve-by-substitution x lhs %)]
+               (when-not (empty? res) res)) subs)
     (solve-by-substitution x lhs subs)))
+
 (defn multiply-equation [eq factor]
   (ce '= (ce '* (nth eq 1) factor) (ce '* (nth eq 2) factor)))
 

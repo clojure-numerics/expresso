@@ -32,7 +32,7 @@
 (deftest test-shape-elemwise
   (is (= [] (protocols/shape (ex (+ 1 2 3)))))
   (is (= [2 2] (protocols/shape (ex (+ [[1 2][3 4]] 5)))))
-  (is (protocols/expr-op (protocols/shape (ex (+ 1 x 2)))))
+  (is (= [] (protocols/shape (ex (+ 1 x 2)))))
   (is (= [] (let [expr (ex (+ 1 x 2))]
               (protocols/shape (protocols/check-constraints
                                 (protocols/add-constraint expr

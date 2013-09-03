@@ -339,8 +339,7 @@
               (let [transformed (doall (map  transform-expression*
                                              (expr-args expr)))
                     res (apply-to-end *rules*
-                                      (into '() (concat (reverse transformed)
-                                                        [(first expr)])))]
+                                      (c/cev (first expr) transformed))]
                 (if (= expr res)
                   (add-simp-annotations
                    (annotate-simplified res *rules*) expr)
