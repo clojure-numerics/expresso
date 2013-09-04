@@ -26,7 +26,7 @@
      div = mul-div <'/'> exp-term
      <exp-term> = term | expon
      expon = exp-term <'**'> term
-     <term> = literal | <'('>  expr <')'>
+     <term> = literal | <' '>* <'('>  expr <')'> <' '>*
      <literal> = number | symbol | vec | (<' '>* literal <' '>*)
      vec = <'['> expr* <']'>
      symbol = #'[a-zA-Z]'+

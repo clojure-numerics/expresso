@@ -98,14 +98,17 @@
                         (let [args (expr-args ?x)]
                           (when (some #(zero-matrix? %) args)
                             (if (= [] (shape ?x))
-                              0 (-> (gensym "zeromat")
-                                    (with-meta {:shape (shape ?x)
-                                                :matrix true
-                                                :properties #{:mzero}})
-                                    (construct-symbol))))))))
-   #_(rule (* 0 ?&*) :=> 0)
-   (rule (* 1 ?&*) :=> (* ?&*))
-   (rule (* 1.0 ?&*) :=> (* ?&*))
+                              0 (if (expr-op ?x)
+                                  (-> (gensym "zeromat")
+                                      (with-meta {:shape (shape ?x)
+                                                  :matrix true
+                                                  :properties #{:mzero}})
+                                      (construct-symbol))
+                                  (matrix/new-array (shape ?x)))))))))
+   #_(rule (* 1 ?&*) :=> (* ?&*))
+   #_(rule (* 1.0 ?&*) :=> (* ?&*))
+   (rule (* ?x ?&*) :=> (* ?&*)
+         :if (guard (identity-matrix? ?x)))
    (rule (* ?x (- ?x) ?&*) :=> (* -1 (** ?x 2) ?&*))
    (rule (** ?x 1) :=> ?x)
    (rule (** ?x 0) :=> 1

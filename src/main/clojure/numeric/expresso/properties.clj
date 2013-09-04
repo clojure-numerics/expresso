@@ -89,12 +89,13 @@
         true))))
 
 (defn identity-matrix? [expr]
+  (try 
   (if (symbol? expr) false
       (let [d (mat/dimensionality expr)]
         (cond
-         (clojure.core/== d 0) (clojure.core/== expr 0)
+         (clojure.core/== d 0) (clojure.core/== expr 1)
          (clojure.core/== d 1) (and (clojure.core/== (count expr) 1)
-                                    (clojure.core/== (first expr) 0))
+                                    (clojure.core/== (first expr) 1))
          (clojure.core/== d 2)
          (let [rc (mat/row-count expr)
                cc (mat/column-count expr)]
@@ -103,17 +104,19 @@
                (if (nil? (loop [j 0]
                            (if (< j cc)
                              (let [elem (mat/mget expr i j)]
-                               (cond
-                                (clojure.core/== elem 0) (if (clojure.core/== i j)
-                                                           false
-                                                           (recur (inc j)))
-                                (clojure.core/== elem 1) (if (clojure.core/== i j)
-                                                           (recur (inc j))
-                                                           false)
-                                :else false)))))
+                               (when-not (symbol? elem)
+                                 (cond
+                                  (clojure.core/== elem 0) (if (clojure.core/== i j)
+                                                             false
+                                                             (recur (inc j)))
+                                  (clojure.core/== elem 1) (if (clojure.core/== i j)
+                                                             (recur (inc j))
+                                                             false)
+                                  :else false))))))
                  (recur (inc i))
                  false)
-               true)))))))
+               true))))))
+  (catch Exception e false)))
       
 (defn extract-mzero [pargs expr]
   (project [pargs expr]

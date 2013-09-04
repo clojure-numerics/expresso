@@ -45,4 +45,4 @@
   (is (= [2] (protocols/shape (ex (inner-product 2 [1 2])))))
   (is (= [2 2] (protocols/shape (ex (inner-product [[1 2][3 4]] 1 [[1 2][3 4]])))))
   (is (= [3 1] (protocols/shape (ex (inner-product [[1 2][3 4][5 6]] [[1][2]])))))
-  (is (protocols/expr-op (protocols/shape (ex (inner-product 1 x [[1 2][3 4]]))))))
+  (is (protocols/expr-op (protocols/shape (ex (inner-product 1 ^:matrix x [[1 2][3 4]]))))))

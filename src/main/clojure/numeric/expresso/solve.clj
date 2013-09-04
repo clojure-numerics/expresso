@@ -532,10 +532,14 @@
 (defn solve-by-substitution [x lhs subs]
   (if subs
     (let [v (gensym "var")
-          sols (solve* v (ce '= (sem-substitute lhs subs v) 0))]
-        (if sols
-          (into #{}
-                (map #(ce '= x %) (mapcat #(solve* x (ce '= subs %)) sols)))))))
+          substituted (sem-substitute lhs subs v)]
+      (if (or (and (seq? substituted) (some #{v} (flatten substituted)))
+              (= substituted v))
+        (let [sols (solve* v (ce '= substituted 0))]
+          (if sols
+            (into #{}
+                  (map #(ce '= x %)
+                       (mapcat #(solve* x (ce '= subs %)) sols)))))))))
   
 
 (defn solve-by-homogenization [x equation]
@@ -577,7 +581,6 @@
 
 (defn solve-logarithms [x eq]
   (loop [equation (transform-expression log-solve-rules eq) i 0]
-    (prn "equation " equation)
     (if (< i 5)
       (let [positions (positions-of-x x equation)
             r (rule (ex (log ?x)) :=> ?x)
@@ -699,7 +702,7 @@
                (some #(surrounded-by equation % r2) positions))
          solve-fractions)))
    (fn [positions equation]
-     (let [r (rule (ex (ln ?x)) :=> ?x)]
+     (let [r (rule (ex (log ?x)) :=> ?x)]
        (if (some #(surrounded-by equation % r) positions)
          solve-logarithms)))
    ])

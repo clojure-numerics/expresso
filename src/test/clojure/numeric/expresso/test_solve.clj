@@ -5,7 +5,7 @@
   (:use numeric.expresso.construct)
   (:refer-clojure :exclude [==])
   (:use [clojure.core.logic.protocols]
-        [clojure.core.logic :exclude [is] :as l]
+        [clojure.core.logic :exclude [is log] :as l]
         clojure.test)
   (:require [numeric.expresso.construct :as c])
   (:require [clojure.core.matrix :as matrix])
@@ -90,4 +90,35 @@
   (is (= #{0.7588723439378913 -0.6588723439378913}
          (solve
           'x (ex (= (/ (- (* 2 x) 1) (+ x 1))
-                    (+ (/ (* 2 x) (- x 1)) (/ 5 x))))))))
+                    (+ (/ (* 2 x) (- x 1)) (/ 5 x)))))))
+  (is (= #{-3.424428900898052 6.424428900898052}
+         (solve
+          'x (ex (= (+ (/ (- (** x 2) 8)
+                          (- (** x 2) 4))
+                       (/ 2 (+ x 2))) (/ 5 (- x 2)))))))
+  (is (= #{5}
+         (solve
+          'x (ex (= (+ (/ 34 (+ (** x 2) (* -3 x) 7)) 5) (- (* 2 x) 3)))))))
+
+(deftest test-solve-abs
+  (is (= #{-2 -1/3} (solve 'x (ex (= (abs (- (* 2 x) 1)) (abs (+ (* 4 x) 3)))))))
+  (is (= #{1.0 3.5 7.694933459514875 -0.19493345951487484}
+         (solve
+          'x (ex (= (abs (+ (** x 2) (* -6 x) 1)) (abs (/ (+ (* 3 x) 5) 2)))))))
+  (is (= #{-3.0 1.7320508075688772}
+         (solve 'x (ex (= (abs x) (+ (** x 2) x -3)))))))
+
+(deftest test-solve-exp
+  (is (= #{5.889547542811505 0.11045245718849461}
+         (solve 'x (ex (= (+ (** 100 (+ (** x 2) (* -6 x) 1)) 5) 10)))))
+  (is (= #{0.0 0.6931471805599453}
+         (solve 'x (ex (= (+ (exp (* 2 x)) (* -3 (exp x)) 2) 0))))))
+
+(deftest test-solve-log
+  (is (= #{6.0}
+         (solve 'x (ex (= (+ (log (- x 2)) (log (- (* 2 x) 3)))
+                          (* 2 (log x)))))))
+  (is (= #{16.168643024342963 -10.168643024342964}
+         (solve 'x (ex (= (log (- (** x 2) (* 6 x) 16)) 5))))))
+
+  
