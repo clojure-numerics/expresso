@@ -3,12 +3,14 @@
   (:use clojure.test)
   (:refer-clojure :exclude [==])
   (:use [clojure.core.logic.protocols]
+        [numeric.expresso.impl.pimplementation]
         [clojure.core.logic :exclude [is] :as l]
         [numeric.expresso.rules]
         [numeric.expresso.construct]
         clojure.test)
   (:require [clojure.core.logic.fd :as fd])
-  (:import [numeric.expresso.protocols Expression AtomicExpression MatrixSymbol])
+  (:import [numeric.expresso.impl.pimplementation
+            Expression  MatrixSymbol])
   (:require [clojure.core.logic.unifier :as u]))
 
 (deftest test-unification

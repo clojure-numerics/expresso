@@ -5,7 +5,7 @@
         [clojure.core.logic :exclude [is] :as l]
         [clojure.test])
   (:require [numeric.expresso.protocols :as protocols]) 
-  (:import [numeric.expresso.protocols Expression AtomicExpression])
+  (:import [numeric.expresso.impl.pimplementation Expression])
   (:require [clojure.core.logic.fd :as fd]
             [clojure.walk :as walk]
             [clojure.core.logic.unifier :as u]

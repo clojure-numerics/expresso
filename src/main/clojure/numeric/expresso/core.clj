@@ -10,6 +10,7 @@
             [numeric.expresso.parse :as parse]
             [numeric.expresso.utils :as utils]
             [numeric.expresso.properties :as props]
+            [numeric.expresso.polynomial :as poly]
             [numeric.expresso.construct :as constr])) 
 
 
@@ -76,7 +77,7 @@
   [v expr]
   (->> expr
        constr/to-expression
-       (constr/poly-in-x v)))
+       (poly/poly-in v)))
 
 (defn rearrange
   "if the equation contains only one occurrence of v it will be rearranged so

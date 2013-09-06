@@ -3,8 +3,10 @@
   (:use [clojure.core.logic.protocols]
         [clojure.core.logic :exclude [is log] :as l]
         [numeric.expresso.construct]
+        [numeric.expresso.polynomial]
         [numeric.expresso.properties :as props]
         [numeric.expresso.protocols]
+        [numeric.expresso.impl.pimplementation]
         [numeric.expresso.rules]
         [clojure.test])
   (:require [clojure.core.logic.fd :as fd]
@@ -105,8 +107,6 @@
                                                   :properties #{:mzero}})
                                       (construct-symbol))
                                   (matrix/new-array (shape ?x)))))))))
-   #_(rule (* 1 ?&*) :=> (* ?&*))
-   #_(rule (* 1.0 ?&*) :=> (* ?&*))
    (rule (* ?x ?&*) :=> (* ?&*)
          :if (guard (identity-matrix? ?x)))
    (rule (* ?x (- ?x) ?&*) :=> (* -1 (** ?x 2) ?&*))
@@ -144,7 +144,6 @@
 
 (def simplify-rules
   [(rule (* ?x ?x ?&*) :=> (* (** ?x 2) ?&*))
-   #_(rule (/ (* ?&*)) :==> (* (map-sm #(/ %) ?&*)))
    (rule (* ?x (/ ?x) ?&*) :=> (* ?&*))
    (rule (+ ?x (- ?x) ?&*) :=> (+ ?&*))
    (rule (+ ?x ?x ?&*) :=> (+ (* 2 ?x) ?&*))
@@ -156,8 +155,7 @@
    (rule (* -1 (- ?x) ?&*) :=> (* ?x ?&*))
    (rule (* ?x (** ?x ?n) ?&*) :=> (* (** ?x (+ ?n 1)) ?&*))
    (rule (** (sqrt ?x) 2) :=> ?x)
-   (rule (** (- ?x) 2) :=> (** ?x 2))
-   #_(rule (** (** ?x ?n) ?n2) :=> (** ?x (* ?n ?n2)))])
+   (rule (** (- ?x) 2) :=> (** ?x 2))])
 
 (def to-inverses-rules
   [(rule (- ?x ?&+) :=> (trans (+ ?x (map-sm #(- %) ?&+))))

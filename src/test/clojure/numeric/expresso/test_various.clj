@@ -5,6 +5,7 @@
         [numeric.expresso.construct]
         [numeric.expresso.properties :as props]
         [numeric.expresso.protocols]
+        [numeric.expresso.impl.pimplementation]
         [numeric.expresso.rules]
         [numeric.expresso.simplify]
         [clojure.test])

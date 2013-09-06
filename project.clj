@@ -8,12 +8,12 @@
                  [instaparse "1.2.2"]
                  [criterium "0.4.2"]
                  [org.clojure/core.memoize "0.5.6"]
-                 [net.mikera/core.matrix "0.8.0"]
-                 [org.clojure/core.logic "0.8.3"]]
-  :jvm-opts []
+                 [net.mikera/core.matrix "0.10.0"]
+                 [org.clojure/core.logic "0.8.4"]]
+  :jvm-opts ^:replace []
   :source-paths ["src" "src/main/clojure"]
   :test-paths ["test" "src/test/clojure"]
-  :aot [numeric.expresso.protocols]
+  :aot [numeric.expresso.impl.pimplementation]
 
 )
 

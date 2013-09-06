@@ -3,8 +3,10 @@
   (:use [clojure.core.logic.protocols]
         [clojure.core.logic :exclude [is] :as l]
         [clojure.test])
-  (:require [numeric.expresso.protocols :as protocols]) 
-  (:import [numeric.expresso.protocols Expression AtomicExpression MatrixSymbol])
+  (:require [numeric.expresso.protocols :as protocols])
+  (:require [numeric.expresso.impl.pimplementation :as impl])
+  (:import [numeric.expresso.impl.pimplementation
+            Expression  MatrixSymbol])
   (:require [clojure.core.logic.fd :as fd]
             [clojure.walk :as walk]
             [clojure.core.logic.unifier :as u]

@@ -1,6 +1,7 @@
 (ns numeric.expresso.matcher
   (:refer-clojure :exclude [==])
   (:use [clojure.core.logic.protocols]
+        [numeric.expresso.impl.pimplementation]
         [numeric.expresso.protocols]
         [clojure.core.logic :exclude [is] ]
         clojure.test)
@@ -14,7 +15,7 @@
 (set! *warn-on-reflection* true)
 
 (extend-protocol PMatch
-  numeric.expresso.protocols.Expression
+  numeric.expresso.impl.pimplementation.Expression
   (match [this that]
     (if-let [m (and (expr-op that) (meta (expr-op this)))]
       (fresh []
@@ -30,7 +31,7 @@
                (add-replacemento (expr-op that) (expr-op this))
                ((:match-rel m) (expr-args this) (expr-args that)))
         fail))
-    numeric.expresso.protocols.BasicExtractor
+    numeric.expresso.impl.pimplementation.BasicExtractor
     (match [this that]
       (let [args (.args this)
             rel (.rel this)]

@@ -2,6 +2,8 @@
   (:refer-clojure :exclude [==])
   (:use [clojure.core.logic.protocols]
         [clojure.core.logic :exclude [is] :as l]
+        [numeric.expresso.protocols]
+        [numeric.expresso.impl.pimplementation]
         clojure.test)
   (:require [clojure.core.logic.fd :as fd])
   (:require [clojure.walk :as walk])
@@ -167,3 +169,67 @@
   (reduce (fn [expr [k v]]
             (set-in-expression expr k v)) expr pos-map))
 
+(defn only-one-occurrence [v equation]
+  (>= 1 (->> equation flatten (filter #{v}) count)))
+
+(defn positions-of
+  ([v equation] (positions-of v equation []))
+  ([v equation pos]
+     (if-let [op (expr-op equation)]
+       (filter identity
+               (mapcat #(positions-of v %1 (conj pos %2))
+                       (rest equation) (range)))
+       (if (= v equation) [pos] nil))))
+                  
+(defn swap-sides [[eq lhs rhs]]
+  (list eq rhs lhs))
+
+(def combine-solutions mapcat)
+
+
+
+(def ^:dynamic *treshold* 1e-6)
+
+(defn num= [a b]
+  (or (= a b) (and (number? a) (number? b)
+                   (or (clojure.core/== a b)
+                       (< (- (Math/abs ^double a)
+                             (Math/abs ^double b)) *treshold*)))))
+
+(defn eq-lhs [equation]
+  (second equation))
+
+(defn eq-rhs [equation]
+  (nth equation 2))
+
+(defn solved? [v equation]
+  (and (= (nth equation 1) v)
+       (not= v (nth equation 2))
+       (= 0 (->> (nth equation 2) flatten (filter #{v}) count))))
+
+(defn submap [keys m]
+  (into {} (reduce (fn [kvs symb]
+                     (if (contains? m symb)
+                       (conj kvs [symb (get m symb)])
+                       kvs)) [] keys)))
+
+(defn common-prefix [positions]
+  (let [minl (apply min (map count positions))]
+    (loop [l minl]
+      (if (> l 0)
+        (if (every? #{(subvec (first positions) 0 l)}
+                    (map #(subvec % 0 l) (rest positions)))
+          (subvec (first positions) 0 l)
+          (recur (dec l)))
+        []))))
+
+(defn remove-dublicated-fracs [frac]
+  (into #{}
+        (map (fn [x] [x (:pos (meta x))])
+             (into #{} (map #(with-meta (first %) {:pos (second %)}) frac)))))
+
+(defn gcd [m n]
+  (loop [m (long m) n (long n)]
+    (if (> n 0)
+      (recur n (rem m n))
+      m)))

@@ -3,7 +3,7 @@
   (:use [clojure.test]
         [clojure.core.logic.protocols]
         [clojure.core.logic :exclude [is]])
-  (:require [numeric.expresso.utils :as utils]
+  (:require 
             [clojure.set :as set]
             [clojure.core.matrix :as mat]
             [clojure.walk :as walk]))
