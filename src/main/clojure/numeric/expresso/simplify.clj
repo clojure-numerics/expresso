@@ -79,36 +79,31 @@
 
 (defn symbolo [x] (project [x] (== true (symbol? x))))
 
+(defn with-shape [val shape]
+  (cond
+   (utils/num= val 0) (if (or (lvar? shape) (sequential? shape))
+                        (value (zero-matrix :shape shape)) 0)
+   (utils/num= val 1) (if (or (lvar? shape) (sequential? shape))
+                        (value (identity-matrix :shape shape)) 1)
+   :else (set-inferred-shape val shape)))
+    
 
-
-(construct-with [+ - * / ** diff ln sin cos sqrt exp log]
+(construct-with [+ - * / ** diff ln sin cos sqrt exp log mzero? midentity?
+                 shape?]
 
 (def arity-rules
   [(rule (+) :=> 0)
    (rule (*) :=> 1)
    (rule (+ ?x) :=> ?x)
    (rule (* ?x) :=> ?x)])
-                
 (def universal-rules
-  [(rule (+) :=> 0)
-   (rule (*) :=> 1)
-   (rule (+ ?x) :=> ?x)
-   (rule (* ?x) :=> ?x)
-   (rule (+ ?x ?&*) :=> (+ ?&*) :if (guard (zero-matrix? ?x)))
-   (rule ?x :==> (when-let [op (expr-op ?x)]
-                   (and (= op '*)
-                        (let [args (expr-args ?x)]
-                          (when (some #(zero-matrix? %) args)
-                            (if (= [] (shape ?x))
-                              0 (if (expr-op ?x)
-                                  (-> (gensym "zeromat")
-                                      (with-meta {:shape (shape ?x)
-                                                  :matrix true
-                                                  :properties #{:mzero}})
-                                      (construct-symbol))
-                                  (matrix/new-array (shape ?x)))))))))
-   (rule (* ?x ?&*) :=> (* ?&*)
-         :if (guard (identity-matrix? ?x)))
+  [(rule (shape? (+) ?s) :==> (with-shape 0 ?s))
+   (rule (shape? (*) ?s) :==> (with-shape 1 ?s))
+   (rule (shape? (+ ?x) ?s) :==> (with-shape ?x ?s))
+   (rule (shape? (* ?x) ?s) :==> (with-shape ?x ?s))
+   (rule (+ (mzero? ?x) ?&*) :=> (+ ?&*))
+   (rule (shape? (* (mzero? ?x) ?&*) ?s) :==> (with-shape 0 ?s))
+   (rule (* (midentity? ?x) ?&*) :=> (* ?&*))
    (rule (* ?x (- ?x) ?&*) :=> (* -1 (** ?x 2) ?&*))
    (rule (** ?x 1) :=> ?x)
    (rule (** ?x 0) :=> 1
@@ -116,7 +111,7 @@
    (rule (** (** ?x ?n1) ?n2) :=> (** ?x (* ?n1 ?n2)))
    (rule (* (* ?&*) ?&*r) :=> (* ?&* ?&*r))
    (rule (+ (+ ?&*) ?&*r) :=> (+ ?&* ?&*r))
-   (rule (- 0 ?x) :=> (- ?x))
+   (rule (shape? (- (mzero? ?y) ?x) ?s) :==> (with-shape (- ?x) ?s))
    (rule (- ?x 0) :=> ?x)
    (rule (+ (* ?x ?y) (* ?z ?y) ?&*) :=> (+ (* (+ ?x ?z) ?y) ?&*)
          :if (guard (and (number? ?x) (number? ?z))))
@@ -125,6 +120,7 @@
 (def eval-rules
   [(rule ?x :=> (calc-reso ?x) :if (no-symbolso ?x))
    (rule ?x :=> (compute-subexpressiono ?x))])
+
   
 (def normal-form-rules
   (concat universal-rules
@@ -144,8 +140,8 @@
 
 (def simplify-rules
   [(rule (* ?x ?x ?&*) :=> (* (** ?x 2) ?&*))
-   (rule (* ?x (/ ?x) ?&*) :=> (* ?&*))
-   (rule (+ ?x (- ?x) ?&*) :=> (+ ?&*))
+   (rule (shape? (* ?x (/ ?x) ?&*) ?s) :==> (with-shape (* ?&*) ?s))
+   (rule (shape? (+ ?x (- ?x) ?&*) ?s) :==> (with-shape (+ ?&*) ?s))
    (rule (+ ?x ?x ?&*) :=> (+ (* 2 ?x) ?&*))
    (rule (+ (* ?x ?&*) (- ?x) ?&*2) :=> (+ (* ?x (- ?&* 1)) ?&*2))
    (rule (+ (* ?x ?&*) (* ?x ?&*2) ?&*3)
@@ -340,23 +336,9 @@
      (symbol? a) (identity-matrix (first s))
      :else (matrix/identity-matrix (first s)))))
 
-(def matrix-simplification-rules
-  (with-meta 
-    [(rule (ex (matrix/add (mzero? ?x) ?&*)) :=> (ex (matrix/add ?&*)))
-     (rule (ex (matrix/sub ?x ?x)) :==> (let [s (shape ?x)]
-                                          (if (symbol? ?x)
-                                            (zero-matrix s)
-                                            (matrix/broadcast 0 s))))
-     (rule (ex (matrix/mul ?&*1 (mzero? ?x) ?&*2))
-           :==> (infer-shape-zero-mat ?&*1 ?x ?&*2))
-     (rule (ex (matrix/mul ?&*1 (midentity? ?x) ?&*2))
-           :=> (ex (matrix/mul ?&*1 ?&*2)))
-     (rule (ex (matrix/div ?a ?a)) :==> (identity-right-shape ?a))
-     (rule (ex (matrix/mul ?a (matrix/div ?a) ?&*)) :=> (ex (matrix/mul ?&*)))]
-    {:id :matrix-simplification-rules}))
 
 (defn simplify-matrix-expression [expr]
-  (transform-expression matrix-simplification-rules expr))
+  (simp-expr expr))
 
 
 (construct-with [+ * -]

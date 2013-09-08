@@ -89,14 +89,6 @@
         res)))
 
 
-#_(defn splice-in-seq-matchers [express]
-  (with-meta 
-    (walk/postwalk  (fn [expr]
-                     (if (and (coll? expr))
-                       (with-meta (extract expr) (meta expr))
-                       expr)) express)
-    (meta express)))
-
 (defn splice-in-seq-matchers [express]
   (let [nexpress
         (cond
@@ -104,11 +96,12 @@
          (list? express) (apply list (map splice-in-seq-matchers express))
          (seq? express) (doall (map splice-in-seq-matchers express))
          :else express)
-        expr (if (instance? clojure.lang.IObj nexpress)
-               (with-meta nexpress (meta express)) nexpress)]
+              expr (if (instance? clojure.lang.IObj nexpress)
+                     (with-meta nexpress (meta express)) nexpress)]
     (if (and (coll? expr))
       (with-meta (extract expr) (meta expr))
       expr)))
+    
 
 (defn validate-eq [expr]
   (if (and (not= '= (first expr)) (= (count expr) 3))
@@ -193,8 +186,8 @@
 (defn num= [a b]
   (or (= a b) (and (number? a) (number? b)
                    (or (clojure.core/== a b)
-                       (< (- (Math/abs ^double a)
-                             (Math/abs ^double b)) *treshold*)))))
+                       (< (Math/abs (- (Math/abs (double a))
+                                       (Math/abs (double b)))) *treshold*)))))
 
 (defn eq-lhs [equation]
   (second equation))
@@ -233,3 +226,7 @@
     (if (> n 0)
       (recur n (rem m n))
       m)))
+
+(defn round [m]
+  (if (integer? m)
+    m (Math/round (double m))))

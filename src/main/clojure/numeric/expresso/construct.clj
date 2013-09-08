@@ -14,7 +14,8 @@
             [clojure.core.matrix :as mat]
             [clojure.core.matrix.operators :as mop]
             [numeric.expresso.utils :as utils])
-  (:import [numeric.expresso.impl.pimplementation PolynomialExpression]))
+  (:import [numeric.expresso.impl.pimplementation PolynomialExpression
+            BasicExtractor]))
 (declare ce cev)
 
 ;;(experimental) shape inference
@@ -79,6 +80,8 @@
 (defmethod create-special-expression :default [_]  nil)
 (defmethod create-special-expression 'inner-product [x]
   (create-inner-product x))
+(defmethod create-special-expression 'mmul [x]
+  (create-inner-product x))
 (defmethod create-special-expression 'negate [[symb args]]
   (create-elemwise-operation '- args))
 (defmethod create-special-expression 'add [[symb args]]
@@ -86,6 +89,8 @@
 (defmethod create-special-expression 'sub [[symb args]]
   (create-elemwise-operation '- args))
 (defmethod create-special-expression 'emul [[symb args]]
+  (create-elemwise-operation '* args))
+(defmethod create-special-expression 'mul [[symb args]]
   (create-elemwise-operation '* args))
 (defmethod create-special-expression 'div [[symb args]]
   (create-elemwise-operation '/ args))
@@ -109,39 +114,39 @@
       
 
 
-(defmulti expresso-symb identity)
-(defmethod expresso-symb :default [s]
+(defmulti expresso-name identity)
+(defmethod expresso-name :default [s]
   (if (= (str s) "clojure.core//") '/ s))
-(defmethod expresso-symb 'clojure.core/* [_] '*)
-(defmethod expresso-symb 'clojure.core/+ [_] '+)
-(defmethod expresso-symb 'clojure.core/- [_] '-)
-(defmethod expresso-symb 'clojure.core// [_] '/)
-(defmethod expresso-symb `= [_] '=)
-(defmethod expresso-symb 'numeric.expresso.core/** [_] '**)
-(defmethod expresso-symb `mop/* [_] '*)
-(defmethod expresso-symb `mop/+ [_] '+)
-(defmethod expresso-symb `mop/- [_] '-)
-(defmethod expresso-symb `mat/emul [_] '*)
-(defmethod expresso-symb `mat/div [_] '/)
-(defmethod expresso-symb `mat/add [_] '+)
-(defmethod expresso-symb `mat/sub [_] '-)
-(defmethod expresso-symb 'Math/abs [_] 'abs)
-(defmethod expresso-symb 'Math/acos [_] 'acos)
-(defmethod expresso-symb 'Math/asin [_] 'asinc)
-(defmethod expresso-symb 'Math/atan [_] 'atan)
-(defmethod expresso-symb 'Math/cos [_] 'cos)
-(defmethod expresso-symb 'Math/cosh [_] 'cosh)
-(defmethod expresso-symb 'Math/exp [_] 'exp)
-(defmethod expresso-symb 'Math/log [_] 'log)
-(defmethod expresso-symb 'Math/log10 [_] 'log)
-(defmethod expresso-symb 'Math/sin [_] 'sin)
-(defmethod expresso-symb 'Math/sinh [_] 'sinh)
-(defmethod expresso-symb 'Math/sqrt [_] 'sqrt)
-(defmethod expresso-symb 'Math/tan [_] 'tan)
-(defmethod expresso-symb 'Math/tanh [_] 'tanh)
-(defmethod expresso-symb 'mat/negate [_] '-)
-(defmethod expresso-symb `mat/mul [_] 'mul)
-(defmethod expresso-symb `mat/inner-product [_] 'inner-product)
+(defmethod expresso-name 'clojure.core/* [_] '*)
+(defmethod expresso-name 'clojure.core/+ [_] '+)
+(defmethod expresso-name 'clojure.core/- [_] '-)
+(defmethod expresso-name 'clojure.core// [_] '/)
+(defmethod expresso-name `= [_] '=)
+(defmethod expresso-name 'numeric.expresso.core/** [_] '**)
+(defmethod expresso-name `mop/* [_] '*)
+(defmethod expresso-name `mop/+ [_] '+)
+(defmethod expresso-name `mop/- [_] '-)
+(defmethod expresso-name `mat/emul [_] '*)
+(defmethod expresso-name `mat/div [_] '/)
+(defmethod expresso-name `mat/add [_] '+)
+(defmethod expresso-name `mat/sub [_] '-)
+(defmethod expresso-name 'Math/abs [_] 'abs)
+(defmethod expresso-name 'Math/acos [_] 'acos)
+(defmethod expresso-name 'Math/asin [_] 'asinc)
+(defmethod expresso-name 'Math/atan [_] 'atan)
+(defmethod expresso-name 'Math/cos [_] 'cos)
+(defmethod expresso-name 'Math/cosh [_] 'cosh)
+(defmethod expresso-name 'Math/exp [_] 'exp)
+(defmethod expresso-name 'Math/log [_] 'log)
+(defmethod expresso-name 'Math/log10 [_] 'log)
+(defmethod expresso-name 'Math/sin [_] 'sin)
+(defmethod expresso-name 'Math/sinh [_] 'sinh)
+(defmethod expresso-name 'Math/sqrt [_] 'sqrt)
+(defmethod expresso-name 'Math/tan [_] 'tan)
+(defmethod expresso-name 'Math/tanh [_] 'tanh)
+(defmethod expresso-name 'mat/negate [_] '-)
+(defmethod expresso-name `mat/mul [_] 'mul)
+(defmethod expresso-name `mat/inner-product [_] 'inner-product)
 
 ;;single expression creation
 (defn create-expression [symbol args]
@@ -157,7 +162,9 @@
                    (:double (meta arg)) types/double
                    (:long   (meta arg)) types/long
                    (:int    (meta arg)) types/integer
-                   :else types/number)
+                   :else (if (sequential? (:shape (meta arg)))
+                                          types/matrix
+                                          types/number))
         shape (cond (isa? type types/number) []
                     (= type types/matrix) (or (:shape (meta arg))
                                               (lvar 'shape))
@@ -170,7 +177,7 @@
 (defn ce
   "constructs an expression from the symbol with the supplied args"
   [symb & args]
-  (let [symb (expresso-symb symb)
+  (let [symb (expresso-name symb)
         args (map #(if (symbol? %) (construct-symbol %) %) args)]
     (or (create-special-expression [symb args])
         (create-extractor symb args)
@@ -180,26 +187,40 @@
   (apply (partial ce symb) args))
 ;;experimental!! matrix-symb will probably not have an own type but reuse symbols with metadata
 
-(defn matrix-symb
-  ([s] (matrix-symb s #{}))
-  ([s additional-props] (matrix-symb s #{} [(lvar 'srows) (lvar 'scols)]))
-  ([s additional-props shape]     
-     (numeric.expresso.impl.pimplementation.MatrixSymbol. s shape additional-props)))
 
-(defn zero-matrix
-  ([s] (zero-matrix s #{}))
-  ([s additional-props]
-     (matrix-symb (symbol (str "zeromat" (apply str (interpose "-" s))))
-                  s
-                  (set/union additional-props #{:mzero}))))
+(defn expresso-symb [symb & {:keys [shape type properties]
+                             :or {shape (lvar 'shape)
+                                  type types/number
+                                  properties #{}}}]
+  (let [meta
+        (cond
+         (= type types/number)
+         (if (or (lvar? shape) (= shape []))
+           {:shape [] :type type :properties properties}
+           {:shape shape :type types/matrix :properties properties})
+         :else {:shape shape :type type :properties properties})]
+    (construct-symbol (with-meta symb meta))))
 
-(defn identity-matrix
-  ([s] (identity-matrix s #{}))
-  ([s additional-props]
-     (matrix-symb (symbol (str "identitymat" (apply str (interpose "-" [s s]))))
-                  [s s]
-                  (set/union additional-props #{:midentity}))))
- 
+
+(defn matrix-symb [symb &{:keys [shape properties]
+                          :or {shape (lvar 'shape)
+                               properties #{}}}]
+  (expresso-symb symb :shape shape :properties properties :type types/matrix))
+
+(defn zero-matrix [& {:keys [shape symb properties]
+                   :or {shape (lvar 'shape)
+                        symb (gensym "zeromat")
+                        properties #{:mzero}}}]
+  (expresso-symb symb :shape shape :type types/matrix
+                 :properties (set/union #{:mzero} properties)))
+
+(defn identity-matrix [& {:keys [shape symb properties]
+                       :or {shape (lvar 'shape)
+                            symb (gensym "identitymat")
+                            properties #{:midentity}}}]
+  (expresso-symb symb :shape shape :type types/matrix
+                 :properties (set/union #{:midentity} properties)))
+
 (derive 'e/ca+ 'e/ca-op)
 (derive 'e/ca* 'e/ca-op)
 (derive 'e/+   'e/ca+)
@@ -331,3 +352,5 @@
                       (apply (partial ce (first %))  (rest %))
                       %) expr)))
 
+(defn extractor? [x]
+  (instance? BasicExtractor x))

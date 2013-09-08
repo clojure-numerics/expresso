@@ -143,7 +143,7 @@
         (list* '+ (map #(list '* %1 (list '** v %2))
                       coeffs (range))))))
 
-(deftype MatrixSymbol [symb shape properties]
+#_(deftype MatrixSymbol [symb shape properties]
   java.lang.Object
   (hashCode [a]
     (.hashCode symb))
@@ -187,6 +187,17 @@
       (last (map #(evaluate % nnsm) code)))))
 
 (extend-protocol PAtom
+  clojure.lang.Symbol
+  (value [this]
+    (let [props (properties this)]
+      (if (or (contains? props :midentity) (contains? props :mzero))
+        (let [shape (shape this)]
+          (if (not (or (lvar? shape) (expr-op shape)))
+            (cond
+             (props :midentity) (if (= [] shape) 1 (mat/identity-matrix shape))
+             (props :mzero) (mat/new-array shape))
+            this))
+        this)))
   java.lang.Object
   (value [this]  this))
 (extend-protocol PExpression
@@ -243,10 +254,10 @@
   (evaluate [expr sm] nil)
   java.lang.Object
   (evaluate [expr sm]
-    (if-let [op (expr-op expr)]
+    (if-let [op (expr-op (value expr))]
       (if-let [eval-func (:eval-func (meta op))]
         (eval-func expr sm)
-        (apply (exec-func expr) (map #(evaluate % sm) (expr-args expr))))
+        (apply (exec-func expr) (map #(evaluate (value %) sm) (expr-args expr))))
       (let [val (value expr)]
         (if (symbol? val)
           (if-let [evaled (val sm)]
@@ -294,8 +305,8 @@
   Expression
   (unify-terms [u v s]
     (unify-with-expression* u v s))
-  MatrixSymbol
-  (unify-terms [u v s]
+  #_MatrixSymbol
+  #_(unify-terms [u v s]
     (unify-with-matrix-symbol* u v s)))
 
 (defn expand-seq-matchers [args]
@@ -326,8 +337,8 @@
     (let [
           res (walk-expresso-expression* v f)]
       res))
-  MatrixSymbol
-  (walk-term [v f] (MatrixSymbol. (walk-term (f (.-symb v)) f)
+  #_MatrixSymbol
+  #_(walk-term [v f] (MatrixSymbol. (walk-term (f (.-symb v)) f)
                                   (walk-term (f (.-shape v)) f)
                                   (.-properties v))))
 
@@ -411,22 +422,29 @@
   (shape [this] [])
   (set-shape [this shape]
     (if (= [] shape) this (throw (Exception. (str "invalid shape " shape "for nil")))))
-  MatrixSymbol
-  (shape [this] (eval-if-determined (.-shape this)))
-  (set-shape [this shape] (MatrixSymbol. (.-symb this)
-                                         shape (.-properties this)))
   java.lang.Number
   (shape [this] [])
   (set-shape [this shape]
     (if (= [] shape) this (throw (Exception. (str "invalid shape " shape "for a number")))))
   java.lang.Object
   (shape [this]
-    (eval-if-determined (get  (meta this) :shape
-                              (mat/shape this))))
+    (or (inferred-shape  this)
+        (eval-if-determined (get  (meta this) :shape
+                                  (mat/shape this)))))
   (set-shape [this shape]
     (with-meta this (assoc (meta this) :shape shape))))
       
-
+(extend-protocol PInferShape
+  nil
+  (inferred-shape [this] (shape this))
+  java.lang.Number
+  (inferred-shape [this] (shape this))
+  (set-inferred-shape [this shape] (set-shape this shape))
+  java.lang.Object
+  (inferred-shape [this] (eval-if-determined (get (meta this) :inferred-shape)))
+  (set-inferred-shape [this shape]
+    (with-meta this (assoc (meta this) :inferred-shape shape))))
+  
 (extend-protocol PProps
   java.lang.Object
   (properties [this]
@@ -466,10 +484,10 @@
   PolynomialExpression
   (constraints [this] #{})
   (add-constraint [this constraint] this)
-  MatrixSymbol
-  (constraints [this]
+  #_MatrixSymbol
+  #_(constraints [this]
     (get (meta (.-symb this)) :constraints #{}))
-  (add-constraint [this constraint]
+  #_(add-constraint [this constraint]
      (MatrixSymbol. (add-constraint-normal (.-symb this) constraint)
                     (.-shape this) (.-properties this)))
   clojure.lang.ISeq

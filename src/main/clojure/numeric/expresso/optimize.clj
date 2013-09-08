@@ -99,8 +99,17 @@
                                 simp/universal-rules optimize-rules) expr))
 
 (defn replace-with-special-operations [expr]
-  (transform-expression [(rule (ex (** ?x 0.5)) :=> (ex (sqrt ?x)))
-                         (rule (ex (** ?x 1/2)) :=> (ex (sqrt ?x)))] expr))
+  (transform-expression
+   (concat simp/universal-rules
+           [(rule (ex (** ?x 0.5)) :=> (ex (sqrt ?x)))
+            (rule (ex (** ?x 1/2)) :=> (ex (sqrt ?x)))
+            (rule (ex (+ ?m (* ?a ?b) ~?&*))
+                  :=> (ex (+ (add-product ?m ?a ?b) ~?&*))
+                  :if (guard (let [shapes (map shape [?m ?a ?b])]
+                               (and (not (some #{[]} shapes))
+                                    (not (some lvar? shapes))
+                                    (every? #{(shape ?m)} shapes)))))
+            ]) expr))
 
 (defn add-parens [symb args i j]
   (cev symb (concat (subvec args 0 i) [(cev symb (subvec args i j))]
@@ -142,7 +151,8 @@
   [(rule (ex (inner-product ?&+)) :==>
          (let [args (matcher-args ?&+)
                  args (partition-by (comp count shape) args)
-                 args (map #(if (= (count (shape (first %))) 2)
+               args (map #(if (and (not (expr-op (shape (first %))))
+                                   (= (count (shape (first %))) 2))
                               (optimize-matrix-chain-order (vec %))
                               (seq-matcher %)) args)]
            (cev 'inner-product args))
@@ -157,8 +167,6 @@
 (defn eval-func [expr]
   (fn [sm]
     (evaluate expr sm)))
-
-
 
 (defn compile-expr* [bindings expr]
   (let [expr (to-expression expr)

@@ -15,6 +15,8 @@
 (set! *warn-on-reflection* true)
 
 (extend-protocol PMatch
+  java.lang.Object
+  (match [this that] (== this that))
   numeric.expresso.impl.pimplementation.Expression
   (match [this that]
     (if-let [m (and (expr-op that) (meta (expr-op this)))]

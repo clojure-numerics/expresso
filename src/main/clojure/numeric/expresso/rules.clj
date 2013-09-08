@@ -206,13 +206,14 @@
   [rule exp]
   (let [ex-op (expr-op exp)
         rule-op (expr-op (first rule))]
-    (if (not (or (and (nil? rule-op)
-                      (not (sequential? (first rule)))
-                      (not (lvar? (first rule))))
-                 (and ex-op rule-op (not (exp-isa? ex-op rule-op)))))
-        (if (:syntactical (meta rule))
-          (apply-syntactic-rule rule exp)
-          (apply-semantic-rule rule exp)))))
+    (if (or (c/extractor? (first rule))
+            (not (or (and (nil? rule-op)
+                          (not (sequential? (first rule)))
+                          (not (lvar? (first rule))))
+                     (and ex-op rule-op (not (exp-isa? ex-op rule-op))))))
+      (if (:syntactical (meta rule))
+        (apply-syntactic-rule rule exp)
+        (apply-semantic-rule rule exp)))))
 
 (defn apply-ruleo
   "core.logic relation of apply-rule - not relational, you can't generate all possible rules which transform an expression to the new-expression"
@@ -330,22 +331,15 @@
                               [:simplified-by]
                               #(set/union % (:simplified-by (meta expr)))))))
 
+
+(defn merge-transformed-meta [meta-exp transformed] 
+  (if (instance? clojure.lang.IObj transformed)
+    (with-meta transformed (merge meta-exp (meta transformed)))
+    transformed))
+
 (def transform-expression*
   (fn [expr]
-    (if (simplified? expr *rules*)
-      expr
-      (let [res
-            (if-let [op (expr-op expr)]
-              (let [transformed (doall (map  transform-expression*
-                                             (expr-args expr)))
-                    res (apply-to-end *rules*
-                                      (c/cev (first expr) transformed))]
-                (if (= expr res)
-                  (add-simp-annotations
-                   (annotate-simplified res *rules*) expr)
-                  (annotate-simplified res *rules*)))
-              (annotate-simplified (apply-to-end *rules* expr) *rules*))]
-        res))))
+    (transform-expr expr *rules*)))
 
 (defn transform-expression
   "transforms the expression according to the rules in the rules vector in a
@@ -356,6 +350,32 @@
                       (with-meta rules (assoc (meta rules) :id (gensym "id"))))]
     (let [res (transform-expression* expr)]
       res)))
+
+(extend-protocol PTransformExpression
+  Object
+  (transform-expr [expr rules]
+    (if (simplified? expr rules)
+      expr
+      (let [res
+            (if-let [op (expr-op expr)]
+              (let [transformed (doall (map  transform-expression*
+                                             (expr-args expr)))
+                    n-expr (merge-transformed-meta
+                              (meta expr) (c/cev (first expr) transformed))
+                              #_(c/cev (first expr) transformed)
+                    res (apply-to-end rules n-expr)]
+                (if (= expr res)
+                  (add-simp-annotations
+                   (annotate-simplified res rules) expr)
+                  (annotate-simplified res rules)))
+              (annotate-simplified (apply-to-end rules expr) rules))]
+        res)))
+  numeric.expresso.impl.pimplementation.LetExpression
+  (transform-expr [expr rules]
+    (let [bindings (.-bindings expr) code (.-code expr)]
+      (c/let-expr (mapv #(transform-expression rules %) bindings)
+                  (map #(transform-expression rules %) code)))))
+    
 
 (defn transform-expressiono [rules expr nexpr]
   (project [rules expr]

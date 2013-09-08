@@ -51,7 +51,9 @@
    (empty? eq) #{}
    (= (utils/eq-lhs eq) v) (let [rhs (utils/eq-rhs eq)]
                              (if (number? rhs)
-                               (when-not (Double/isNaN rhs) rhs) rhs))
+                               (when-not (Double/isNaN rhs)
+                                 (if (utils/num= (utils/round rhs) rhs)
+                                   (utils/round rhs) rhs)) rhs))
    :else (let [lhs (utils/eq-lhs eq) rhs (utils/eq-rhs eq)]
            (when (no-symbol eq)
              (if (utils/num= (evaluate lhs {}) (evaluate rhs {})) '_0 '())))))
@@ -104,7 +106,7 @@
        
 
 (def solve-rules
-  [(rule [?v (ex (= (* ?&*) 0))] :==> (solve-factors ?v (matcher-args ?&*)))
+  [(rule [?v (ex (= (* ?&*) (mzero? ?x)))] :==> (solve-factors ?v (matcher-args ?&*)))
    (rule [?v ?x] :==> (solve-polynomial ?v ?x))
    (rule [?v ?x] :==> (solve-by-simplification-rules ?v ?x))
    (rule [?v ?x] :==> (solve-by-homogenization ?v ?x))
@@ -148,6 +150,10 @@
 
 (defn lhs-rhs=0 [equation]
   (ce `= (ce `- (nth equation 1) (nth equation 2)) 0))
+
+(defn dbg->>
+  ([expr] (do (prn expr) expr))
+  ([msg expr] (do (prn msg " " expr) expr)))
 
 (defn solve* [v equation]
   (if (utils/solved? v equation)

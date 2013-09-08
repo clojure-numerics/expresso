@@ -3,6 +3,8 @@
   (:use clojure.test)
   (:use numeric.expresso.rules)
   (:use numeric.expresso.construct)
+  (:use numeric.expresso.protocols)
+  (:use numeric.expresso.impl.pimplementation)
   (:refer-clojure :exclude [==])
   (:use [clojure.core.logic.protocols]
         [clojure.core.logic :exclude [is] :as l]
@@ -14,11 +16,12 @@
   (:require [clojure.core.logic.unifier :as u]))
 
 
+(def matr (matrix-symb 'a))
 
-(deftest test-matrix-simplification-rules
-  (is (matrix/e== (matrix/broadcast 0 [2 2]) (apply-rules
-                      matrix-simplification-rules
-                      (ex (matrix/mul [[1 2][3 4]] [[0 0][0 0]])))))
-  (is (matrix/e== (matrix/broadcast 0 [3 2]) (apply-rules
-                      matrix-simplification-rules
-                      (ex (matrix/mul [[1 2][3 4] [5 6]] [[0 0][0 0]]))))))
+(deftest test-simp-shape-inference
+  (is (symbol? (simp-expr (ex' (- matr matr)))))
+  (is (= [[0.0 0.0]
+          [0.0 0.0]] (value
+                      (check-constraints
+                       (add-constraint (simp-expr (ex' (- matr matr)))
+                                       [== (shape matr) [2 2]]))))))

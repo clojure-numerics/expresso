@@ -51,6 +51,10 @@
   (shape [this])
   (set-shape [this shape]))
 
+(defprotocol PInferShape
+  (inferred-shape [this])
+  (set-inferred-shape [this shape]))
+
 (defprotocol PRearrange
   (rearrange-step [lhs pos rhs]))
 
@@ -63,6 +67,9 @@
 
 (defprotocol PEmitCode
   (emit-code [this]))
+
+(defprotocol PTransformExpression
+  (transform-expr [expr rules]))
 
 (defmulti emit-func first)
 (defmethod emit-func :default [_] (:emit-func (meta (first _))))
