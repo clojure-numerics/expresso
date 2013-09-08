@@ -9,7 +9,7 @@
         [numeric.expresso.impl.pimplementation]
         [numeric.expresso.rules]
         [numeric.expresso.simplify]
-        [numeric.expresso.examples]
+         [numeric.expresso.examples]
         [clojure.test])
   (:require [clojure.core.logic.fd :as fd]
             [clojure.walk :as walk]
@@ -47,7 +47,7 @@
 
 (defn report-res [v eq]
   (cond
-   (not (seq? eq)) (report-res v (ce '= v eq))
+   (not (and (seq? eq) (= (expr-op eq) '=))) (report-res v (ce '= v eq))
    (empty? eq) #{}
    (= (utils/eq-lhs eq) v) (let [rhs (utils/eq-rhs eq)]
                              (if (number? rhs)
@@ -672,10 +672,12 @@
       (strategy x equation))))
 
 (defn check-solution [x equation solution]
-  (try 
-    (if-let [x (solve* (gensym "var")
-                       (substitute-expr equation {x solution}))]
-      (not (= x #{})))
+  (try
+    (if-not (empty? (vars solution))
+      true
+      (when-let [x (solve* (gensym "var")
+                      (substitute-expr equation {x solution}))]
+          (not (= x #{}))))
     (catch Exception e nil)))
 
 

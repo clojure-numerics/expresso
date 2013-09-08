@@ -1,4 +1,4 @@
-(ns numeric.expresso.impl.pimplementation
+ (ns numeric.expresso.impl.pimplementation
   (:refer-clojure :exclude [==])
   (:use [clojure.test]
         [clojure.core.logic.protocols]
@@ -20,7 +20,6 @@
 (defn to-relations [constraint]
   (let [[rel & args] constraint]
      (apply rel args)))
-
 
 (defn with-meta-informations [value]
   (let [type (type-of value)
@@ -151,7 +150,7 @@
     (str symb " " (first shape) "x" (second shape)))
   (equals [this that]
     (= symb (value that)))
-  PAtom
+  PValue
   (value [this] symb))
   
 (deftype BasicExtractor [name args rel]
@@ -186,7 +185,9 @@
           nnsm (merge sm nsm)]
       (last (map #(evaluate % nnsm) code)))))
 
-(extend-protocol PAtom
+(extend-protocol PValue
+  nil
+  (value [this] nil)
   clojure.lang.Symbol
   (value [this]
     (let [props (properties this)]
@@ -413,8 +414,10 @@
        (all-execable x)))
 
 (defn eval-if-determined [expr]
-  (if (no-symbol expr)
-    (evaluate expr {})
+  (if (expr-op expr)
+    (if (no-symbol expr)
+      (evaluate expr {})
+      expr)
     expr))
 
 (extend-protocol PShape
@@ -426,6 +429,12 @@
   (shape [this] [])
   (set-shape [this shape]
     (if (= [] shape) this (throw (Exception. (str "invalid shape " shape "for a number")))))
+  clojure.lang.ISeq
+  (shape [this]
+    (or (inferred-shape this)
+        (eval-if-determined (:shape (meta this)))))
+  (set-shape [this shape]
+    (with-meta this (assoc (meta this) :shape shape)))
   java.lang.Object
   (shape [this]
     (or (inferred-shape  this)

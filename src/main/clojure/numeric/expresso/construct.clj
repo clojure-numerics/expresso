@@ -69,10 +69,13 @@
   (first (sort-by (comp - count) args)))
 
 (defn create-elemwise-operation [symb args]
-  (let [se (create-normal-expression `longest-shape (map protocols/shape args))
-        se (if (impl/no-symbol se) (protocols/evaluate se {}) se)]
+  (let [shapes (map protocols/shape args)]
     (-> (create-normal-expression symb args)
-        (protocols/set-shape se))))
+        (protocols/set-shape
+         (if-not (some #(or (lvar? %) (symbol? %) (protocols/expr-op %)) shapes)
+           (first (sort-by (comp - count) shapes))
+           (create-normal-expression `longest-shape shapes))))))
+    
 
 ;;constructing dispatch for known symbols to expresso
       

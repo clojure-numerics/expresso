@@ -29,7 +29,7 @@
 (defn no-symbolso [x]
   (project [x]
            (fresh []
-                  (== true (no-symbol x)))))
+                  (== true (and (expr-op x) (no-symbol x))))))
  
 (defn zip [& colls]
   (apply (partial map (fn [& a] a)) colls))

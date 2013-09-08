@@ -60,6 +60,8 @@
 
 (deftest test-solve-square-roots
   (is (= #{9} (solve 'x (ex (= (+ (sqrt x) (sqrt (- x 5))) 1)))))
+  (is (= '#{(+ (* 0.25 (+ (** a 2) 1)) (* 0.5 a))}
+         (solve 'x (ex (= (+ (sqrt x) (sqrt (- x a))) 1)))))
   (is (= #{1 -4.2444444444444445}
          (solve
           'x (ex (= (+ (sqrt (+ x 8)) (sqrt (+ x 15))) (sqrt (+ (* 9 x) 40)))))))

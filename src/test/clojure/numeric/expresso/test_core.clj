@@ -34,7 +34,7 @@
 
 
 (deftest test-solve
-  (is (= #{2} (solve '#{x} (ex (= (+ 1 x) 3)))))
+  (is (= #{2} (solve 'x (ex (= (+ 1 x) 3)))))
   (is (= '#{} (solve '#{x} (ex (= x (+ x 1))))))
   (is (= '_0 (solve '#{x} (ex (= x x)))))
   (is (= '#{(arcsin 0) 1} (solve '#{x} (ex (= (* (sin x) (- x 1)) 0)))))

@@ -244,7 +244,8 @@
 (defn factors [n] (map #(/ n %) (filter #(zero? (rem n %)) (range 1 (+ n 1)))))
 
 (defn ratio-root-guesses [^PolynomialExpression poly]
-  (if (every? #(or (integer? %) (utils/num= (utils/round %) %)) (.-coeffs poly))
+  (if (every? #(and (number? %) (or (integer? %) (utils/num= (utils/round %) %)))
+                    (.-coeffs poly))
     (apply concat (for [n (factors (Math/abs ^double (coef poly 0)))
                         d (factors (Math/abs ^double (coef poly (degree poly))))]
                     [(/ n d) (/ (- n) d)]))
