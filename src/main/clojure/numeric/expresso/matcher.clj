@@ -8,11 +8,13 @@
   (:require [clojure.core.logic.fd :as fd]
             [clojure.walk :as walk]
             [numeric.expresso.utils :as utils]))
-(declare match-expressiono)
-(declare expression-matcho)
-(declare isao)
-(declare add-replacemento)
-(set! *warn-on-reflection* true)
+(declare match-expressiono expression-matcho isao add-replacemento)
+;;This namespace implements the semantic matching algorithms used in expresso
+;;The idea is to let the pattern itself decide what mathching algorithm is used
+
+;;Therefore the matching is abstracted by the PMatch protocol whose default
+;;expression implementation is datadriven by the metadata :metch-rel key
+
 
 (extend-protocol PMatch
   java.lang.Object
@@ -39,7 +41,14 @@
             rel (.rel this)]
         (rel args that))))
 
-(defn myisa? [a b]
+;;weird isa? function because
+;;1. isa? doesn't behave well on clojure.core// as well as other symbol based
+;;   method in clojure. Hopefully this changes in 1.6
+;;2. since expresso uses short, unqualified functions to represent known functios
+;;   it can't derive hierarchies from these, so the convention is to derive
+;;   hierarchies with e/short-symbol. This function also checks if the symbol
+;;   prepended with e/ is isa? of b
+(defn exp-symb-isa? [a b]
   (let [res (or (isa? a b) (= (str a) (str b) "clojure.core//")
                 (and (symbol? a) (not (some #{\/} (butlast (str a))))
                      (isa? (symbol (str "e/" a)) b)))]
@@ -52,7 +61,7 @@
   (conda
    ((== a b))
    ((project [a b]
-             (== true (myisa? a b))))))
+             (== true (exp-symb-isa? a b))))))
 
 
 (defn is-expro [v]
@@ -457,6 +466,14 @@
              (do (swap! replacements assoc ps es)
                  succeed))))
 
+;;The top level matching relation.
+;;First tries to unify pat and exp ad succeeding fast in that case
+;;if not either one has to succeed:
+;;1. exp is a real expression than also pat has to be an expression
+;;2. pat is a real expression (mostly in case for extractors)
+;;if not, pat and exp are just matched like with normal unification
+;;but the parts of them are matched with a call to match itself.
+;;this enables semantic matching of expressions inside of a vector for example
 
 (defn match-expressiono
   "matches pattern against exp. Dispatches to the right matching function.
@@ -466,9 +483,9 @@
    ((== pat exp))
    ((conda
      ((is-expro exp) (is-expro pat)
-             (project [pat exp]
-                      (match pat exp)))
+      (project [pat exp]
+               (match pat exp)))
      ((is-expro pat)
-             (project [pat exp]
-                      (match pat exp)))
-     ((expression-matcho pat exp))))))
+      (project [pat exp]
+               (match pat exp)))
+     ((expression-matcho pat exp))) (!= pat exp))))

@@ -12,6 +12,17 @@
             [numeric.expresso.utils :as utils]
             [clojure.set :as set]
             [numeric.expresso.construct :as c]))
+;;this namespace provides expresso rule-based translator facility. Most notable
+;;are the rule macro, which constructs a rule and apply-rule wich applies a
+;;rule in a core.logic context.
+
+;;A rule consists of a 3-element vector with [pattern transformation guard]
+;;The elements of the vector can contain fresh lvars
+;;the rule macro converts ?-starting symbols to fresh lvars
+;;The transition can be a normal lvar-containing expression like the pattern
+;;or can be a core.logic relation
+;;the guard is optional (succeed is used if no guard is supplied)
+
 
 (declare exp-isa?)
 (defn- replace-?-with-lvar
@@ -52,7 +63,10 @@
   (walk/postwalk (fn [c] (if-let [name (name-of-lvar c)]
                            name
                            c)) code))
-
+;;utility macros to create inline core.logic relations which act as transition
+;;and guard in a rule. the ...fn macros take normal clojure code as argument and
+;;convert it to a core.logic relation and the ...rel macros take a core.logic
+;;relation.
 
 (defmacro transfn [args & code]
   (let [args (revert-back-lvars args)
@@ -119,11 +133,12 @@
 (defn trans* [transcode]
   (let [res (?-to-lvar (make-inline-trans (replace-back transcode)))]
     res))
-    
+
 (defmacro trans
   "to be used inside a rule to transform the inline-code to a core.logic
    relation which is suitable for the rule based translator as translation
-   relation"
+   relation. All values of the ?-symbols of the pattern are defined inside
+   trans."
   [transcode]
   (trans* transcode))
 
@@ -139,9 +154,20 @@
 (defmacro guard
   "to be used inside a rule to transform the inline (boolean returning) code
    to a core.logic relation which is suitable for the rule based translator
-   as guard relation"
+   as guard relation. All values of the ?-symbols of the pattern are defined
+   inside guard"
   [guardcode]
   (guard* guardcode))
+
+
+
+(defn rule* [v]
+  (let [expanded (?-to-lvar v)
+        [pat to trans & rest] v
+        trans (if (= to :==>) (make-inline-trans trans) trans)
+        guard (if (and (seq rest) (= :if (first rest))) (second rest) succeed)]
+    (with-meta [(?-to-lvar pat) (?-to-lvar trans) (?-to-lvar guard)] {:syntactic (and (seq rest) (= (last rest) :syntactic))})))
+  
 
 (defmacro rule
   "constructs a rule. Syntax is (rule pat :=> trans) pat is a normal expression
@@ -155,20 +181,8 @@
    guard) guard is a core.logic relation which is called after matching the pat
    with the expression and succeeds if the rule is applicable or fails if not."
   [& v]
-  (let [expanded (?-to-lvar v)
-        [pat to trans & rest] v
-        trans (if (= to :==>) (make-inline-trans trans) trans)
-        guard (if (and (seq rest) (= :if (first rest))) (second rest) succeed)]
-    (with-meta [(?-to-lvar pat) (?-to-lvar trans) (?-to-lvar guard)] {:syntactic (and (seq rest) (= (last rest) :syntactical))})))
+  (rule* v))
 
-
-(defn rule* [v]
-  (let [expanded (?-to-lvar v)
-        [pat to trans & rest] v
-        trans (if (= to :==>) (make-inline-trans trans) trans)
-        guard (if (and (seq rest) (= :if (first rest))) (second rest) succeed)]
-    (with-meta [(?-to-lvar pat) (?-to-lvar trans) (?-to-lvar guard)] {:syntactical (and (seq rest) (= (last rest) :syntactical))})))
-  
 
 (defn define-extractor
   "defines and installs an extractor with the given name and relation.
@@ -198,8 +212,6 @@
                      (== pat exp)
                      (check-guardo guard)
                      (apply-transformationo trans q)))))
-
-
 (defn apply-rule
   "applies the specified rule to the epxression returning a modified one if the
    rule was applicable of nil if the rule was not applicable"
@@ -214,6 +226,10 @@
       (if (:syntactical (meta rule))
         (apply-syntactic-rule rule exp)
         (apply-semantic-rule rule exp)))))
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;various functions to build rule application strategies outside and inside of
+;;a core.logic context
+
 
 (defn apply-ruleo
   "core.logic relation of apply-rule - not relational, you can't generate all possible rules which transform an expression to the new-expression"
@@ -261,7 +277,7 @@
            (transform-expressiono rules nexpr new-expr))
           ((== new-expr expr)))))
 
-(defn apply-simp
+#_(defn apply-simp
   [rules expr]
   (let [nexpr (apply-rules rules expr)]
     (if (= nexpr expr)
@@ -340,7 +356,15 @@
 (def transform-expression*
   (fn [expr]
     (transform-expr expr *rules*)))
-
+;;Transform-expression is the optimized transform-all function to transform
+;;an expression according to the rules in the rule vector. The outcoming
+;;expression is guaranteed to be in a standart form defined by the rule vector
+;;applies the rules in a fully recursive bottom-up approach.
+;;uses tagging to avoid repetive transformations and also apply-rules semantics
+;;to avoid applying a rule where it is clear to fail.
+;;uses a protocol dispatch so that custom expression types can specify how
+;;rules will be applied. For example the LetExpression transforms itself by
+;;first transforming the bindings and then the body.
 (defn transform-expression
   "transforms the expression according to the rules in the rules vector in a
    bottom up manner until no rule can be applied to any subexpression anymore"
@@ -351,6 +375,18 @@
     (let [res (transform-expression* expr)]
       res)))
 
+;;transform-expression uses tagging to mark expression simplified according to
+;;the :id key in the metadata of the rule. If no is specified a new will be
+;;gensymed. if the expression is simplified the id of the actual rules will be
+;;added to the simplified-by key in the expression metadata, which takes care
+;;that the expression wont't be simplified again by transform-expression.
+;;It is also possible that the expression was simplified by other rules and that
+;;the current transformation hasn't changed it. In this case the old simplified
+;;by key can be retained and the union of the ids will be the new simplified-by
+;;set. It also merges the metadata of the transformed expression with the
+;;previous expressions in that way that the transformed meta has has priority.
+;;This is important for the inferred shape which is stored in another metadata
+;;key. 
 (extend-protocol PTransformExpression
   Object
   (transform-expr [expr rules]
@@ -362,7 +398,6 @@
                                              (expr-args expr)))
                     n-expr (merge-transformed-meta
                               (meta expr) (c/cev (first expr) transformed))
-                              #_(c/cev (first expr) transformed)
                     res (apply-to-end rules n-expr)]
                 (if (= expr res)
                   (add-simp-annotations
@@ -377,7 +412,9 @@
                   (map #(transform-expression rules %) code)))))
     
 
-(defn transform-expressiono [rules expr nexpr]
+(defn transform-expressiono
+  "core.logic equivalent of transform-expression"
+  [rules expr nexpr]
   (project [rules expr]
            (fresh [res]
                   (conda
@@ -397,5 +434,3 @@
 
 ;;See if it is possible to reinstantiate rules so that they can be applied all
 ;;in the core.logic context
-
-;;Idea: could add metadata to expression after transformed that it is already simplified

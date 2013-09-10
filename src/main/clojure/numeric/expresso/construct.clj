@@ -16,14 +16,18 @@
             [numeric.expresso.utils :as utils])
   (:import [numeric.expresso.impl.pimplementation PolynomialExpression
             BasicExtractor]))
-(declare ce cev)
+(declare ce cev create-normal-expression)
 
-;;(experimental) shape inference
+;;This is the namespace for constructing expressions. Its main function is
+;;ce (for create expression) which behaves like list* but adds important meta
+;;data to the expression which expresso uses for its manipulations.
+;;The constructing is also based on multimethod dispatch so it can be extended
+;;to custom operators easily
+;;I recommend reading the ce functions first.
 
-(defn add-constraints [x constraints]
-  (reduce (fn [l r] (protocols/add-constraint l r)) x constraints))
 
-(declare create-normal-expression)
+;;the shape of the inner-product expression is dependend on the first
+;;and last position of a shape which is not just []
 
 (defn first-last-pos-mshape [args]
   (let [args (vec args)
@@ -44,6 +48,10 @@
     (let [vs (remove empty? symb)]
       (if (even? (count vs)) [] (last vs)))))
 
+;;special constructing function for the inner-product. Constructs the expression
+;;in the normal way and sets its shape to the (evaled if possible) shape
+;;expression
+
 (defn create-inner-product [[symb args]]
   (let [shapes (map protocols/shape args)
         expr (create-normal-expression symb args)]
@@ -53,21 +61,11 @@
                 `inner-product-shape shapes))))))
 
 
-(defn create-elemwise-operation [symb args]
-  (if (empty? args)
-    (create-normal-expression symb args)
-    (let [lv (lvar 'shape)]
-      (protocols/add-constraint
-       (protocols/set-shape
-        (->> args
-             (map #(protocols/add-constraint % [utils/suffixo
-                                                (protocols/shape %) lv]))
-           (create-normal-expression symb)) lv)
-       [utils/longest-shapo (mapv protocols/shape args) lv]))))
-
 (defn longest-shape [& args]
   (first (sort-by (comp - count) args)))
 
+;;creates the elemwise-operations from core.matrix with the shape computed
+;;with the implicit broadcasting semantics from core.matrix
 (defn create-elemwise-operation [symb args]
   (let [shapes (map protocols/shape args)]
     (-> (create-normal-expression symb args)
@@ -105,6 +103,12 @@
   (create-elemwise-operation '* args))
 (defmethod create-special-expression '/ [[symb args]]
   (create-elemwise-operation '/ args))
+
+;;An example of what this dispatch allows. This is te construction of a
+;;sum expression so that (sum k 0 5 k) means (sum k (<= 0 k 5) k)
+;;the also the execute function for sum expressions and the
+;;emit-code function in properties.clj
+
 (defmethod create-special-expression 'sum [[symb args]]
   (let [args (vec args)]
     (case (count args)
@@ -116,7 +120,9 @@
                                         (nth args 3)]))))
       
 
-
+;;expresso construct symbols from the whole namespace qualified name of a
+;;symbol. For known symbols expresso uses short symbols according to this
+;;multimethods
 (defmulti expresso-name identity)
 (defmethod expresso-name :default [s]
   (if (= (str s) "clojure.core//") '/ s))
@@ -135,7 +141,7 @@
 (defmethod expresso-name `mat/sub [_] '-)
 (defmethod expresso-name 'Math/abs [_] 'abs)
 (defmethod expresso-name 'Math/acos [_] 'acos)
-(defmethod expresso-name 'Math/asin [_] 'asinc)
+(defmethod expresso-name 'Math/asin [_] 'asin)
 (defmethod expresso-name 'Math/atan [_] 'atan)
 (defmethod expresso-name 'Math/cos [_] 'cos)
 (defmethod expresso-name 'Math/cosh [_] 'cosh)
@@ -159,6 +165,13 @@
   (when-let [rel (extractor-rel symb)]
     (numeric.expresso.impl.pimplementation.BasicExtractor. symb args rel)))
 
+;;adds metadata to a symbol in the expression and adds type and shape information
+;;in it. by default it is assumed to be a number.
+;;if it has a type key in its metadata than the corresponging expresso type
+;;is used. this makes it possible to construct a matrix symbol very easy like in
+;;(ex (+ a ^:matrix b)) where a is a normal number and b is a matrix of undeter-
+;;mined shape
+
 (defn construct-symbol [arg]
   (let [type (cond (:matrix (meta arg)) types/matrix
                    (:number (meta arg)) types/number
@@ -174,8 +187,19 @@
                     :else (lvar 'shape))]
     (with-meta arg (merge {:type type :shape shape} (meta arg)))))
 
+;;creates a list of (op args*). Creates a real instance of PersistentList.
+;;This is the fastest way to construct the Persistent list after some
+;;experiments. It adds the metadata to the symbol. See properties.clj for details
+
 (defn create-normal-expression [symb args]
   (into '() (concat (reverse args) [(with-meta symb (add-information symb))])))
+
+;;Main construction function for expressions.
+;;uses the short name for the fully namespace qualified symbol if expresso
+;;knows about the expression. It adds the right metadata to all symbols in the
+;;argument list. It than uses the dispatch functions create-special-expression
+;;and create-extractor to construct the expression, backing up to just creating
+;;the expression with create-normal-expression
 
 (defn ce
   "constructs an expression from the symbol with the supplied args"
@@ -186,10 +210,13 @@
         (create-extractor symb args)
         (create-normal-expression symb args))))
 
+;;same as ce but doesn't take variable args
 (defn cev [symb args]
   (apply (partial ce symb) args))
-;;experimental!! matrix-symb will probably not have an own type but reuse symbols with metadata
 
+;;explicit constructing functions for symbols to use in expressions.
+;;not explicitly neccessary for the most cases but very useful if one
+;;particular (matrix) symbol is used in many places in the expression
 
 (defn expresso-symb [symb & {:keys [shape type properties]
                              :or {shape (lvar 'shape)
@@ -224,6 +251,11 @@
   (expresso-symb symb :shape shape :type types/matrix
                  :properties (set/union #{:midentity} properties)))
 
+;;; The rule based translator matches the operator symbol with respect to
+;;; clojures hierarchy semantics, so a rule written for 'e/ca-op matches all
+;;; commutative-associative operators -- this hierarchies aren't used very much
+;;; in expresso up to now
+
 (derive 'e/ca+ 'e/ca-op)
 (derive 'e/ca* 'e/ca-op)
 (derive 'e/+   'e/ca+)
@@ -238,6 +270,14 @@
 (derive `° 'e/ao-op)
 
 ;;constructing and manipulation functions for sequential-matchers
+;;The rule based translator has a feature called seq-matching where one
+;;symbol starting with ?& can match a whole sequence from the expression.
+;;Internally seq-matchers are represented by a vector of [::seq-match data]
+
+;;The functions seq-matcher and matcher-args are used to construct and
+;;deconstruct seq-matchers
+;;There are also a few utility functions which wrap ad unwrap the seq-matcher
+;;like map-sm zip-sm, ... they can be recognized by the -sm suffix
 (defn seq-matcher [data]
   [::seq-match data])
 
@@ -258,27 +298,32 @@
 (defn last-sm [sm] (last (matcher-args sm)))
 
 (defn count-sm [sm] (count (vec (matcher-args sm))))
+
 (defn split-in-pos-sm [sm pos]
   (let [args (vec (matcher-args sm))]
     [(seq-matcher (subvec args 0 pos))
      (nth args pos)
      (seq-matcher (subvec args (+ pos 1) (count args)))]))
 
-(defn extract [c]
-  (mapcat #(if (and (coll? %) (= (first %) ::seq-match)) (second %) [%]) c))
 
-
-(defn splice-in-seq-matchers [expr]
-  (walk/postwalk (fn [expr] (if (coll? expr) (extract expr) expr)) expr))
-
-;;code for high level constructing macros
+;;Because ce only constructs one level of an expression one would have to
+;;construct expressions like this: (ce '+ 1 2 (ce '- 3 4)). The higher level
+;;construction macros presented here allow you to construct expressions like this
+;;(ex (+ 1 2 (- 3 4))) by expanding into the appropriate calls to ce
+;;ex does implicit quoting while ex' does implifit quoting both allow for ~
+;;to be used in the supplied list
 
 (defn var-to-symbol [v]
   (let [s (str v)
         erg (-> (.substring s 2 (.length s)) symbol)]
     erg))
 
-
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;construct-with macro. This macro kaves a symbol vector and encloses arbitrary
+;;code. The enclosed code is then walked and every occurrence of one symbol in
+;;the symbol vector which is in function position in the code is replaced by a
+;;call to ce
+;;especially useful when constructing rules
 (defn replace-with-expresso-sexp [s s-exp]
   (if (and (coll? s-exp) (s (first s-exp)))
     (let [f (first s-exp)
@@ -294,14 +339,13 @@
 (defmacro construct-with [s & code]
   (apply (partial construct-with* s) code))
 
-(defmacro with-expresso [s & code]
-  (let [s-set (set s)]
-    `(do 
-       ~@(clojure.walk/postwalk #(replace-with-expresso-sexp s-set %) code))))
-
-(defn add-meta [symb args]
+#_(defn add-meta [symb args]
   (list* (with-meta symb {:properties (props symb)}) args))
 
+
+;;the ex' macro replaces in its body all function position operators with
+;;calls to ce. The operators are fully namespace-qualified when calling ce.
+;;It does not automatically quote a symbol in the expr
 (defn create-expression-with-values [s expr]
   (if (and (sequential? expr) (symbol? (first expr)) (not= 'quote (first expr)))
     (if (= (first expr) 'clojure.core/unquote)
@@ -323,22 +367,26 @@
   [& expr]
   (apply ex'* expr))
 
+;;The ex macro
+;;Like the ex' macro but implicitly quotes the arguments. It is the most useful
+;;and most used construction macro so far.
+
 (defn resolve-op [f]
   (if-let [r (resolve f)] (var-to-symbol r) f))
 
-(defn exnright [expr]
+(defn create-expression-with-implicit-quoting [expr]
   (if (and (sequential? expr) (symbol? (first expr)))
     (if (= 'clojure.core/unquote (first expr))
       (second expr)
       (list* `ce (list 'quote (resolve-op (first expr)))
-            (map exnright (rest expr))))
+            (map create-expression-with-implicit-quoting (rest expr))))
     (list 'quote expr)))
 
-(defn construct-ex [expr]
-  (exnright expr))
+#_(defn construct-ex [expr]
+  (create-expression-with-implicit-quoting expr))
 
 (defn ex* [expr]
-  (exnright expr))
+  (create-expression-with-implicit-quoting expr))
 
 (defmacro ex [expr]
   (ex* expr))
@@ -347,8 +395,13 @@
 (defn let-expr [bindings code]
   (numeric.expresso.impl.pimplementation.LetExpression. bindings code))
 
-
-(defn to-expression [expr]
+(defn to-expression
+  "converts the given expr, which consists of normal clojure s-expr
+   to s-expr with expresso metadata added, so that it can be handled
+   by the manipulation functions in expr. Is called on the input of all
+   numeric.expresso.core functions. Does nothing if expr is already a
+   valid expresso expression"
+  [expr]
   (if-let [op (protocols/expr-op expr)]
     expr
     (walk/postwalk #(if (and (seq? %) (symbol? (first %)))

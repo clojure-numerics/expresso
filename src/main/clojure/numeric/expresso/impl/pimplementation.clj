@@ -10,6 +10,11 @@
             [clojure.core.matrix :as mat]
             [clojure.walk :as walk]))
 
+;;Constraint checking code
+;;The constraints added to expressions encode constraints mainly on lvars in meta
+;;data. Because metadata is normally not touched by core.logic it has to be
+;;brought in scope and then all constraints are run.
+
 
 (defn all*
   "function version of all macro in logic.clj
@@ -17,10 +22,16 @@
   ([] clojure.core.logic/s#)
   ([goals] (fn [a] (reduce (fn [l r] (bind l r)) a goals))))
 
-(defn to-relations [constraint]
+
+(defn to-relations
+  "Maps the constraint in the form [rel args*] to the real clojure relation"
+  [constraint]
   (let [[rel & args] constraint]
      (apply rel args)))
 
+;;core.logic lvars can be in the type and shape metadata. To make it visible
+;;transform the expression to {:type (type-of expresion)
+;; :shape (shape expression) :value expression
 (defn with-meta-informations [value]
   (let [type (type-of value)
         shape (shape value)
@@ -35,6 +46,8 @@
                   value))]
     {:type type :shape shape :value value}))
 
+;;After the query is run against the transformed expression, it has to be
+;;retransformed afterwards back to its original shape 
 (defn restore-expression [wmi]
   (let [type (:type wmi)
         shape (:shape wmi)
@@ -47,6 +60,15 @@
                   (with-meta (mapv restore-expression value) (meta value))
                     value))]
     (-> value (set-shape shape))))
+
+;;Now comes the constrait checking part.
+;;1. make the constraints to relations
+;;2. transform-the expression
+;; 3. run the query - the :reify-vars kv takes care that fresh lvars
+;;    stay fresh after the run block
+;; 4. If the result is not unambiguous the transfomred expression is
+;;    retransformed
+;; 5. If the constraint check failed throw exception
 
 (defn check-constraints
   "checks the constraints on value.
@@ -64,7 +86,14 @@
       (throw (Exception. "constraint check failed")))))
 
 
-
+;;The Expression deftype could be a replacement for normal clojure lists as
+;;expression datatype. It demonstrates how a custom datatype can play nicely
+;;with clojures abstractions and also with core.logic
+;;many protocol implemetation will have the same code for ISeq and Expression
+;;implements sequential, counted and ISeq mimicking the list (op args*)
+;;in the ISeq implementation. Seqable returns itself because it iimplements
+;;ISeq itself. Implementating clojures abstractions for custom expresso types
+;;could be made simpler by a bit macro magic in the future
 
 (deftype Expression [op args]
   clojure.lang.Sequential
@@ -90,14 +119,17 @@
   PExpression
   (expr-op [this] op)
   (expr-args [this] args)
-  PType
-  (type-of [this] ::undetermined)
-  (set-type [this type] this)
   PProps
+  ;;stub properties in metadata of operator is not the best idea
   (properties [this] (when-let [m (meta op)] (:properties m))))
 
-(declare polysexp)
 
+;;PolynomialExpression
+;;A polynomialExpression is represented as the main-variable v and the
+;;coeff clojure vector. x is the represented as
+;;PolynomialExpression 'x [0 1]
+;;Multivariate polynomial are represented in a recursive way according to a
+;;order on the variables. See polynomial.clj for details
 
 (deftype PolynomialExpression [v coeffs]
   Object
@@ -122,6 +154,7 @@
   (expr-op [this] `+)
   (expr-args [this] (vec (rest (to-sexp this))))
   PExprEvaluate
+  ;;faster evaluate than evaluating the to-sexp representation
   (evaluate [poly sm]
     (if-let [vval (v sm)]
       (let [c (count coeffs)]
@@ -134,25 +167,13 @@
 (defn make-poly [v coeff]
   (PolynomialExpression. v coeff))
 
+;;BasicExtractor
+;;Extractors are used in the rule based translator
+;;They have their own implementation of match which lets them
+;;bring their own matching semantics
+;;for example (is? some-predicate ?x) can mean match the expression
+;;if the predicate is true on it and unify it with ?x then
 
-(defn polysexp [^PolynomialExpression poly]
-  (if (number? poly) poly
-      (let [v (.-v poly)
-            coeffs (.-coeffs poly)]
-        (list* '+ (map #(list '* %1 (list '** v %2))
-                      coeffs (range))))))
-
-#_(deftype MatrixSymbol [symb shape properties]
-  java.lang.Object
-  (hashCode [a]
-    (.hashCode symb))
-  (toString [expr]
-    (str symb " " (first shape) "x" (second shape)))
-  (equals [this that]
-    (= symb (value that)))
-  PValue
-  (value [this] symb))
-  
 (deftype BasicExtractor [name args rel]
   java.lang.Object
   (toString [this] (str (list* name args)))
@@ -160,6 +181,10 @@
   (expr-op [this] name)
   (expr-args [this] args))
 
+;;LetExpression
+;;A custom type for a let expression. Is used for the optimizer to remove
+;;common subexpresions from the expression tree. Mimicks the normal clojure
+;;let expression in its ISeq implementation.
 (deftype LetExpression [bindings code]
   java.lang.Object
   (toString [this] (str `(let ~bindings ~@code)))
@@ -179,11 +204,16 @@
   clojure.lang.Seqable
   (seq [this] this)
   PExprEvaluate
+  ;;evaluate the first binding and merge the kv pair info the sm and then
+  ;;evaluate the next. evaluate the body afterwards
   (evaluate [this sm]
     (let [nsm (->> bindings (partition 2)
                    (map (fn [[a b]] [a (evaluate b sm)])) (into {}))
           nnsm (merge sm nsm)]
       (last (map #(evaluate % nnsm) code)))))
+
+;;The implementations for PValue. Mostly identity for know only matrix symbols
+;;with mzero and midentity property evaluate to a real value at the moment.
 
 (extend-protocol PValue
   nil
@@ -201,6 +231,11 @@
         this)))
   java.lang.Object
   (value [this]  this))
+
+;;The implementations for PExpressions. Defaults to saying 'I'm a constant by
+;;returning nil for expr-op. ISeq checks if it is a real expresso expression
+;;by checking the mandatory part of the metadata added to the first symbol
+;;which is :expression true
 (extend-protocol PExpression
   nil
   (expr-op [obj] nil)
@@ -215,6 +250,10 @@
         :else nil)))
   (expr-args [obj] (vec (rest obj))))
 
+;;implementations for to-sexp for polynomial and default.
+;;The polynomial implementation does some simplifications on the s-expressions
+;;so that only the nonzero coefficients are shown in the sexp and also not
+;;(** x 0) and (** x 1)
 (extend-protocol PExprToSexp
   PolynomialExpression
   (to-sexp [poly]
@@ -238,18 +277,20 @@
       (list* op (map to-sexp (expr-args expr)))
       (value expr))))
 
+;;The execution function used when evaluating is currently stortd as :exec-func
+;;in the metadata of the operator. If not it is tried to sesolve it
 (extend-protocol PExprExecFunc
-  clojure.lang.ISeq
-  (exec-func [expr]
-    (if-let [op (expr-op expr)]
-      (or (and (meta op) (:exec-func (meta op))) (resolve op))
-      (throw (Exception. (str "no excecution function found for " expr)))))
   java.lang.Object
   (exec-func [expr]
     (if-let [op (expr-op expr)]
       (or (and (meta op) (:exec-func (meta op))) (resolve op))
       (throw (Exception. (str "no excecution function found for " expr))))))
 
+;;The default implementation for Evaluate differentiates between constants and
+;;expressions. from expressions, the eval-func is obtained and invoked on the
+;;evaluation of all its arguments.
+;;If it is a constant, its value is obtained and returned it if is not a
+;;symbol or lvar
 (extend-protocol PExprEvaluate
   nil
   (evaluate [expr sm] nil)
@@ -260,15 +301,21 @@
         (eval-func expr sm)
         (apply (exec-func expr) (map #(evaluate (value %) sm) (expr-args expr))))
       (let [val (value expr)]
-        (if (symbol? val)
+        (if (or (symbol? val) (lvar? val))
           (if-let [evaled (val sm)]
             evaled
             (throw (Exception. (str "No value specified for symbol " val))))
           val)))))
 
+;;PVars implementation
+;;the symbol in the operator position is ignored for vars. Vars also checks
+;;the 'Value' of the expression if it is a symbol so that m-zero matrizes
+;;with determined shapes are not mistaken as variables
+
 (extend-protocol PVars
   PolynomialExpression
-  (vars [expr] (set/union #{(.-v expr)} (vars (first (.-coeffs expr)))))
+  (vars [expr] (apply set/union
+                      (concat [#{(.-v expr)}] (map vars (.-coeffs expr)))))
   nil
   (vars [expr] #{})
   java.lang.Object
@@ -279,9 +326,13 @@
         #{(value expr)}
         #{}))))
 
-(defn expression? [exp]
-  (or (not (sequential? exp)) (and (sequential? exp) (symbol? (first exp)))))
 
+;;the core.logic extension to the custom datatypes
+;;s is the substitution map. basically unify the expr-op and the expr-args
+;;unsing the protocol function also enables matching Expression type and ISeq
+;;representation. Unification is also done on the logical value.
+;;the switch between u and v in the last line *is* neccesary, because
+;;core.logic can end up in a stackoverflow if not.
 
 (defn unify-with-expression* [u v s]
   (let [uop (expr-op u) vop (expr-op v)]
@@ -292,26 +343,20 @@
         (unify s (value v) u))
       (unify s (value u) (value v)))))
 
-(defn unify-with-matrix-symbol* [u v s]
-  (let [valueu (value u)
-        valuev (value v)
-        shapeu (shape u)
-        shapev (shape v)]
-    (some-> s
-            (unify valueu valuev)
-            (unify shapeu shapev))))
-            
 
 (extend-protocol IUnifyTerms
   Expression
   (unify-terms [u v s]
-    (unify-with-expression* u v s))
-  #_MatrixSymbol
-  #_(unify-terms [u v s]
-    (unify-with-matrix-symbol* u v s)))
+    (unify-with-expression* u v s)))
 
-(defn expand-seq-matchers [args]
-  (vec (mapcat #(if (and (sequential? %) (= (first %) :numeric.expresso.construct/seq-match))
+;;An advantage one has with a custom datatype is having full control about
+;;core.logic behaviour, so the walkTerm expression can splice in the sequential
+;;matchers while walking the term. See rules.clj and matcher.clj
+;;for more about seq-matchers
+
+(defn expand-seq-matchers[args]
+  (vec (mapcat #(if (and (sequential? %)
+                         (= (first %) :numeric.expresso.construct/seq-match))
                   (vec (second %))
                   [%]) args)))
 
@@ -320,28 +365,13 @@
                  (expand-seq-matchers (mapv #(walk-term (f %) f) (.-args v)))))
 
 
-(defn symbols-in-expr [expr]
-  (if-let [op (expr-op expr)]
-    (apply set/union (map symbols-in-expr (expr-args expr)))
-    (if (symbol? (value expr)) #{(value expr)} #{})))
-
-(defn lvars-in-expr [expr]
-  (walk/postwalk (fn [x] (if (sequential? x) (apply set/union x)
-                             (if (lvar? (value x)) #{(value x)} #{}))) expr))
-
-(defn lvars-in-expr [expr]
-  (filter lvar? (symbols-in-expr expr)))
-
 (extend-protocol IWalkTerm
   Expression
   (walk-term [v f]
-    (let [
-          res (walk-expresso-expression* v f)]
-      res))
-  #_MatrixSymbol
-  #_(walk-term [v f] (MatrixSymbol. (walk-term (f (.-symb v)) f)
-                                  (walk-term (f (.-shape v)) f)
-                                  (.-properties v))))
+    (walk-expresso-expression* v f)))
+
+;;substituting an expression is just a postwalk-replace in case of ISeq
+;;and a custom replacement in case of Expression
 
 (defn substitute-expr* [expr repl]
   (if-let [sub (get repl expr)]
@@ -367,6 +397,8 @@
   (if (= type to-check) this
       (throw (Exception. (str "Invalid Type " type "for "
                               this "excpected " to-check)))))
+
+;;poc implementation of type protocol.
 
 (extend-protocol PType
   Integer
@@ -420,15 +452,20 @@
       expr)
     expr))
 
+;;The implementation for shape first checks for an inferred shape.
+;;If not, it checks if its shape is an expression and evals it if it can
+;;be evaluated.  otherwise it returns the expression
 (extend-protocol PShape
   nil
   (shape [this] [])
   (set-shape [this shape]
-    (if (= [] shape) this (throw (Exception. (str "invalid shape " shape "for nil")))))
+    (if (= [] shape) this (throw (Exception.
+                                  (str "invalid shape " shape "for nil")))))
   java.lang.Number
   (shape [this] [])
   (set-shape [this shape]
-    (if (= [] shape) this (throw (Exception. (str "invalid shape " shape "for a number")))))
+    (if (= [] shape) this (throw (Exception.
+                                  (str "invalid shape " shape "for a number")))))
   clojure.lang.ISeq
   (shape [this]
     (or (inferred-shape this)
@@ -438,7 +475,7 @@
   java.lang.Object
   (shape [this]
     (or (inferred-shape  this)
-        (eval-if-determined (get  (meta this) :shape
+        (eval-if-determined (get (meta this) :shape
                                   (mat/shape this)))))
   (set-shape [this shape]
     (with-meta this (assoc (meta this) :shape shape))))
@@ -453,7 +490,9 @@
   (inferred-shape [this] (eval-if-determined (get (meta this) :inferred-shape)))
   (set-inferred-shape [this shape]
     (with-meta this (assoc (meta this) :inferred-shape shape))))
-  
+
+;;in the default case properites are in the properties key in the metadata
+;;for numbers the properties can be :positive, :zero, or :negative
 (extend-protocol PProps
   java.lang.Object
   (properties [this]
@@ -469,15 +508,15 @@
 (defn add-metadata [s m]
   (with-meta s (merge (meta s) m)))
 
+;;the constraint is added to the constraints meta key
 (defn add-constraint-normal [value constraint]
   (let [res (if-let [c (:constraints (meta value))]
               (add-metadata value {:constraints (set/union c #{constraint})})
               (add-metadata value {:constraints #{constraint}}))]
     res))
 
-(declare check-constraints)
-
-
+;;Constraints are currently not supported on BasicExtractors and
+;;PolynomialExpressions
 (extend-protocol PConstraints
   java.lang.Number
   (constraints [this] #{})
@@ -493,12 +532,8 @@
   PolynomialExpression
   (constraints [this] #{})
   (add-constraint [this constraint] this)
-  #_MatrixSymbol
-  #_(constraints [this]
-    (get (meta (.-symb this)) :constraints #{}))
-  #_(add-constraint [this constraint]
-     (MatrixSymbol. (add-constraint-normal (.-symb this) constraint)
-                    (.-shape this) (.-properties this)))
+  ;;Constraints on expressions cascade upwards so they include all the
+  ;;constraints of their arguments
   clojure.lang.ISeq
   (add-constraint [this constraint]
    (add-constraint-normal this constraint))
@@ -515,12 +550,8 @@
              (map constraints (expr-args this))))))
 
 
-(extend-protocol PType
-  clojure.lang.ISeq
-  (type-of [this]
-    ::undetermined))
-
-
+;;Rearrange ad Differentiate dispatch to their appropriate dispatch multimethod
+;;in case of Expression and ISeq
 (extend-protocol PRearrange
   Expression
   (rearrange-step [lhs pos rhs]
@@ -542,6 +573,8 @@
     (if-let [op (expr-op this)]
       (diff-function [this v]))))
 
+;;the normal emit-code implementation emits just the (exec-func ops*) clojure
+;;list. the let expression similary emits its normal clojure code
 (extend-protocol PEmitCode
   java.lang.Object
   (emit-code [this]
@@ -555,6 +588,7 @@
     `(let ~(.-bindings this) ~@(map emit-code (.-code this)))))
 
 ;;quick fix to be able to handle seqs as values in core.logic
+;;without this sets make core.logic go into an infinite loop.
 (extend-protocol IWalkTerm 
   clojure.lang.IPersistentSet 
   (walk-term [v f] (with-meta (set (walk-term (seq v) f)) (meta v))))

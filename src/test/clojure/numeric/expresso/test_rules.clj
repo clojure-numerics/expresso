@@ -14,7 +14,7 @@
 
 
 
-(with-expresso [* + - e/ca+ e/ca* e/- e/div]
+(construct-with [* + - e/ca+ e/ca* e/- e/div]
 (def rules [(rule (* ?x 1) :=> ?x)
             (rule (* ?x 0) :=> 0)
             (rule (+ ?x 0) :=> ?x)
@@ -41,7 +41,7 @@
 
 
 
-(with-expresso [* + - e/ca+ e/ca* e/- e/div ° map]
+(construct-with [* + - e/ca+ e/ca* e/- e/div ° map]
 
 (def simplification-rules
   [(rule (e/ca+ 0 ?&*) :=> ?&*)

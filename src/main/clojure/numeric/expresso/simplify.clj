@@ -20,6 +20,12 @@
             [numeric.expresso.matcher :as m]
             [numeric.expresso.construct :as c]))
 
+;;in this namespace are most of expresso's simplification rules defined
+;;It also serves as demonstration of the power of the rule based approach btw.
+
+
+;;utility functions for the eval-rules which eval a whole expression if it
+;;contains no undetermined part or evaluates part of it
 
 (defn calc-reso [x]
   (fn [res]
@@ -30,9 +36,6 @@
   (project [x]
            (fresh []
                   (== true (and (expr-op x) (no-symbol x))))))
- 
-(defn zip [& colls]
-  (apply (partial map (fn [& a] a)) colls))
 
 (defn contains-no-var? [x]
   (let [res (if (and (not (symbol? x)) (no-symbol x)) true false)]
@@ -79,7 +82,11 @@
 
 (defn symbolo [x] (project [x] (== true (symbol? x))))
 
-(defn with-shape [val shape]
+
+(defn with-shape
+  "sets the inferredn shape of the value. expands to zero- and identity-matrizes
+   where appropriate"
+   [val shape]
   (cond
    (utils/num= val 0) (if (or (lvar? shape) (sequential? shape))
                         (value (zero-matrix :shape shape)) 0)
@@ -90,53 +97,44 @@
 
 (construct-with [+ - * / ** diff ln sin cos sqrt exp log mzero? midentity?
                  shape?]
-
+;;to read the rule examples
+;; :==> means that the transition is an in-line clojure function
+;; ?&* matches zero or more elements of the expression
+;; ?&+ matches one or more elements of the expression                
+;; shape? mzero? and midentity? are extractors.
+;; (shape? pattern ?s) matches the pattern and unifies the shape of the pattern
+;; with ?s                
+;; (mzero? ?x) succeeds if ?x is some zero-matrix so 0, 0.0, [[0.0]], etc.
+;; (midentity? ?x) is like mzero but succeeds for identity-matrices
+                
 (def arity-rules
-  [(rule (+) :=> 0)
-   (rule (*) :=> 1)
-   (rule (+ ?x) :=> ?x)
-   (rule (* ?x) :=> ?x)])
-(def universal-rules
   [(rule (shape? (+) ?s) :==> (with-shape 0 ?s))
    (rule (shape? (*) ?s) :==> (with-shape 1 ?s))
    (rule (shape? (+ ?x) ?s) :==> (with-shape ?x ?s))
-   (rule (shape? (* ?x) ?s) :==> (with-shape ?x ?s))
-   (rule (+ (mzero? ?x) ?&*) :=> (+ ?&*))
-   (rule (shape? (* (mzero? ?x) ?&*) ?s) :==> (with-shape 0 ?s))
-   (rule (* (midentity? ?x) ?&*) :=> (* ?&*))
-   (rule (* ?x (- ?x) ?&*) :=> (* -1 (** ?x 2) ?&*))
-   (rule (** ?x 1) :=> ?x)
-   (rule (** ?x 0) :=> 1
-         :if (guard (not= ?x 0)))
-   (rule (** (** ?x ?n1) ?n2) :=> (** ?x (* ?n1 ?n2)))
-   (rule (* (* ?&*) ?&*r) :=> (* ?&* ?&*r))
-   (rule (+ (+ ?&*) ?&*r) :=> (+ ?&* ?&*r))
-   (rule (shape? (- (mzero? ?y) ?x) ?s) :==> (with-shape (- ?x) ?s))
-   (rule (- ?x 0) :=> ?x)
-   (rule (+ (* ?x ?y) (* ?z ?y) ?&*) :=> (+ (* (+ ?x ?z) ?y) ?&*)
-         :if (guard (and (number? ?x) (number? ?z))))
-   ])
+   (rule (shape? (* ?x) ?s) :==> (with-shape ?x ?s))])
+
+(def universal-rules
+  (concat arity-rules
+    [(rule (+ (mzero? ?x) ?&*) :=> (+ ?&*))
+     (rule (shape? (* (mzero? ?x) ?&*) ?s) :==> (with-shape 0 ?s))
+     (rule (* (midentity? ?x) ?&*) :=> (* ?&*))
+     (rule (* ?x (- ?x) ?&*) :=> (* -1 (** ?x 2) ?&*))
+     (rule (** ?x 1) :=> ?x)
+     (rule (** ?x 0) :=> 1
+           :if (guard (not= ?x 0)))
+     (rule (** (** ?x ?n1) ?n2) :=> (** ?x (* ?n1 ?n2)))
+     (rule (* (* ?&*) ?&*r) :=> (* ?&* ?&*r))
+     (rule (+ (+ ?&*) ?&*r) :=> (+ ?&* ?&*r))
+     (rule (shape? (- (mzero? ?y) ?x) ?s) :==> (with-shape (- ?x) ?s))
+     (rule (- ?x 0) :=> ?x)
+     (rule (+ (* ?x ?y) (* ?z ?y) ?&*) :=> (+ (* (+ ?x ?z) ?y) ?&*)
+           :if (guard (and (number? ?x) (number? ?z))))
+     ]))
 
 (def eval-rules
   [(rule ?x :=> (calc-reso ?x) :if (no-symbolso ?x))
    (rule ?x :=> (compute-subexpressiono ?x))])
 
-  
-(def normal-form-rules
-  (concat universal-rules
-   [(rule (* ?x ?x ?&*) :=> (* (** ?x 2) ?&*))
-   (rule (* ?x (/ ?x) ?&*) :=> (* ?&*))
-   (rule (+ (* ?x ?n1) (* ?x ?n2) ?&*) :==>
-         (+ (* ?x (clojure.core/+ ?n1 ?n2)) ?&*) :if
-         (guard (and (number? ?n1) (number? ?n2))))
-   (rule (- ?x ?&+) :=> (trans (+ ?x (map-sm #(- %) ?&+))))
-   (rule (/ ?x ?&+) :=> (trans (* ?x (map-sm #(/ %) ?&+))))
-   (rule (* (+ ?&+1) (+ ?&+2) ?&*) :==>
-         (let [args1 (matcher-args ?&+1)
-               args2 (matcher-args ?&+2)]
-           (* ?&* (+ (seq-matcher (for [a args1 b args2] (* a b)))))))
-   (rule (* (+ ?&+) ?x ?&*) :==>
-         (* (+ (seq-matcher (for [a (matcher-args ?&+)] (* a ?x)))) ?&*))]))
 
 (def simplify-rules
   [(rule (* ?x ?x ?&*) :=> (* (** ?x 2) ?&*))
@@ -153,12 +151,23 @@
    (rule (** (sqrt ?x) 2) :=> ?x)
    (rule (** (- ?x) 2) :=> (** ?x 2))])
 
+;;the normal behaviour of (- args*) and (/ args*) is not really good for rule
+;;based translation. It is not commutative and the arguments have different
+;;meaning depending on what positions they are in the argument list.
+;;these rules are converting (- a b c) to (+ a (- b) (- c)) so that the resulting
+;;expression is easier to manipulate because only 1-ary - is there which means
+;;negation and the + expression is commutative
+
 (def to-inverses-rules
-  [(rule (- ?x ?&+) :=> (trans (+ ?x (map-sm #(- %) ?&+))))
+  [(rule (- ?x ?&+) :==>(+ ?x (map-sm #(- %) ?&+)))
    (rule (- (+ ?&+)) :==> (+ (map-sm #(- %) ?&+)))
    (rule (- (* ?&+)) :=> (* -1 ?&+))
-   (rule (/ ?x ?&+) :=> (trans (* ?x (map-sm #(/ %) ?&+))))])
+   (rule (/ ?x ?&+) :==> (* ?x (map-sm #(/ %) ?&+)))])
+
 (declare multinomial)
+
+;;this rules are a good example for the convenience of being able to have
+;;arbitrary clojure code as the transition part of the rule
 (def multiply-out-rules
   [(rule (* (+ ?&+1) (+ ?&+2) ?&*) :==>
          (let [args1 (matcher-args ?&+1)
@@ -238,22 +247,6 @@
              ])
     {:id 'square-solve-rules}))
 
-(def diff-rules
-  [(rule (diff ?x ?x) :=> 1)
-   (rule (diff (+ ?&+) ?x) :==> (+ (map-sm #(diff % ?x) ?&+)))
-   (rule (diff (* ?&+) ?x) :==>
-         (+ (seq-matcher
-             (for [i (range (count-sm ?&+)) :let [[bv ith af] (split-in-pos-sm ?&+ i)]]
-               (* (diff ith ?x) bv af)))))
-   (rule (diff (- ?a) ?x) :=> (- (diff ?a ?x)))
-   (rule (diff (/ ?a) ?x) :=> (- (* (diff ?a ?x) (/ (** ?a 2)))))
-   (rule (diff (** ?a ?n) ?x) :==> (* ?n (** ?a (clojure.core/- ?n 1)) (diff ?a ?x))
-         :if (guard (number? ?n)))
-   (rule (diff (ln ?a) ?x) :=> (* (diff ?a ?x) (/ ?a)))
-   (rule (diff (sin ?a) ?x) :=> (* (cos ?a) (diff ?a ?x)))
-   (rule (diff (cos ?a) ?x) :=> (* (- (sin ?a)) (diff ?a ?x)))
-   (rule (diff (** 'e ?n) ?x) :=> (* (** 'e ?n) (diff ?n ?x)))
-   (rule (diff ?u ?x) :=> 0)])
 )
 (defn- binom [n k]
   (let [rprod (fn [a b] (reduce * (range a (inc b))))]
@@ -340,24 +333,6 @@
 (defn simplify-matrix-expression [expr]
   (simp-expr expr))
 
-
-(construct-with [+ * -]
-                (def diff-simp-rules
-                  (concat eval-rules
-                          [(rule (+) :=> 0)
-                           (rule (*) :=> 1)
-                           (rule (+ ?x) :=> ?x)
-                           (rule (* ?x) :=> ?x)
-                           (rule (+ 0 ?&*) :=> (+ ?&*))
-                           (rule (* 0 ?&*) :=> 0)
-                           (rule (* 1 ?&*) :=> (* ?&*))
-                           (rule (- 0) :=> 0)
-                           (rule (+ ?x (- ?x) ?&*) :=> (+ ?&*))
-                           (rule (* (* ?&*) ?&*r) :=> (* ?&* ?&*r))
-                           (rule (+ (+ ?&*) ?&*r) :=> (+ ?&* ?&*r))]
-                          simplify-rules)))
-
-
 (defmethod diff-function '+ [[expr v]]
   (let [args (expr-args expr)]
     (cev '+ (map #(differentiate-expr % v) args))))
@@ -366,16 +341,16 @@
   (let [args (vec (expr-args expr))
         c (count args)]
     (cev '+ (loop [i 0 exprs []]
-                   (if (< i c)
-                     (recur (inc i)
-                            (conj exprs
-                                  (cev '* (concat (subvec args 0 i)
-                                                       [(differentiate-expr
-                                                         (nth args i) v)]
-                                                       (subvec args (inc i))))
-                                       ))
-                      exprs)))
-         ))
+              (if (< i c)
+                (recur (inc i)
+                       (conj exprs
+                             (cev '* (concat (subvec args 0 i)
+                                             [(differentiate-expr
+                                               (nth args i) v)]
+                                             (subvec args (inc i))))
+                             ))
+                exprs)))
+    ))
 
 
 (defmethod diff-function '- [[expr v]]

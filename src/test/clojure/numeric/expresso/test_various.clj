@@ -20,6 +20,10 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;,,
 
+(defn expression? [exp]
+  (or (not (sequential? exp)) (and (sequential? exp) (symbol? (first exp)))))
+
+
 (construct-with [+ - * / **]
   (def transform-to-polynomial-normal-form-rules
     (concat universal-rules
