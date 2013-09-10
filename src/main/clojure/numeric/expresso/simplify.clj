@@ -17,7 +17,7 @@
             [numeric.expresso.symbolic :as symb]
             [clojure.core.matrix :as matrix]
             [clojure.core.matrix.operators :as mop]
-            [numeric.expresso.matcher :as m]
+            [numeric.expresso.impl.matcher :as m]
             [numeric.expresso.construct :as c]))
 
 ;;in this namespace are most of expresso's simplification rules defined
@@ -38,8 +38,7 @@
                   (== true (and (expr-op x) (no-symbol x))))))
 
 (defn contains-no-var? [x]
-  (let [res (if (and (not (symbol? x)) (no-symbol x)) true false)]
-    res))
+  (if (and (not (symbol? x)) (no-symbol x)) true false))
 
 (defn collabse-arguments-commutative [xs args]
   (let [gb (group-by contains-no-var? args)
@@ -71,11 +70,11 @@
             :else expr))
     expr))
                                                         
-(defn compute-subexpressiono [x]
+(defn compute-subexpressiono [expr]
   (fn [res]
-    (project [x]
-             (let [tmp (compute-subexpression x)]
-               (if (= tmp x)
+    (project [expr]
+             (let [tmp (compute-subexpression expr)]
+               (if (= tmp expr)
                  fail
                  (== res tmp))))))
 
@@ -291,13 +290,13 @@
                               factors
                               (ex' (* coeff factors)))))))))
 
-(def simp-expr-rules
+(def normalize-rules
   (with-meta
      (concat eval-rules universal-rules to-inverses-rules
              multiply-out-rules)
      {:id :simp-expr-rules1}))
 
-(def simp-expr-rules2
+(def simplify-rules
   (with-meta
     (concat universal-rules
             eval-rules simplify-rules)
@@ -305,9 +304,8 @@
 
 (defn simp-expr [expr]
   (->> expr 
-       (transform-expression
-        simp-expr-rules)
-       (transform-expression simp-expr-rules2)))
+       (transform-expression normalize-rules)
+       (transform-expression simplify-rules)))
 
 
 

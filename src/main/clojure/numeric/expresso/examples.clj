@@ -14,7 +14,7 @@
             [numeric.expresso.utils :as utils]
             [clojure.core.matrix :as matrix]
             [clojure.core.matrix.operators :as mop]
-            [numeric.expresso.matcher :as m]
+            [numeric.expresso.impl.matcher :as m]
             [numeric.expresso.construct :as c]))
 ;;stub
 ;;very basic syntactical rules example to transform logic expressions to dnf

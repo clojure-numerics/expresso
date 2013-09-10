@@ -15,25 +15,32 @@
             [clojure.set :as set]
             [numeric.expresso.types :as types]
             [numeric.expresso.utils :as utils]
-            [numeric.expresso.matcher :as match]))
+            [numeric.expresso.impl.matcher :as match]))
 
-(declare evaluate-sum emit-sum)
+(declare evaluate-sum emit-sum emit-arithmetic)
+
+(defn corrected-sub [& s]
+  (if (= 1 (count s))
+    (mat/negate (first s))
+    (apply mat/sub s)))
+
 
 (defmulti props identity)
 (defmethod props :default [_] {})
 (defmethod props '* [_] {:exec-func mat/emul
+                         :emit-func (emit-arithmetic '* mat/emul)
                          :properties #{:associative
                                       :commutative
                                       :n-ary}
                          })
 (defmethod props '+ [_] {:exec-func mat/add
+                         :emit-func (emit-arithmetic '+ mat/add)
                          :properties #{:associative :commutative :n-ary}})
-(defmethod props '- [_] {:exec-func (fn [& s]
-                                      (if (= 1 (count s))
-                                        (mat/negate (first s))
-                                        (apply mat/sub s)))
+(defmethod props '- [_] {:exec-func corrected-sub
+                         :emit-func (emit-arithmetic '- corrected-sub)
                          :properties [:n-ary [:inverse-of '+]]})
 (defmethod props '/ [_] {:exec-func mat/div
+                         :emit-func (emit-arithmetic '/ corrected-sub)
                          :properties #{:n-ary} :inverse-of '*})
 (defmethod props 'e/ca-op [_] {:properties [:commutative]})
 (defmethod props '** [_] {:exec-func (fn [a b]
@@ -207,3 +214,11 @@
                (recur (inc n#) (mat/add res# ~(protocols/emit-code expr))))
                res#)))
       (throw (Exception. (str "Cant emit code for sum of the range " i))))))
+
+
+(defn emit-arithmetic [op  exec-func]
+  (fn [expr]
+    (let [args (protocols/expr-args expr)]
+      (if (every? #{[]} (map protocols/shape args))
+        (list* op (map protocols/emit-code args))
+        (list* exec-func (map protocols/emit-code args))))))

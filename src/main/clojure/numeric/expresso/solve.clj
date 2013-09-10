@@ -20,7 +20,7 @@
             [numeric.expresso.solve :as s]
             [clojure.core.matrix :as matrix]
             [clojure.core.matrix.operators :as mop]
-            [numeric.expresso.matcher :as m]
+            [numeric.expresso.impl.matcher :as m]
             [numeric.expresso.construct :as c]))
 
 (declare contains-expr? positions-of-x surrounded-by check-solution)

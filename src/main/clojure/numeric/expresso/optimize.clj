@@ -15,17 +15,26 @@
             [clojure.core.matrix :as matrix]
             [clojure.core.memoize :as memo]
             [clojure.core.matrix.operators :as mop]
-            [numeric.expresso.matcher :as m]
+            [numeric.expresso.impl.matcher :as m]
             [numeric.expresso.simplify :as simp]
             [numeric.expresso.construct :as c]))
 
+;;This namespace provides the expresso optimizer. It strives to be very
+;;extensible by relying on rule based translation and being datadriven by
+;;a vector of optimizations which gets applied in sequence. The main function
+;;of this namespace is optimize.
+
+;;It also provides support to *compile* an expression to a (no overhead) clojure
+;;function. See the compile-expr macro and compile-expr* function for reference
+
+
 (declare remove-common-subexpressions)
-(defn map-elems [func expr]
+(defn- map-elems [func expr]
   (if-let [op (expr-op expr)]
     (cev op (map (partial map-elems func) (expr-args expr)))
     (func expr)))
 
-(defn zip [& colls]
+(defn- zip [& colls]
   (apply (partial map (fn [& a] a)) colls))
 
 (defn subexpressions [expr]
@@ -148,25 +157,21 @@
         (substitute-expr args))))
 
 (def matrix-chain-rules
-  [(rule (ex (inner-product ?&+)) :==>
-         (let [args (matcher-args ?&+)
+  [(rule (ex (inner-product ?x)) :=> ?x)
+   (rule (ex (inner-product ?&+)) :==>
+         (when (> (count-sm ?&+) 2)
+           (let [args (matcher-args ?&+)
                  args (partition-by (comp count shape) args)
-               args (map #(if (and (not (expr-op (shape (first %))))
+                 args (map #(if (and (not (expr-op (shape (first %))))
                                    (= (count (shape (first %))) 2))
                               (optimize-matrix-chain-order (vec %))
                               (seq-matcher %)) args)]
-           (cev 'inner-product args))
+             (cev 'inner-product args)))
            :if (guard (> (count-sm ?&+) 2)))])
-
+  
 (defn optimize-matrix-chain [expr]
-  (transform-expression
-   [(rule (ex (inner-product ?x)) :=> ?x)]
-   (walk/postwalk #(apply-rules matrix-chain-rules %) expr)))
-    
+  (transform-expression matrix-chain-rules expr))
 
-(defn eval-func [expr]
-  (fn [sm]
-    (evaluate expr sm)))
 
 (defn compile-expr* [bindings expr]
   (let [expr (to-expression expr)
@@ -175,13 +180,18 @@
      (eval c)))
 
 (defmacro compile-expr [bindings expr]
-  `(compile-expr* ~(list 'quote bindings) ~expr)) 
+  `(compile-expr* ~(list 'quote bindings) ~expr))
+
+(defn constant-folding [expr]
+  (transform-expression simp/eval-rules expr))
+
 
 (def optimizations
-  [optimize-by-rules
+  [constant-folding
+   remove-common-subexpressions
+   optimize-by-rules
    optimize-matrix-chain
-   replace-with-special-operations
-   remove-common-subexpressions])
+   replace-with-special-operations])
 
 
 (defn optimize [expr]
@@ -189,3 +199,4 @@
     (if (seq opt)
       (recur (rest opt) ((first opt) expr))
       expr)))
+

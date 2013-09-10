@@ -13,5 +13,5 @@
             [clojure.core.matrix :as mat]
             [clojure.set :as set]
             [numeric.expresso.utils :as utils]
-            [numeric.expresso.matcher :as match]))
+            [numeric.expresso.impl.matcher :as match]))
 

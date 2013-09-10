@@ -235,7 +235,7 @@
 
 
 ;;Multimethod used by the default implementation for ISeq of emit-code to emit
-;;the function for the operator. defaults to the :emit func key in the operator
+;;the function for the operator. defaults to the :emit-func key in the operator
 (defmulti emit-func first)
 (defmethod emit-func :default [expr] (:emit-func (meta (first expr))))
 

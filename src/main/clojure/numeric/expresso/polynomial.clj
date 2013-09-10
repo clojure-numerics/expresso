@@ -47,7 +47,11 @@
 (defn set-coef [^PolynomialExpression poly i val]
   (impl/make-poly (.-v poly) (assoc (.-coeffs poly) i val)))
 
-
+;;these functions define the order of variables which in turns define the
+;;normal form of the recursive implementation. (bigger variables become the
+;;coefficients)
+;;dynamic rebindable to let the (power) user specify the exact form of the
+;;polynomial
 (defn ^:dynamic var= [x y] (= x y))
 (defn ^:dynamic var> [x y] (< 0 (compare x y)))
 
