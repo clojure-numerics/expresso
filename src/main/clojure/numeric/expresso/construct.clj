@@ -323,24 +323,28 @@
 ;;code. The enclosed code is then walked and every occurrence of one symbol in
 ;;the symbol vector which is in function position in the code is replaced by a
 ;;call to ce
-;;especially useful when constructing rules
-(defn replace-with-expresso-sexp [s s-exp]
-  (if (and (coll? s-exp) (s (first s-exp)))
+;;especially useful when constructing rules.
+;;This macro is a workaround about some annoyances with clojures namespaces
+;;using this macro has the same effect as using the functions in
+;;numeric.expresso.constructing-functions specified in the symbol vector for
+;;the enclosed code and has no other distorting effect on code outside of the
+;;enclosing code. This is more convenient than using the constructing-functions
+;;and having to use aliases for the clojure +,-,*,/,= for the whole rest of
+;;the namespace.
+(defn replace-with-expresso-sexp [symbs s-exp]
+  (if (and (seq? s-exp) (symbs (first s-exp)))
     (let [f (first s-exp)
           symb (if-let [r (resolve f)] (var-to-symbol r) f)]
       (list* `ce (list 'quote symb) (rest s-exp)))
     s-exp))
 
-(defn construct-with* [s & code]
-  (let [s-set (set s)]
+(defn construct-with* [symbv & code]
+  (let [s-set (set symbv)]
     `(do 
        ~@(clojure.walk/postwalk #(replace-with-expresso-sexp s-set %) code))))
 
-(defmacro construct-with [s & code]
-  (apply (partial construct-with* s) code))
-
-#_(defn add-meta [symb args]
-  (list* (with-meta symb {:properties (props symb)}) args))
+(defmacro construct-with [symbv & code]
+  (apply (partial construct-with* symbv) code))
 
 
 ;;the ex' macro replaces in its body all function position operators with

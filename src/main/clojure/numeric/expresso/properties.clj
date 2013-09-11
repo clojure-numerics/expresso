@@ -24,7 +24,9 @@
     (mat/negate (first s))
     (apply mat/sub s)))
 
-
+;;The props multimethod is used to assign the right metadate to the symbols
+;;during construction of expressions. Many protocol implementation are driven
+;;by the functions in the metadata.
 (defmulti props identity)
 (defmethod props :default [_] {})
 (defmethod props '* [_] {:exec-func mat/emul
@@ -90,6 +92,9 @@
     {:match-rel match/expression-matcho}))
 (defmethod matcher 'e/ca-op [_] {:match-rel match/match-commutativeo})
 
+
+;;These predicates are contributed to core.matrix and the core.matrix predicates
+;;will be used when they become available in a core.matrix release
 
 (defn zero-matrix? [expr]
   (if (symbol? expr)

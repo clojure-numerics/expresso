@@ -94,7 +94,7 @@
    :else (set-inferred-shape val shape)))
     
 
-(construct-with [+ - * / ** diff ln sin cos sqrt exp log mzero? midentity?
+(construct-with [+ - * / **  ln sin cos sqrt exp log mzero? midentity?
                  shape?]
 ;;to read the rule examples
 ;; :==> means that the transition is an in-line clojure function
@@ -162,6 +162,13 @@
    (rule (- (+ ?&+)) :==> (+ (map-sm #(- %) ?&+)))
    (rule (- (* ?&+)) :=> (* -1 ?&+))
    (rule (/ ?x ?&+) :==> (* ?x (map-sm #(/ %) ?&+)))])
+
+(def cancel-inverses-rules
+  (concat universal-rules
+          [(rule (+ (- ?x ?&+) (- ?y) ?&*) :=> (+ (- ?x ?&+ ?y) ?&*))
+           (rule (+ ?x (- ?y) ?&*) :=> (+ (- ?x ?y) ?&*))
+           (rule (* (/ ?x ?&+) (/ ?y) ?&*) :=> (* (/ ?x ?&+ ?y) ?&*))
+           (rule (* ?x (/ ?y) ?&*) :=> (* (/ ?x ?y) ?&*))]))
 
 (declare multinomial)
 
