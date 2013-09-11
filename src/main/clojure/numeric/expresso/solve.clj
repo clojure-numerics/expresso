@@ -451,22 +451,22 @@
   [[(first args) (ce invop rhs)]])
 
 (defmethod rearrange-step-function 'sin [[op args pos rhs]]
-  (unary-rearrange-step 'sin 'arcsin args rhs))
+  (unary-rearrange-step 'sin 'asin args rhs))
 
-(defmethod rearrange-step-function 'arcsin [[op args pos rhs]]
-  (unary-rearrange-step 'arcsin 'sin args rhs))
+(defmethod rearrange-step-function 'asin [[op args pos rhs]]
+  (unary-rearrange-step 'asin 'sin args rhs))
 
 (defmethod rearrange-step-function 'cos [[op args pos rhs]]
-  (unary-rearrange-step 'cos 'arccos args rhs))
+  (unary-rearrange-step 'cos 'acos args rhs))
 
-(defmethod rearrange-step-function 'arccos [[op args pos rhs]]
-  (unary-rearrange-step 'arccos 'cos args rhs))
+(defmethod rearrange-step-function 'acos [[op args pos rhs]]
+  (unary-rearrange-step 'acos 'cos args rhs))
 
 (defmethod rearrange-step-function 'tan [[op args pos rhs]]
-  (unary-rearrange-step 'tan 'arctan args rhs))
+  (unary-rearrange-step 'tan 'atan args rhs))
 
-(defmethod rearrange-step-function 'arctan [[op args pos rhs]]
-  (unary-rearrange-step 'arctan 'tan args ))
+(defmethod rearrange-step-function 'atan [[op args pos rhs]]
+  (unary-rearrange-step 'atan 'tan args ))
 
 (defmethod rearrange-step-function 'exp [[op args pos rhs]]
   (unary-rearrange-step 'exp 'log args rhs))
@@ -482,6 +482,12 @@
            [(first args) (ce '- nrhs)]]
           [[(first args) nrhs]]))
     [[(second args) (ce '/ (ce 'log rhs) (ce 'log (first args)))]]))
+
+(defmethod rearrange-step-function 'inner-product [[op args pos rhs]]
+  (let [[left x right] (split-in-pos-args args pos)]
+    [[x (cev 'inner-product (concat (reverse (map #(ce 'inverse %) left))
+                                    [rhs]
+                                    (reverse (map #(ce 'inverse %) right))))]]))
 
 (defmethod rearrange-step-function 'sqrt [[op args pos rhs]]
   [[(first args) (ce '** rhs 2)]])

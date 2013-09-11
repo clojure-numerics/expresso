@@ -94,7 +94,7 @@
    :else (set-inferred-shape val shape)))
     
 
-(construct-with [+ - * / **  ln sin cos sqrt exp log mzero? midentity?
+(construct-with [+ - * / **  ln sin cos sqrt exp log mzero? midentity? inner-product inverse
                  shape?]
 ;;to read the rule examples
 ;; :==> means that the transition is an in-line clojure function
@@ -124,6 +124,8 @@
      (rule (** (** ?x ?n1) ?n2) :=> (** ?x (* ?n1 ?n2)))
      (rule (* (* ?&*) ?&*r) :=> (* ?&* ?&*r))
      (rule (+ (+ ?&*) ?&*r) :=> (+ ?&* ?&*r))
+     (rule (inner-product ?&*1 (inner-product ?&*2) ?&*3)
+           :=> (inner-product ?&*1 ?&*2 ?&*3))
      (rule (shape? (- (mzero? ?y) ?x) ?s) :==> (with-shape (- ?x) ?s))
      (rule (- ?x 0) :=> ?x)
      (rule (+ (* ?x ?y) (* ?z ?y) ?&*) :=> (+ (* (+ ?x ?z) ?y) ?&*)
@@ -137,6 +139,15 @@
 
 (def simplify-rules
   [(rule (* ?x ?x ?&*) :=> (* (** ?x 2) ?&*))
+   (rule (inverse (inverse ?x)) :=> ?x)
+   (rule (shape? (inner-product ?&*1 (mzero? ?x) ?&*2) ?s)
+         :==> (with-shape 0 ?s))
+   (rule (shape? (inner-product ?&*1 (midentity? ?x) ?&*2) ?s)
+         :==> (with-shape (inner-product ?&*1 ?&*2) ?s))
+   (rule (shape? (inner-product ?&*1 ?x (inverse ?x) ?&*2) ?s)
+         :==> (with-shape (inner-product ?&*1 ?&*2) ?s))
+   (rule (shape? (inner-product ?&*1 (inverse ?x) ?x ?&*2) ?s)
+         :==> (with-shape (inner-product ?&*1 ?&*2) ?s))
    (rule (shape? (* ?x (/ ?x) ?&*) ?s) :==> (with-shape (* ?&*) ?s))
    (rule (shape? (+ ?x (- ?x) ?&*) ?s) :==> (with-shape (+ ?&*) ?s))
    (rule (+ ?x ?x ?&*) :=> (+ (* 2 ?x) ?&*))
@@ -164,7 +175,7 @@
    (rule (/ ?x ?&+) :==> (* ?x (map-sm #(/ %) ?&+)))])
 
 (def cancel-inverses-rules
-  (concat universal-rules
+  (concat arity-rules
           [(rule (+ (- ?x ?&+) (- ?y) ?&*) :=> (+ (- ?x ?&+ ?y) ?&*))
            (rule (+ ?x (- ?y) ?&*) :=> (+ (- ?x ?y) ?&*))
            (rule (* (/ ?x ?&+) (/ ?y) ?&*) :=> (* (/ ?x ?&+ ?y) ?&*))

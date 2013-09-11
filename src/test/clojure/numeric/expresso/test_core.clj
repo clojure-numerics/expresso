@@ -37,7 +37,7 @@
   (is (= #{2} (solve 'x (ex (= (+ 1 x) 3)))))
   (is (= '#{} (solve '#{x} (ex (= x (+ x 1))))))
   (is (= '_0 (solve '#{x} (ex (= x x)))))
-  (is (= '#{(arcsin 0) 1} (solve '#{x} (ex (= (* (sin x) (- x 1)) 0)))))
+  (is (= '#{0 1} (solve '#{x} (ex (= (* (sin x) (- x 1)) 0)))))
   (is (= #{4} (solve '#{x} (ex (= (+ 1 (* 2 (- 3 (/ 4 x)))) 5))))) 
   (is (= #{-4}
          (solve '#{x} (ex (= (* 3 x) (+ (* 4 x) 4))))))

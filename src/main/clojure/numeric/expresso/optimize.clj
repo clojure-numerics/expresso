@@ -122,11 +122,11 @@
        (transform-expression (concat simp/universal-rules
                                      simp/eval-rules simp/to-inverses-rules
                                      optimize-rules))
-       #_(transform-expression simp/cancel-inverses-rules)))
+       (transform-expression simp/cancel-inverses-rules)))
   
 (defn replace-with-special-operations [expr]
   (transform-expression
-   (concat simp/universal-rules
+   (concat simp/arity-rules
            [(rule (ex (** ?x 0.5)) :=> (ex (sqrt ?x)))
             (rule (ex (** ?x 1/2)) :=> (ex (sqrt ?x)))
             (rule (ex (+ ?m (* ?a ?b) ~?&*))

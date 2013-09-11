@@ -81,6 +81,9 @@
                             })
 (defmethod props 'log [_] {:exec-func mat/log
                            })
+(defmethod props 'asin [_] {:exec-func mat/asin})
+(defmethod props 'acos [_] {:exec-func mat/acos})
+(defmethod props 'atan [_] {:exec-func mat/atan})
 (defmethod props 'abs [_] {:exec-func mat/abs})
 (defmethod props 'exp [_] {:exec-func mat/exp}
                            )
