@@ -1,7 +1,7 @@
 (ns numeric.expresso.test-core
   (:use numeric.expresso.core)
   (:use clojure.test)
-  (:refer-clojure :exclude [==])
+  (:refer-clojure :exclude [== log])
   (:use [clojure.core.logic.protocols]
         [clojure.core.logic :exclude [is] :as l]
         clojure.test)
@@ -11,8 +11,8 @@
 (deftest test-simplify
   (is (= 4 (simplify (ex (+ 2 2)))))
   (is (= 137 (simplify (ex (+ (* 5 20) 30 7)))))
-  (is (= 0 (simplify (ex (- (* 5 x) (* (+ 4 1) x))))))
-  (is (= 0 (simplify (ex (* (/ y z) (- (* 5 x) (* (+ 4 1) x)))))))
+  (is (== 0 (simplify (ex (- (* 5 x) (* (+ 4 1) x))))))
+  (is (== 0 (simplify (ex (* (/ y z) (- (* 5 x) (* (+ 4 1) x)))))))
   (is (= (ex (* 6 x)) (simplify (ex (* 3 2 x)))))
   (is (= (ex (* 720 x y z)) (simplify (ex (* 2 x 3 y 4 z 5 6)))))
   (is (= 7 (simplify (ex (+ x 3 4 (- x)))))))
@@ -34,7 +34,7 @@
 
 
 (deftest test-solve
-  (is (= #{2} (solve '#{x} (ex (= (+ 1 x) 3)))))
+  (is (= #{2} (solve 'x (ex (= (+ 1 x) 3)))))
   (is (= '#{} (solve '#{x} (ex (= x (+ x 1))))))
   (is (= '_0 (solve '#{x} (ex (= x x)))))
   (is (= '#{(arcsin 0) 1} (solve '#{x} (ex (= (* (sin x) (- x 1)) 0)))))
@@ -49,13 +49,27 @@
             {y (+ (* a 1/2) (* -1/4 (sqrt (+ (* -4.0 (** a 2)) 8)))),
              x (+ (* 1/2 a) (* (sqrt (+ (* -4.0 (** a 2)) 8)) 1/4))}}
        (solve '[x y] (ex (= (+ (** x 2) (** y 2)) 1))
-                (ex (= (+ x y) a))))))
+              (ex (= (+ x y) a)))))
+  (is (= '#{0 1 -1}
+         (solve 'x (ex (= (- (** x 4) (** x 2)) 0)))))
+  (is (= '#{1 3}
+         (solve 'x (ex (= (+ (** 2 (* 2 x)) (- (* 5 (** 2 (+ x 1)))) 16) 0)))))
+  (is (= #{10N}
+         (solve 'x (ex (= (+ (* (/ 3 4) x) (/ 5 6)) (- (* 5 x) (/ 125 3)))))))
+  (is (= #{3N}
+         (solve 'x (ex (= (+ (/ (- (* 6 x) 7) 4)
+                             (/ (- (* 3 x) 5) 7))
+                          (/ (+ (* 5 x) 78) 28))))))
+  (is (= #{17}
+         (solve 'x (ex (= (sqrt (- x 8)) 3)))))
+  (is (= #{-2 3}
+         (solve 'x (ex (= (abs (- (* 2 x) 1)) 5))))))
 
 (deftest test-differentiate
   (is (= (ex (* 2 x)) (differentiate '[x] (ex (** x 2)))))
-  (is (= 2 (differentiate '[x x] (ex (** x 2)))))
+  (is (= 2.0 (differentiate '[x x] (ex (** x 2)))))
   (is (= (ex (* 3 (** x 2))) (differentiate '[x] (ex (** x 3)))))
-  (is (= (ex (* 12 (** x 3)))
+  (is (= (ex (* 12.0 (** x 3)))
          (differentiate '[x] (ex (* (** x 3) (* 3 x)))))))
 
 (deftest test-compile-expr

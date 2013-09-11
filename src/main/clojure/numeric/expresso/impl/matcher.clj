@@ -1,4 +1,4 @@
-(ns numeric.expresso.matcher
+(ns numeric.expresso.impl.matcher
   (:refer-clojure :exclude [==])
   (:use [clojure.core.logic.protocols]
         [numeric.expresso.impl.pimplementation]

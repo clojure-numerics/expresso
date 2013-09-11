@@ -4,12 +4,12 @@
             [numeric.expresso.simplify :as simp]
             [numeric.expresso.optimize :as opt]
             [numeric.expresso.protocols :as protocols]
-            [numeric.expresso.matcher :as match]
             [numeric.expresso.rules :as rules]
             [numeric.expresso.examples :as examples]
             [numeric.expresso.parse :as parse]
             [numeric.expresso.utils :as utils]
             [numeric.expresso.properties :as props]
+            [numeric.expresso.polynomial :as poly]
             [numeric.expresso.construct :as constr])) 
 
 
@@ -63,12 +63,22 @@
       (protocols/substitute-expr repl)))
 
 
+(defn- ratio-test [simplified-expr expr ratio]
+  (if-not ratio
+    simplified-expr
+    (let [expr-count (-> expr flatten count)
+          simplified-expr-count (-> simplified-expr flatten count)]
+      (when (<= (/ simplified-expr-count expr-count) ratio)
+        simplified-expr))))
+        
+
 (defn simplify
   "best heuristics approach to simplify the given expression to a 'simpler' form"
-  [expr]
-  (->> expr
+  [expr & {:keys [ratio] :or {ratio nil}}]
+  (-> expr
        constr/to-expression
-       simp/simp-expr))
+       simp/simp-expr
+       (ratio-test expr ratio)))
 
 (defn to-polynomial-normal-form
   "transforms the given expression to a fully expanded (recursive) polynomial representation with v as
@@ -76,7 +86,7 @@
   [v expr]
   (->> expr
        constr/to-expression
-       (constr/poly-in-x v)))
+       (poly/poly-in v)))
 
 (defn rearrange
   "if the equation contains only one occurrence of v it will be rearranged so

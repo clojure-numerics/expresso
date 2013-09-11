@@ -2,7 +2,7 @@
   (:refer-clojure :exclude [])
   (:use [clojure.core.logic.protocols]
         [numeric.expresso.symbolic]
-        [numeric.expresso.matcher]
+        [numeric.expresso.impl.matcher]
         [numeric.expresso.protocols]
         clojure.test)
   (:require [clojure.core.logic.fd :as fd]

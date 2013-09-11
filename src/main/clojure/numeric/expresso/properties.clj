@@ -3,8 +3,10 @@
   (:use [clojure.core.logic.protocols]
         [clojure.core.logic :exclude [is] :as l]
         [clojure.test])
-  (:require [numeric.expresso.protocols :as protocols]) 
-  (:import [numeric.expresso.protocols Expression AtomicExpression MatrixSymbol])
+  (:require [numeric.expresso.protocols :as protocols])
+  (:require [numeric.expresso.impl.pimplementation :as impl])
+  (:import [numeric.expresso.impl.pimplementation
+            Expression])
   (:require [clojure.core.logic.fd :as fd]
             [clojure.walk :as walk]
             [clojure.core.logic.unifier :as u]
@@ -13,25 +15,34 @@
             [clojure.set :as set]
             [numeric.expresso.types :as types]
             [numeric.expresso.utils :as utils]
-            [numeric.expresso.matcher :as match]))
+            [numeric.expresso.impl.matcher :as match]))
 
-(declare evaluate-sum emit-sum)
+(declare evaluate-sum emit-sum emit-arithmetic)
 
+(defn corrected-sub [& s]
+  (if (= 1 (count s))
+    (mat/negate (first s))
+    (apply mat/sub s)))
+
+;;The props multimethod is used to assign the right metadate to the symbols
+;;during construction of expressions. Many protocol implementation are driven
+;;by the functions in the metadata.
 (defmulti props identity)
 (defmethod props :default [_] {})
 (defmethod props '* [_] {:exec-func mat/emul
+                         :emit-func (emit-arithmetic '* mat/emul)
                          :properties #{:associative
                                       :commutative
                                       :n-ary}
                          })
 (defmethod props '+ [_] {:exec-func mat/add
+                         :emit-func (emit-arithmetic '+ mat/add)
                          :properties #{:associative :commutative :n-ary}})
-(defmethod props '- [_] {:exec-func (fn [& s]
-                                      (if (= 1 (count s))
-                                        (mat/negate (first s))
-                                        (apply mat/sub s)))
+(defmethod props '- [_] {:exec-func corrected-sub
+                         :emit-func (emit-arithmetic '- corrected-sub)
                          :properties [:n-ary [:inverse-of '+]]})
 (defmethod props '/ [_] {:exec-func mat/div
+                         :emit-func (emit-arithmetic '/ corrected-sub)
                          :properties #{:n-ary} :inverse-of '*})
 (defmethod props 'e/ca-op [_] {:properties [:commutative]})
 (defmethod props '** [_] {:exec-func (fn [a b]
@@ -61,10 +72,19 @@
 (defmethod props 'length [_] {:exec-func mat/length})
 (defmethod props 'length-squared [_] {:exec-func mat/length-squared})
 (defmethod props 'pow [_] {:exec-func mat/pow})
+(defmethod props 'log [_] {:exec-func mat/log
+                           })
 (defmethod props 'rank [_] {:exec-func mat/rank})
 (defmethod props 'sum [_] {:eval-func evaluate-sum
                            :emit-func emit-sum})
-(defmethod props 'sqrt [_] {:exec-func mat/sqrt})
+(defmethod props 'sqrt [_] {:exec-func mat/sqrt
+                            })
+(defmethod props 'log [_] {:exec-func mat/log
+                           })
+(defmethod props 'abs [_] {:exec-func mat/abs})
+(defmethod props 'exp [_] {:exec-func mat/exp}
+                           )
+
 (defmulti matcher first)
 (defmethod matcher :default [_]
   (if (contains? (:properties (second _)) :commutative)
@@ -73,23 +93,27 @@
 (defmethod matcher 'e/ca-op [_] {:match-rel match/match-commutativeo})
 
 
+;;These predicates are contributed to core.matrix and the core.matrix predicates
+;;will be used when they become available in a core.matrix release
+
 (defn zero-matrix? [expr]
   (if (symbol? expr)
-    false
+    (if (contains? (protocols/properties expr) :mzero) true false)
     (loop [elem (mat/eseq expr)]
       (if (seq elem)
-        (if (clojure.core/== 0 (first elem))
+        (if (and (number? (first elem)) (clojure.core/== 0 (first elem)))
           (recur (rest elem))
           false)
         true))))
 
 (defn identity-matrix? [expr]
+  (try 
   (if (symbol? expr) false
       (let [d (mat/dimensionality expr)]
         (cond
-         (clojure.core/== d 0) (clojure.core/== expr 0)
+         (clojure.core/== d 0) (clojure.core/== expr 1)
          (clojure.core/== d 1) (and (clojure.core/== (count expr) 1)
-                                    (clojure.core/== (first expr) 0))
+                                    (clojure.core/== (first expr) 1))
          (clojure.core/== d 2)
          (let [rc (mat/row-count expr)
                cc (mat/column-count expr)]
@@ -98,17 +122,19 @@
                (if (nil? (loop [j 0]
                            (if (< j cc)
                              (let [elem (mat/mget expr i j)]
-                               (cond
-                                (clojure.core/== elem 0) (if (clojure.core/== i j)
-                                                           false
-                                                           (recur (inc j)))
-                                (clojure.core/== elem 1) (if (clojure.core/== i j)
-                                                           (recur (inc j))
-                                                           false)
-                                :else false)))))
+                               (when-not (symbol? elem)
+                                 (cond
+                                  (clojure.core/== elem 0) (if (clojure.core/== i j)
+                                                             false
+                                                             (recur (inc j)))
+                                  (clojure.core/== elem 1) (if (clojure.core/== i j)
+                                                             (recur (inc j))
+                                                             false)
+                                  :else false))))))
                  (recur (inc i))
                  false)
-               true)))))))
+               true))))))
+  (catch Exception e false)))
       
 (defn extract-mzero [pargs expr]
   (project [pargs expr]
@@ -128,12 +154,30 @@
                  (== x expr)
                  fail)))))
 
+(defn extract-as [pargs expr]
+  (project [pargs expr]
+           (let [x (first pargs)
+                 y (second pargs)]
+             (fresh []
+                    (protocols/match x expr)
+                    (== y expr)))))
+
+(defn extract-shape [pargs expr]
+  (project [pargs expr]
+           (let [x (first pargs)
+                 y (second pargs)]
+             (fresh []
+                    (protocols/match x expr)
+                    (== y (protocols/shape expr))))))
+
 (defmulti extractor-rel identity)
 (defmethod extractor-rel :default [_] nil)
 (defmethod extractor-rel 'is? [_] match/extract-is)
 (defmethod extractor-rel 'cons? [_] match/extract-cons)
 (defmethod extractor-rel 'mzero? [_] extract-mzero)
 (defmethod extractor-rel 'midentity? [_] extract-midentity)
+(defmethod extractor-rel 'as? [_] extract-as)
+(defmethod extractor-rel 'shape? [_] extract-shape)
 
 (defn add-information [op]
   (let [p (props op)
@@ -147,7 +191,7 @@
   (or (number? x) (isa? (protocols/type-of x) types/number)))
 
 (defn is-symbol? [x]
-  (or (symbol? x) (instance? MatrixSymbol x)))
+ (symbol? x))
 
 
 (defn evaluate-sum [sum sm]
@@ -175,3 +219,11 @@
                (recur (inc n#) (mat/add res# ~(protocols/emit-code expr))))
                res#)))
       (throw (Exception. (str "Cant emit code for sum of the range " i))))))
+
+
+(defn emit-arithmetic [op  exec-func]
+  (fn [expr]
+    (let [args (protocols/expr-args expr)]
+      (if (every? #{[]} (map protocols/shape args))
+        (list* op (map protocols/emit-code args))
+        (list* exec-func (map protocols/emit-code args))))))

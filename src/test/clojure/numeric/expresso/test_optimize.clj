@@ -15,7 +15,7 @@
             [numeric.expresso.solve :as s]
             [clojure.core.matrix :as matrix]
             [clojure.core.matrix.operators :as mop]
-            [numeric.expresso.matcher :as m]
+            [numeric.expresso.impl.matcher :as m]
             [numeric.expresso.construct :as c]))
 
 
@@ -58,7 +58,7 @@
 
 
 (deftest test-emit-code*
-  (is (= (list matrix/emul 'x (list matrix/add 'y 'z)) (emit-code (ex (* x (+ y z))))))
+  (is (= '(* x (+ y z)) (emit-code (ex (* x (+ y z))))))
   (is (= '(_0)
          (run* [q] (fresh[n res]
                          (== `(loop [~n (long 0) ~res 0]
@@ -68,3 +68,5 @@
                                            (clojure.core.matrix/add ~res ~'k)))
                                   ~res))
                              (emit-code (ex (sum k 0 5 k)))))))))
+
+

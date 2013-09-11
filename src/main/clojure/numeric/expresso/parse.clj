@@ -24,8 +24,11 @@
      <mul-div> = exp-term | mul | div
      mul = mul-div <'*'> exp-term
      div = mul-div <'/'> exp-term
-     <exp-term> = term | expon
+     <exp-term> = func-term | expon
      expon = exp-term <'**'> term
+     <func-term> = term | func
+     func = symbol <'('> args <')'>
+     args = expr | expr <','> args
      <term> = literal | <' '>* <'('>  expr <')'> <' '>*
      <literal> = number | symbol | vec | (<' '>* literal <' '>*)
      vec = <'['> expr* <']'>
@@ -63,5 +66,11 @@
          :sub (partial ce `-)
          :expr identity
          :vec vector
+         :symbol (fn [& r] (symbol (apply str r)))
+         :args (fn [& r]
+                 (if (= (count r) 1)
+                           r (conj (second r) (first r))))
+         :func (fn [symb args]
+                 (cev symb args))
          })
        transform-if-successful))

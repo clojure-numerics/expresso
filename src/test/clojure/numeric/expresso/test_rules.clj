@@ -14,7 +14,7 @@
 
 
 
-(with-expresso [* + - e/ca+ e/ca* e/- e/div]
+(construct-with [* + - e/ca+ e/ca* e/- e/div]
 (def rules [(rule (* ?x 1) :=> ?x)
             (rule (* ?x 0) :=> 0)
             (rule (+ ?x 0) :=> ?x)
@@ -41,7 +41,7 @@
 
 
 
-(with-expresso [* + - e/ca+ e/ca* e/- e/div ° map]
+(construct-with [* + - e/ca+ e/ca* e/- e/div ° map]
 
 (def simplification-rules
   [(rule (e/ca+ 0 ?&*) :=> ?&*)
@@ -79,7 +79,7 @@
 
 (deftest test-seq-matcher-in-associative-rule
   (is (= (° 9 8 7 6 5 4 4 3 2 1)
-         (transform-with-rules [sort-rule] (° 1 4 2 6 5 4 3 7 8 9))))))
+         (transform-expression [sort-rule] (° 1 4 2 6 5 4 3 7 8 9))))))
 
 (def inline-trans
   (rule (ex (- ?a ?&+)) :==>

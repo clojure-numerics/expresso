@@ -2,6 +2,8 @@
   (:refer-clojure :exclude [==])
   (:use [clojure.core.logic.protocols]
         [clojure.core.logic :exclude [is] :as l]
+        [numeric.expresso.protocols]
+        [numeric.expresso.impl.pimplementation]
         clojure.test)
   (:require [clojure.core.logic.fd :as fd])
   (:require [clojure.walk :as walk])
@@ -72,12 +74,6 @@
      (conso op params exp)))
 
 
-(defn extract [c]
-  (mapcat #(if (and (coll? %) (= (first %) :numeric.expresso.construct/seq-match)) (second %) [%]) c))
-
-
-(defn splice-in-seq-matchers [expr]
-  (walk/postwalk (fn [expr] (if (coll? expr) (extract expr) expr)) expr))
 (defn expo 
   "Creates an expression with the given operator and parameters"
   ([op params exp]
@@ -94,8 +90,18 @@
 
 
 (defn splice-in-seq-matchers [express]
-  (walk/postwalk (fn [expr] (if (and (coll? expr))
-                              (extract expr) expr)) express))
+  (let [nexpress
+        (cond
+         (vector? express) (mapv splice-in-seq-matchers express)
+         (list? express) (apply list (map splice-in-seq-matchers express))
+         (seq? express) (doall (map splice-in-seq-matchers express))
+         :else express)
+              expr (if (instance? clojure.lang.IObj nexpress)
+                     (with-meta nexpress (meta express)) nexpress)]
+    (if (and (coll? expr))
+      (with-meta (extract expr) (meta expr))
+      expr)))
+    
 
 (defn validate-eq [expr]
   (if (and (not= '= (first expr)) (= (count expr) 3))
@@ -133,3 +139,94 @@
   (fresh []
          (membero l v)
          (all-suffixes v l)))
+
+(defn get-in-expression [expr posv]
+  (loop [expr expr posv posv]
+    (if (empty? posv)
+      expr
+      (recur (nth expr (inc (first posv))) (rest posv)))))
+
+(defn set-elem-in-pos [l pos sub]
+  ;;todo use cev here and resolve cyclic dependency
+  (apply list (concat (take pos l) [sub] (drop (inc pos) l))))
+
+(defn set-in-expression [expr posv sub]
+  (loop [posv posv sub sub]
+    (if (< (count posv) 2)
+      (set-elem-in-pos expr (inc (first posv)) sub)
+      (let [p (get-in-expression expr (butlast posv))
+            nsub (set-elem-in-pos p (inc (last posv)) sub)]
+        (recur (butlast posv) nsub)))))
+
+(defn substitute-in-positions [expr pos-map]
+  (reduce (fn [expr [k v]]
+            (set-in-expression expr k v)) expr pos-map))
+
+(defn only-one-occurrence [v equation]
+  (>= 1 (->> equation flatten (filter #{v}) count)))
+
+(defn positions-of
+  ([v equation] (positions-of v equation []))
+  ([v equation pos]
+     (if-let [op (expr-op equation)]
+       (filter identity
+               (mapcat #(positions-of v %1 (conj pos %2))
+                       (rest equation) (range)))
+       (if (= v equation) [pos] nil))))
+                  
+(defn swap-sides [[eq lhs rhs]]
+  (list eq rhs lhs))
+
+(def combine-solutions mapcat)
+
+
+
+(def ^:dynamic *treshold* 1e-6)
+
+(defn num= [a b]
+  (or (= a b) (and (number? a) (number? b)
+                   (or (clojure.core/== a b)
+                       (< (Math/abs (- (Math/abs (double a))
+                                       (Math/abs (double b)))) *treshold*)))))
+
+(defn eq-lhs [equation]
+  (second equation))
+
+(defn eq-rhs [equation]
+  (nth equation 2))
+
+(defn solved? [v equation]
+  (and (= (nth equation 1) v)
+       (not= v (nth equation 2))
+       (= 0 (->> (nth equation 2) flatten (filter #{v}) count))))
+
+(defn submap [keys m]
+  (into {} (reduce (fn [kvs symb]
+                     (if (contains? m symb)
+                       (conj kvs [symb (get m symb)])
+                       kvs)) [] keys)))
+
+(defn common-prefix [positions]
+  (let [minl (apply min (map count positions))]
+    (loop [l minl]
+      (if (> l 0)
+        (if (every? #{(subvec (first positions) 0 l)}
+                    (map #(subvec % 0 l) (rest positions)))
+          (subvec (first positions) 0 l)
+          (recur (dec l)))
+        []))))
+
+(defn remove-dublicated-fracs [frac]
+  (into #{}
+        (map (fn [x] [x (:pos (meta x))])
+             (into #{} (map #(with-meta (first %) {:pos (second %)}) frac)))))
+
+(defn gcd [m n]
+  (loop [m (long m) n (long n)]
+    (if (> n 0)
+      (recur n (rem m n))
+      m)))
+
+(defn round [m]
+  (if (integer? m)
+    m (Math/round (double m))))

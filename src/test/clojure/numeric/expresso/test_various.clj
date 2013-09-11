@@ -5,8 +5,9 @@
         [numeric.expresso.construct]
         [numeric.expresso.properties :as props]
         [numeric.expresso.protocols]
-        [numeric.expresso.simplify]
+        [numeric.expresso.impl.pimplementation]
         [numeric.expresso.rules]
+        [numeric.expresso.simplify]
         [clojure.test])
   (:require [clojure.core.logic.fd :as fd]
             [clojure.walk :as walk]
@@ -14,10 +15,14 @@
             [numeric.expresso.utils :as utils]
             [clojure.core.matrix :as matrix]
             [clojure.core.matrix.operators :as mop]
-            [numeric.expresso.matcher :as m]
+            [numeric.expresso.impl.matcher :as m]
             [numeric.expresso.construct :as c]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;,,
+
+(defn expression? [exp]
+  (or (not (sequential? exp)) (and (sequential? exp) (symbol? (first exp)))))
+
 
 (construct-with [+ - * / **]
   (def transform-to-polynomial-normal-form-rules
