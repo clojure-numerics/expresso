@@ -229,9 +229,12 @@
 ;;optimizations specified in optimizations of which each take the expression
 ;;and optimize certain parts of it. See the documentation for the optimizations
 
-(defn optimize [expr]
-  (loop [opt optimizations expr expr]
-    (if (seq opt)
-      (recur (rest opt) ((first opt) expr))
-      expr)))
+(defn optimize
+  ([expr] (optimize expr optimizations))
+  ([expr optimizations]
+     (loop [opt optimizations expr expr]
+       (if (seq opt)
+         (recur (rest opt) ((first opt) expr))
+         expr))))
+  
 

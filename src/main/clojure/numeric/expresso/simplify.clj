@@ -119,6 +119,8 @@
      (rule (* (midentity? ?x) ?&*) :=> (* ?&*))
      (rule (* ?x (- ?x) ?&*) :=> (* -1 (** ?x 2) ?&*))
      (rule (** ?x 1) :=> ?x)
+     (rule (** ?x 1.0) :=> ?x)
+     (rule (** ?x 0.0) :=> 1)
      (rule (** ?x 0) :=> 1
            :if (guard (not= ?x 0)))
      (rule (** (** ?x ?n1) ?n2) :=> (** ?x (* ?n1 ?n2)))
@@ -158,6 +160,9 @@
    (rule (- (- ?x)) :=> ?x)
    (rule (* -1 (- ?x) ?&*) :=> (* ?x ?&*))
    (rule (* ?x (** ?x ?n) ?&*) :=> (* (** ?x (+ ?n 1)) ?&*))
+   (rule (** (** ?x (/ ?y)) ?y) :=> ?x)
+   (rule (** (** ?x ?n) ?m) :=> ?x :if (guard (and (number? ?n) (number? ?m)
+                                                   (= (/ ?m) ?n))))
    (rule (** (sqrt ?x) 2) :=> ?x)
    (rule (** (- ?x) 2) :=> (** ?x 2))])
 
@@ -200,15 +205,15 @@
          :if (guard (integer? ?n)))
    (rule (* ?x (/ ?x) ?&*) :=> (* ?&*)
          :if (guard (not= 0 ?x)))
-   (rule (** (sqrt ?x) 2) :=> ?x)
-   (rule (** ?x 0.5) :=> (sqrt ?x))
-   (rule (** ?x (/ 2)) :=> (sqrt ?x))
+   #_(rule (** (sqrt ?x) 2) :=> ?x)
+   #_(rule (** ?x 0.5) :=> (sqrt ?x))
+   #_(rule (** ?x (/ 2)) :=> (sqrt ?x))
    (rule (** (/ ?a ?b) ?x) :=> (/ (** ?a ?x) (** ?b ?x)))
    (rule (** (/ ?a) ?x) :=> (/ (** ?a ?x)))
    (rule (sqrt (/ ?a ?b)) :=> (/ (sqrt ?a) (sqrt ?b)))
-   (rule (* (sqrt ?a) (sqrt ?b) ?&*) :=> (* (sqrt (* ?a ?b)) ?&*))
-   (rule (** (- ?x) 2) :=> (** ?x 2))
-   (rule (* (/ ?x) (/ ?y) ?&*) :=> (/ (* ?x ?y)))]
+   #_(rule (* (sqrt ?a) (sqrt ?b) ?&*) :=> (* (sqrt (* ?a ?b)) ?&*))
+   #_(rule (** (- ?x) 2) :=> (** ?x 2))
+   #_(rule (* (/ ?x) (/ ?y) ?&*) :=> (/ (* ?x ?y)))]
   )
 
 (def log-solve-rules
@@ -320,10 +325,13 @@
             eval-rules simplify-rules)
     {:id :simp-expr-rules2}))
 
-(defn simp-expr [expr]
-  (->> expr 
-       (transform-expression normalize-rules)
-       (transform-expression simplify-rules)))
+(defn simp-expr
+  ([expr]
+     (simp-expr expr simplify-rules))
+  ([expr simp-rules]
+     (->> expr 
+          (transform-expression normalize-rules)
+          (transform-expression simp-rules))))
 
 
 
@@ -420,3 +428,12 @@
        (#(differentiate-expr % v))
        (transform-expression dr)))
 
+
+(defn multiply-out [expr]
+  (transform-expression (concat to-inverses-rules multiply-out-rules) expr))
+
+(defn evaluate-constants [expr]
+  (transform-expression eval-rules expr))
+
+(defn normalise [expr]
+  (transform-expression (concat universal-rules to-inverses-rules) expr))

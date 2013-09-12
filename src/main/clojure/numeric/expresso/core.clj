@@ -74,11 +74,38 @@
 
 (defn simplify
   "best heuristics approach to simplify the given expression to a 'simpler' form"
-  [expr & {:keys [ratio] :or {ratio nil}}]
+  [expr & {:keys [ratio simplify-rules] :or {ratio nil
+                                             simplify-rules simp/simplify-rules
+                                             }}]
   (-> expr
        constr/to-expression
-       simp/simp-expr
+       (simp/simp-expr simplify-rules)
        (ratio-test expr ratio)))
+
+(defn normalise
+  "transforms the expression to a form more suitable for further manipulation.
+   simple simplifications are done, like 0 and 1 simplification on * and +.
+   Also the inverses are normalised meaning (- a b c) will get transformed
+   to (+ a (- b) (- c)) and (/ a b c) to (* a (/ b) (/ c))"
+  [expr]
+  (-> expr
+      constr/to-expression
+      simp/normalise))
+
+(defn multiply-out
+  "fully multiplies out the given expression."
+  [expr]
+  (-> expr
+      constr/to-expression
+      simp/multiply-out))
+
+(defn evaluate-constants
+  "evaluates fully determined (sub-) expressions and folds determined factors
+   in commutative and associative functions"
+  [expr]
+  (-> expr
+      constr/to-expression
+      simp/evaluate-constants))
 
 (defn to-polynomial-normal-form
   "transforms the given expression to a fully expanded (recursive) polynomial representation with v as
@@ -146,6 +173,13 @@
   [bindings expr]
   `(opt/compile-expr* ~(list 'quote bindings) ~expr))
 
+(defn compile-expr*
+  "function equivalent of compile-expr. The bindings vector has to be quoted"
+  [bindings expr]
+  (->> expr
+       constr/to-expression
+       (opt/compile-expr bindings)))
+
 (defn optimize
   "transforms the expr to a more optimized form for excecution. The optimized form can
    be compiled with compile-expr. supports optimizations like compile time computation,
@@ -153,7 +187,8 @@
    example:
    (optimize (ex (+ b (* 5 b) (** y (+ a b)) (** z (+ b a)))))
    ;=> (let [local478813 (+ a b)] (+ (* b 6) (** y local478813) (** z local478813)))"
-  [expr]
-  (->> expr
+  [expr & {:keys [optimizations]
+           :or {optimizations opt/optimizations}}]
+  (-> expr
        constr/to-expression
-       opt/optimize))
+       (opt/optimize optimizations)))

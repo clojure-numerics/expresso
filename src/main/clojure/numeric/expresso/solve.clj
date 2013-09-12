@@ -141,7 +141,7 @@
 ;;the expresso solve is extensible - the actual solving mechanism are nothing
 ;;but rules which get applied for solving. Here the rules pattern is a vector
 ;;of [variable expression] 
-(def solve-rules
+(def ^:dynamic solve-rules
   [(rule [?v (ex (= (* ?&*) (mzero? ?x)))]
          :==> (solve-factors ?v (matcher-args ?&*)))
    (rule [?v ?x] :==> (solve-polynomial ?v ?x))
@@ -181,10 +181,14 @@
 ;;solve* checks if the equation if wants to solve was tried before and gives up
 ;;in this case
 
-(defn solve [v equation]
-  (binding [*solve-attempts* (atom #{})
-            *symbolv* (gensym "var")]
-    (solve* v equation)))
+(defn solve
+  ([v equation]
+     (solve v equation solve-rules))
+  ([v equation custom-solve-rules]
+     (binding [*solve-attempts* (atom #{})
+               *symbolv* (gensym "var")
+               solve-rules custom-solve-rules]
+       (solve* v equation))))
 
 (defn check-if-was-solved [v equation]
   (if (not (and (bound? #'*symbolv*) (bound? #'*solve-attempts*)))
