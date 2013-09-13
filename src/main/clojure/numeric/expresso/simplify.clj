@@ -83,7 +83,7 @@
 
 
 (defn with-shape
-  "sets the inferredn shape of the value. expands to zero- and identity-matrizes
+  "sets the inferred shape of the value. expands to zero- and identity-matrices
    where appropriate"
    [val shape]
   (cond
