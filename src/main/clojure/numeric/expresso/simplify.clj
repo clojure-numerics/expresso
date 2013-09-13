@@ -40,7 +40,7 @@
 (defn contains-no-var? [x]
   (if (and (not (symbol? x)) (no-symbol x)) true false))
 
-(defn collabse-arguments-commutative [xs args]
+(defn collapse-arguments-commutative [xs args]
   (let [gb (group-by contains-no-var? args)
         fix (concat (gb nil) (gb true))
         var (gb false)]
@@ -48,7 +48,7 @@
             (list* xs args)
             (list* xs (evaluate (list* xs fix) {}) var))))
 
-(defn collabse-arguments-associative [xs args]
+(defn collapse-arguments-associative [xs args]
   (let [parts (partition-by contains-no-var? args)
         eval-parts (fn [part]
                      (if (and (and (coll? part) (> (count part) 1))
@@ -63,10 +63,10 @@
     (let [[xs & args] expr]
       (cond #_(isa? xs 'e/ca-op)
             (contains? (:properties (meta xs)) :commutative)
-            (collabse-arguments-commutative xs args)
+            (collapse-arguments-commutative xs args)
             (contains? (:properties (meta xs)) :associative)
-            (collabse-arguments-associative xs args)
-            (isa? xs 'e/ao-op) (collabse-arguments-associative xs args)
+            (collapse-arguments-associative xs args)
+            (isa? xs 'e/ao-op) (collapse-arguments-associative xs args)
             :else expr))
     expr))
                                                         
