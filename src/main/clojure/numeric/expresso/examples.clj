@@ -21,13 +21,13 @@
 
 (def disjunctive-normal-form-rules
   (construct-with [not and or]
-    [(rule (not (not ?x)) :=> ?x :syntactical)
-     (rule (not (or ?a ?b)) :=> (and (not ?a) (not ?b)) :syntactical)
-     (rule (not (and ?a ?b)) :=> (or (not ?a) (not ?b)) :syntactical)
-     (rule (and ?a (or ?b ?c)) :=> (or (and ?a ?b) (and ?a ?c)) :syntactical)
-     (rule (and (or ?a ?b) ?c) :=> (or (and ?a ?c) (and ?b ?c)) :syntactical)
-     (rule (and (and ?a ?b) ?c) :=> (and ?a (and ?b ?c)) :syntactical)
-     (rule (or (or ?a ?b) ?c) :=> (or ?a (or ?b ?c)) :syntactical)]))
+    [(rule (not (not ?x)) :=> ?x :syntactic)
+     (rule (not (or ?a ?b)) :=> (and (not ?a) (not ?b)) :syntactic)
+     (rule (not (and ?a ?b)) :=> (or (not ?a) (not ?b)) :syntactic)
+     (rule (and ?a (or ?b ?c)) :=> (or (and ?a ?b) (and ?a ?c)) :syntactic)
+     (rule (and (or ?a ?b) ?c) :=> (or (and ?a ?c) (and ?b ?c)) :syntactic)
+     (rule (and (and ?a ?b) ?c) :=> (and ?a (and ?b ?c)) :syntactic)
+     (rule (or (or ?a ?b) ?c) :=> (or ?a (or ?b ?c)) :syntactic)]))
 
 (construct-with [and not or]
   (transform-with-rules disjunctive-normal-form-rules

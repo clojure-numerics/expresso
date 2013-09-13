@@ -10,14 +10,13 @@
             [numeric.expresso.impl.pimplementation :as impl])
   (:require [clojure.core.logic.unifier :as u]))
 
-; TODO: why is this failing?
-;(deftest test-to-expression
-;  (testing "a normal s-expression is converted to an expresso expression in an idempotent step"
-;    (let [sexp '(clojure.core/+ x 2)
-;          exp1 (to-expression sexp)
-;          exp2 (to-expression exp1)]
-;      (is (not (identical? exp1 exp2)))
-;      (is (identical? exp1 exp2)))))
+(deftest test-to-expression
+  (testing "a normal s-expression is converted to an expresso expression in an idempotent step"
+    (let [sexp '(clojure.core/+ x 2)
+          exp1 (to-expression sexp)
+          exp2 (to-expression exp1)]
+      (is (not (identical? exp1 sexp)))
+      (is (identical? exp1 exp2)))))
 
 (deftest test-ex
   (is (= '(+ 1 2 3) (ex (+ 1 2 3))))

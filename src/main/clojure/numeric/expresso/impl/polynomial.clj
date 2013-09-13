@@ -1,4 +1,4 @@
-(ns numeric.expresso.polynomial
+(ns numeric.expresso.impl.polynomial
   (:refer-clojure :exclude [==])
   (:use [clojure.core.logic.protocols]
         [clojure.core.logic :exclude [is] :as l]

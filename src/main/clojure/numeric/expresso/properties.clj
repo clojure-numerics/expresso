@@ -19,7 +19,7 @@
 
 (declare evaluate-sum emit-sum emit-arithmetic)
 
-(defn corrected-sub [& s]
+(defn- corrected-sub [& s]
   (if (= 1 (count s))
     (mat/negate (first s))
     (apply mat/sub s)))
@@ -27,7 +27,8 @@
 ;;The props multimethod is used to assign the right metadata to the symbols
 ;;during construction of expressions. Many protocol implementation are driven
 ;;by the functions in the metadata.
-(defmulti props identity)
+(defmulti props "gets the metadata associated with the given operator"
+  identity)
 (defmethod props :default [_] {})
 (defmethod props '* [_] {:exec-func mat/emul
                          :emit-func (emit-arithmetic '* mat/emul)
@@ -88,7 +89,9 @@
 (defmethod props 'exp [_] {:exec-func mat/exp}
                            )
 
-(defmulti matcher first)
+(defmulti matcher "gets the matching relation for the extractor-expression"
+  first)
+
 (defmethod matcher :default [_]
   (if (contains? (:properties (second _)) :commutative)
     {:match-rel match/match-commutativeo}
@@ -99,7 +102,9 @@
 ;;These predicates are contributed to core.matrix and the core.matrix predicates
 ;;will be used when they become available in a core.matrix release
 
-(defn zero-matrix? [expr]
+(defn zero-matrix?
+  "checks whether expr represents a zero-matrix"
+  [expr]
   (if (symbol? expr)
     (if (contains? (protocols/properties expr) :mzero) true false)
     (loop [elem (mat/eseq expr)]
@@ -109,7 +114,9 @@
           false)
         true))))
 
-(defn identity-matrix? [expr]
+(defn identity-matrix?
+  "checks whether expr represents an identity-matrix"
+  [expr]
   (try 
   (if (symbol? expr) false
       (let [d (mat/dimensionality expr)]
@@ -139,7 +146,7 @@
                true))))))
   (catch Exception e false)))
       
-(defn extract-mzero [pargs expr]
+(defn- extract-mzero [pargs expr]
   (project [pargs expr]
            (let [x (first pargs)]
              (if (contains? (protocols/properties expr) :mzero)
@@ -148,7 +155,7 @@
                  (== x expr)
                  fail)))))
 
-(defn extract-midentity [pargs expr]
+(defn- extract-midentity [pargs expr]
   (project [pargs expr]
            (let [x (first pargs)]
              (if (contains? (protocols/properties expr) :midentity)
@@ -157,7 +164,7 @@
                  (== x expr)
                  fail)))))
 
-(defn extract-as [pargs expr]
+(defn- extract-as [pargs expr]
   (project [pargs expr]
            (let [x (first pargs)
                  y (second pargs)]
@@ -165,7 +172,7 @@
                     (protocols/match x expr)
                     (== y expr)))))
 
-(defn extract-shape [pargs expr]
+(defn- extract-shape [pargs expr]
   (project [pargs expr]
            (let [x (first pargs)
                  y (second pargs)]
@@ -173,7 +180,9 @@
                     (protocols/match x expr)
                     (== y (protocols/shape expr))))))
 
-(defmulti extractor-rel identity)
+(defmulti extractor-rel
+  "associates extracting relations with extractor symbols"
+  identity)
 (defmethod extractor-rel :default [_] nil)
 (defmethod extractor-rel 'is? [_] match/extract-is)
 (defmethod extractor-rel 'cons? [_] match/extract-cons)
@@ -182,22 +191,25 @@
 (defmethod extractor-rel 'as? [_] extract-as)
 (defmethod extractor-rel 'shape? [_] extract-shape)
 
-(defn add-information [op]
+(defn add-information
+  "adds the metadata to op for further manipulation with expresso"
+  [op]
   (let [p (props op)
         m (matcher [op p])]
     (merge {:expression true} p m)))
 
-
-
-
-(defn is-number? [x]
+(defn is-number?
+  "checks if x represents a number"
+  [x]
   (or (number? x) (isa? (protocols/type-of x) types/number)))
 
-(defn is-symbol? [x]
+(defn is-symbol?
+  "checks if x represents a symbol"
+  [x]
  (symbol? x))
 
 
-(defn evaluate-sum [sum sm]
+(defn- evaluate-sum [sum sm]
   (let [[_ k i expr] sum
         i (protocols/substitute-expr i sm)]
     (if (and (or (= (first i) '<=) (= (first i) '<)) (= k (nth i 2)))
@@ -211,7 +223,7 @@
             res)))
       (throw (Exception. (str "Can't evaluate sum of the range " i))))))
 
-(defn emit-sum [sum]
+(defn- emit-sum [sum]
   (let [[_ k i expr] sum]
     (if (and (or (= (first i) '<=) (= (first i) '<)) (= k (nth i 2)))
       (let [start (if (= (first i) '<=) (second i) `(inc ~(second i)))
@@ -224,7 +236,10 @@
       (throw (Exception. (str "Can't emit code for sum of the range " i))))))
 
 
-(defn emit-arithmetic [op  exec-func]
+(defn- emit-arithmetic
+  "emits code for clojure.core/op literally when all args of the expression
+   are numbers"
+  [op  exec-func]
   (fn [expr]
     (let [args (protocols/expr-args expr)]
       (if (every? #{[]} (map protocols/shape args))

@@ -11,12 +11,16 @@
 
 (def debug-mode true)
 
-(defmacro debug [vars & message]
+(defmacro debug
+  "debugging macro fore core.logic"
+  [vars & message]
   `(project ~vars
             (do (when debug-mode
                   (prn ~@message)) (== 1 1))))
 
-(defn mapo [fo vs rs]
+(defn mapo
+  "core.logic version of map"
+  [fo vs rs]
   (conda
     [(emptyo vs) (emptyo rs)]
     [(fresh [v r restvs restrs]
@@ -35,7 +39,9 @@
           [(pred y number?) (project [y] (== x (g y)))])))))
 
 
-(defn constant? [expr]
+(defn constant?
+  "checks whether expr is constant"
+  [expr]
   (number? expr))
 
 
@@ -54,14 +60,18 @@
                     (apply fo (concat params (list result)))))))
 
 
-(defn inco [a res]
+(defn inco
+  "core.logic non-relational inc"
+  [a res]
   (project [a]
            (== res (inc a))))
 
 
 
 
-(defn without-symbol? [sym expr]
+(defn without-symbol?
+  "true if expr does not have any occurrences of sym"
+  [sym expr]
   (cond
     (and (symbol? expr) (= sym expr)) false
     (sequential? expr) (every? #(without-symbol? sym %) expr)
@@ -74,13 +84,7 @@
      (conso op params exp)))
 
 
-(defn expo 
-  "Creates an expression with the given operator and parameters"
-  ([op params exp]
-     (conso op params exp)))
-
-
-(defn extract [c]
+(defn- extract [c]
   (let [res 
         (mapcat
          #(if (and (coll? %) (= (first %) :numeric.expresso.construct/seq-match))
@@ -89,7 +93,10 @@
         res)))
 
 
-(defn splice-in-seq-matchers [express]
+(defn splice-in-seq-matchers
+  "eliminates all seq-matchers in the expression by embedding the data 
+   the expression"
+  [express]
   (let [nexpress
         (cond
          (vector? express) (mapv splice-in-seq-matchers express)
@@ -103,7 +110,9 @@
       expr)))
     
 
-(defn validate-eq [expr]
+(defn validate-eq
+  "validates that expr is an equation"
+  [expr]
   (if (and (not= '= (first expr)) (= (count expr) 3))
     (throw (Exception. "Input is no Equation"))
     expr))
@@ -120,37 +129,21 @@
          (appendo y [a] x)))
 
 
-(defn inner-product-shape [sl sr s]
-  (fresh [a b]
-         (butlasto sl a)
-         (resto sr b)
-         (appendo a b s)))
-
-
-(defn suffixo [a b]
-  (fresh [c]
-         (appendo c a b)))
-
-(defne all-suffixes [v l]
-  ([[?a . ?r] _] (suffixo ?a l) (all-suffixes ?r l))
-  ([[] _]))
-
-(defn longest-shapo [v l]
-  (fresh []
-         (membero l v)
-         (all-suffixes v l)))
-
-(defn get-in-expression [expr posv]
+(defn get-in-expression
+  "gets the subexpression in pos posv in expr"
+  [expr posv]
   (loop [expr expr posv posv]
     (if (empty? posv)
       expr
       (recur (nth expr (inc (first posv))) (rest posv)))))
 
-(defn set-elem-in-pos [l pos sub]
-  ;;todo use cev here and resolve cyclic dependency
+(defn- set-elem-in-pos
+  [l pos sub]
   (apply list (concat (take pos l) [sub] (drop (inc pos) l))))
 
-(defn set-in-expression [expr posv sub]
+(defn set-in-expression
+  "assocs sub in the position posv in the expression"
+  [expr posv sub]
   (loop [posv posv sub sub]
     (if (< (count posv) 2)
       (set-elem-in-pos expr (inc (first posv)) sub)
@@ -158,14 +151,19 @@
             nsub (set-elem-in-pos p (inc (last posv)) sub)]
         (recur (butlast posv) nsub)))))
 
-(defn substitute-in-positions [expr pos-map]
+(defn substitute-in-positions
+  "substitutes the expression giving the pos -> subexpression map"
+  [expr pos-map]
   (reduce (fn [expr [k v]]
             (set-in-expression expr k v)) expr pos-map))
 
-(defn only-one-occurrence [v equation]
+(defn only-one-occurrence
+  "checks if there is at most one occurrence ov v in equation"
+  [v equation]
   (>= 1 (->> equation flatten (filter #{v}) count)))
 
 (defn positions-of
+  "returns the positions of v in equation"
   ([v equation] (positions-of v equation []))
   ([v equation pos]
      (if-let [op (expr-op equation)]
@@ -174,39 +172,55 @@
                        (rest equation) (range)))
        (if (= v equation) [pos] nil))))
                   
-(defn swap-sides [[eq lhs rhs]]
+(defn swap-sides
+  "swaps the sides of the equation"
+  [[eq lhs rhs]]
   (list eq rhs lhs))
 
 (def combine-solutions mapcat)
 
 
 
-(def ^:dynamic *treshold* 1e-6)
+(def ^:dynamic *treshold* 1e-9)
 
-(defn num= [a b]
+(defn num=
+  "equals operation applicable on all expression types. compares numbers with
+   == other types with =. Does not throw. Also succeeds if a and b are a very
+   near numerically according to *treshold*"
+  [a b]
   (or (= a b) (and (number? a) (number? b)
                    (or (clojure.core/== a b)
                        (< (Math/abs (- (Math/abs (double a))
                                        (Math/abs (double b)))) *treshold*)))))
 
-(defn eq-lhs [equation]
+(defn eq-lhs
+  "returns the lhs of equation"
+  [equation]
   (second equation))
 
-(defn eq-rhs [equation]
+(defn eq-rhs
+  "returns the rhs of equation"
+  [equation]
   (nth equation 2))
 
-(defn solved? [v equation]
+(defn solved?
+  "checks if equation is already solved in regard to v"
+  [v equation]
   (and (= (nth equation 1) v)
        (not= v (nth equation 2))
        (= 0 (->> (nth equation 2) flatten (filter #{v}) count))))
 
-(defn submap [keys m]
+(defn submap
+  "returns the reduced map m which contains only keys in keys"
+  [keys m]
   (into {} (reduce (fn [kvs symb]
                      (if (contains? m symb)
                        (conj kvs [symb (get m symb)])
                        kvs)) [] keys)))
 
-(defn common-prefix [positions]
+(defn common-prefix
+  "returns the common-prefix of the position vectors in positions"
+  [positions]
   (let [minl (apply min (map count positions))]
     (loop [l minl]
       (if (> l 0)
@@ -216,17 +230,17 @@
           (recur (dec l)))
         []))))
 
-(defn remove-dublicated-fracs [frac]
-  (into #{}
-        (map (fn [x] [x (:pos (meta x))])
-             (into #{} (map #(with-meta (first %) {:pos (second %)}) frac)))))
 
-(defn gcd [m n]
+(defn gcd
+  "calculates gcd of m and n"
+  [m n]
   (loop [m (long m) n (long n)]
     (if (> n 0)
       (recur n (rem m n))
       m)))
 
-(defn round [m]
+(defn round
+  "rounds m if m is not an integer"
+  [m]
   (if (integer? m)
     m (Math/round (double m))))

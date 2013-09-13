@@ -1,5 +1,5 @@
 (ns numeric.expresso.test-polynomial
-  (:use numeric.expresso.polynomial)
+  (:use numeric.expresso.impl.polynomial)
   (:use clojure.test)
   (:refer-clojure :exclude [==])
   (:use [clojure.core.logic.protocols]

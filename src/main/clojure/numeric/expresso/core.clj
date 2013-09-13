@@ -9,7 +9,7 @@
             [numeric.expresso.parse :as parse]
             [numeric.expresso.utils :as utils]
             [numeric.expresso.properties :as props]
-            [numeric.expresso.polynomial :as poly]
+            [numeric.expresso.impl.polynomial :as poly]
             [numeric.expresso.construct :as constr])) 
 
 
@@ -38,18 +38,21 @@
 
 
 (defn parse-expression
-  "parses the expression from the given string supports + - * / ** with the
-   normal precedence. unnests operators where possible
+  "parses the expression from the given string supports = + - * / ** with the
+   normal precedence. Also supports arbitrary functions in the input.
+   Unnests operators where possible.
    examples:
    (parse-expression \"1+2+3\") :=> (clojure.core/+ 1 2 3)
    (parse-expression \"1+2*3**4+5\")
-     :=> (clojure.core/+ 1 (clojure.core/* 2 (numeric.expresso.core/** 3 4)) 5)"
+     :=> (clojure.core/+ 1 (clojure.core/* 2 (numeric.expresso.core/** 3 4)) 5)
+   (parse-expression \"sin(x)**2 + cos(x)**2 = 1\")
+     :=> (= (+ (** (sin x) 2) (** (cos x) 2)) 1)"
    [s]
    (parse/parse-expression s))
    
 (defn evaluate
   "evaluates the expression after replacing the symbols in the symbol map with
-   their associated values"
+   their associated values. Example: (evaluate (ex (* 2 x)) {'x 3}) :=> 6"
   ([expr] (evaluate expr {}))
   ([expr sm]
      (-> expr
@@ -57,7 +60,9 @@
       (protocols/evaluate sm))))
 
 (defn substitute [expr repl]
-  "substitutes every occurrence of a key in the replacement-map by its value"
+  "substitutes every occurrence of a key in the replacement-map by its value
+   Example: (substitute (ex (+ (* a b) (* a b) (/ c d)))
+             {(ex (* a b)) 'x 'c 'y 'd 'z}) => (+ x x (/ y z))"
   (-> expr
       constr/to-expression
       (protocols/substitute-expr repl)))
@@ -73,7 +78,11 @@
         
 
 (defn simplify
-  "best heuristics approach to simplify the given expression to a 'simpler' form"
+  "best heuristics approach to simplify the given expression to a 'simpler' form.
+   The optional ratio argument gives control about what is the maximal ratio of
+   simplified/original-expression after the invokation of simplify.
+   example: (simplify (ex (+ (* a b) (* a c) 5 -5))) => (* a (+ b c))
+            (simplify (ex (+ (* a b) (* a c) 5 -5)) :ratio 0.5) => nil"
   [expr & {:keys [ratio simplify-rules] :or {ratio nil
                                              simplify-rules simp/simplify-rules
                                              }}]
@@ -82,18 +91,10 @@
        (simp/simp-expr simplify-rules)
        (ratio-test expr ratio)))
 
-(defn normalise
-  "transforms the expression to a form more suitable for further manipulation.
-   simple simplifications are done, like 0 and 1 simplification on * and +.
-   Also the inverses are normalised meaning (- a b c) will get transformed
-   to (+ a (- b) (- c)) and (/ a b c) to (* a (/ b) (/ c))"
-  [expr]
-  (-> expr
-      constr/to-expression
-      simp/normalise))
-
 (defn multiply-out
-  "fully multiplies out the given expression."
+  "fully multiplies out the given expression. Example:
+   (multiply-out (ex (+ (* a (+ b c)) (** (+ d e) 2))))
+   => (+ (** e 2) (* 2 d e) (** d 2) (* b a) (* c a))"
   [expr]
   (-> expr
       constr/to-expression
@@ -101,15 +102,19 @@
 
 (defn evaluate-constants
   "evaluates fully determined (sub-) expressions and folds determined factors
-   in commutative and associative functions"
+   in commutative and associative functions.
+   (evaluate-constants (ex (+ (* (- 5 2) a) (* 4 5))))
+   => (+ (* 3 a) 20)"
   [expr]
   (-> expr
       constr/to-expression
       simp/evaluate-constants))
 
 (defn to-polynomial-normal-form
-  "transforms the given expression to a fully expanded (recursive) polynomial representation with v as
-   main variable"
+  "transforms the given expression to a fully expanded (recursive) polynomial
+   representation with v as main variable.
+   Example: (to-polynomial-normal-form 'x (ex (* (+ x a 1) (* x (+ 1 a)))))
+   :=> (+ (* (+ 1 (* 2 a) (** a 2)) x) (* (+ 1 a) (** x 2)))"
   [v expr]
   (->> expr
        constr/to-expression
@@ -117,8 +122,11 @@
 
 (defn rearrange
   "if the equation contains only one occurrence of v it will be rearranged so
-   that v is the only symbol on the lhs of the equation. returns a list of the possible
-   rearrangements"
+   that v is the only symbol on the lhs of the equation. returns a list of the
+   possible rearrangements.
+   (rearrange 'x (ex (= (abs x) 3)))
+    => ((= x 3) (= x (- 3)))
+   (rearrange 'x (ex (= (+ x x) 0))) => nil"
   [v eq]
   (->> eq
        constr/to-expression
@@ -126,8 +134,9 @@
        (solve/rearrange v)))
 
 (defn solve
-  "general solving function. Dispatches to different solving strategies based on the input equations.
-   Can solve one or more equations according to the variables in the symbol vector/set/list.
+  "general solving function. Dispatches to different solving strategies based on
+   the input equations. Can solve one or more equations according to the
+   variables in the symbol vector/set/list.
    In case of only one symbol to solve for symbv can be the symbol itself.
    examples:
    (solve 'x (ex (= 2 (* 4 x)))) ;=> #{1/2}
@@ -165,28 +174,31 @@
 
 (defmacro compile-expr
   "compiles the given expression to a clojure function which can be called
-   according to the bindings vector. The compiled function will not have the overhead
-   of walking the expression to excecute it. Compile-expr transforms the expression to
-   clojure code which is then evaluated to a function
+   according to the bindings vector. The compiled function will not have the
+   overhead of walking the expression to excecute it. Compile-expr transforms
+   the expression to clojure code which is then evaluated to a function
    example:
    ((compile-expr [x] (ex (+ 1 x))) 2) ;=> 3"
   [bindings expr]
   `(opt/compile-expr* ~(list 'quote bindings) ~expr))
 
 (defn compile-expr*
-  "function equivalent of compile-expr. The bindings vector has to be quoted"
+  "function equivalent of compile-expr. The bindings vector has to be quoted.
+   Example: ((compile-expr* '[x] (ex (+ 1 x))) 2) ;=> 3"
   [bindings expr]
   (->> expr
        constr/to-expression
-       (opt/compile-expr bindings)))
+       (opt/compile-expr* bindings)))
 
 (defn optimize
-  "transforms the expr to a more optimized form for excecution. The optimized form can
-   be compiled with compile-expr. supports optimizations like compile time computation,
-   removing unneeded code, common-subexpression detection, matrix chain order optimization ...
+  "transforms the expr to a more optimized form for excecution. The optimized
+   form can be compiled with compile-expr. supports optimizations like compile
+   time computation, removing unneeded code, common-subexpression detection,
+   matrix chain order optimization ...
    example:
    (optimize (ex (+ b (* 5 b) (** y (+ a b)) (** z (+ b a)))))
-   ;=> (let [local478813 (+ a b)] (+ (* b 6) (** y local478813) (** z local478813)))"
+   ;=> (let [local478813 (+ a b)] (+ (* b 6) (** y local478813)
+         (** z local478813)))"
   [expr & {:keys [optimizations]
            :or {optimizations opt/optimizations}}]
   (-> expr

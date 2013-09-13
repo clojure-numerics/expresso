@@ -1,7 +1,7 @@
 (ns numeric.expresso.test-symbolic
   (:refer-clojure :exclude [])
   (:use [clojure.core.logic.protocols]
-        [numeric.expresso.symbolic]
+        [numeric.expresso.impl.symbolic]
         [numeric.expresso.impl.matcher]
         [numeric.expresso.protocols]
         clojure.test)
