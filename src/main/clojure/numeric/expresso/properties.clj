@@ -24,7 +24,7 @@
     (mat/negate (first s))
     (apply mat/sub s)))
 
-;;The props multimethod is used to assign the right metadate to the symbols
+;;The props multimethod is used to assign the right metadata to the symbols
 ;;during construction of expressions. Many protocol implementation are driven
 ;;by the functions in the metadata.
 (defmulti props identity)
@@ -209,7 +209,7 @@
                                     (-> expr
                                         (protocols/evaluate (merge sm {k n})))))
             res)))
-      (throw (Exception. (str "Cant evaluate sum of the range " i))))))
+      (throw (Exception. (str "Can't evaluate sum of the range " i))))))
 
 (defn emit-sum [sum]
   (let [[_ k i expr] sum]
@@ -221,7 +221,7 @@
              (let [~k n#]
                (recur (inc n#) (mat/add res# ~(protocols/emit-code expr))))
                res#)))
-      (throw (Exception. (str "Cant emit code for sum of the range " i))))))
+      (throw (Exception. (str "Can't emit code for sum of the range " i))))))
 
 
 (defn emit-arithmetic [op  exec-func]

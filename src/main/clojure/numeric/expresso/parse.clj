@@ -14,7 +14,7 @@
             [numeric.expresso.utils :as utils]))
 
 
-
+;; instaparse grammar for infix expression, used by Expresso's parser.
 (def arithmetic
   (insta/parser
     "expr = add-sub
