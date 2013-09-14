@@ -160,12 +160,10 @@
    simplified/original-expression after the invokation of simplify.
    example: (simplify (ex (+ (* a b) (* a c) 5 -5))) => (* a (+ b c))
             (simplify (ex (+ (* a b) (* a c) 5 -5)) :ratio 0.5) => nil"
-  [expr & {:keys [ratio simplify-rules] :or {ratio nil
-                                             simplify-rules simp/simplify-rules
-                                             }}]
+  [expr & {:keys [ratio simplify-rules] :or {ratio nil}}]
   (-> expr
        constr/to-expression
-       (simp/simp-expr simplify-rules)
+       simp/simp-expr
        (ratio-test expr ratio)))
 
 (defn multiply-out
@@ -276,9 +274,8 @@
    (optimize (ex (+ b (* 5 b) (** y (+ a b)) (** z (+ b a)))))
    ;=> (let [local478813 (+ a b)] (+ (* b 6) (** y local478813)
          (** z local478813)))"
-  [expr & {:keys [optimizations]
-           :or {optimizations opt/optimizations}}]
+  [expr]
   (-> expr
        constr/to-expression
-       (opt/optimize optimizations)))
+       opt/optimize))
 
