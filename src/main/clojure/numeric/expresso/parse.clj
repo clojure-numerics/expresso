@@ -1,23 +1,19 @@
 (ns numeric.expresso.parse
   (:refer-clojure :exclude [==])
-  (:use [clojure.core.logic.protocols]
-        [clojure.core.logic :exclude [is] :as l]
-        [numeric.expresso.properties]
-        [numeric.expresso.rules]
-        [numeric.expresso.construct]
-        [clojure.test])
-  (:require [clojure.core.logic.fd :as fd]
-            [clojure.walk :as walk]
+  (:use [numeric.expresso.rules]
+        [numeric.expresso.construct])
+  (:require [clojure.walk :as walk]
             [instaparse.core :as insta]
             [numeric.expresso.protocols :as protocols]
-            [clojure.core.logic.unifier :as u]
             [numeric.expresso.utils :as utils]))
 
 
-
+;; instaparse grammar for infix expression, used by Expresso's parser.
 (def arithmetic
   (insta/parser
-    "expr = add-sub
+   " expr = equals
+     <equals> = add-sub | eq
+     eq = add-sub <'='> add-sub
      <add-sub> = mul-div | add | sub
      add = add-sub <'+'> mul-div
      sub = add-sub <'-'> mul-div
@@ -26,11 +22,11 @@
      div = mul-div <'/'> exp-term
      <exp-term> = func-term | expon
      expon = exp-term <'**'> term
-     <func-term> = term | func
-     func = symbol <'('> args <')'>
+     <func-term> = term 
+     func = symbol <'('> args <')'> <' '>*
      args = expr | expr <','> args
-     <term> = literal | <' '>* <'('>  expr <')'> <' '>*
-     <literal> = number | symbol | vec | (<' '>* literal <' '>*)
+     <term> = literal | <' '>* literal <' '>* | <'('>  expr <')'> 
+     <literal> = number | symbol | vec | func
      vec = <'['> expr* <']'>
      symbol = #'[a-zA-Z]'+
      number = floating-point-number | int 
@@ -50,12 +46,15 @@
    (rule (ex (+ ?x)) :=> ?x)
    (rule (ex (* ?x)) :=> ?x)])
 
-(defn transform-if-successful [expr]
+(defn- transform-if-successful [expr]
   (if-let [op (protocols/expr-op expr)]
     (transform-with-rules parse-simplification-rules expr)
     expr))
 
-(defn parse-expression [expr]
+(defn parse-expression
+  "parses the given string to an expresso expression. Supports all normal
+   expressions in infix notation."
+  [expr]
   (->> (arithmetic expr)
        (insta/transform
         {:number (comp read-string str)
@@ -64,6 +63,7 @@
          :mul (partial ce `*)
          :add (partial ce `+)
          :sub (partial ce `-)
+         :eq  (partial ce '=)
          :expr identity
          :vec vector
          :symbol (fn [& r] (symbol (apply str r)))

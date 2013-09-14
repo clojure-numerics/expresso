@@ -2,15 +2,8 @@
   (:use numeric.expresso.rules)
   (:use clojure.test)
   (:refer-clojure :exclude [==])
-  (:use [clojure.core.logic.protocols]
-        [clojure.core.logic :exclude [is] :as l]
-        clojure.test)
-  (:require [clojure.core.logic.fd :as fd])
-  (:require [numeric.expresso.utils :as utils])
-  (:use [numeric.expresso.construct]
-        [numeric.expresso.protocols])
-  (:require [clojure.core.logic.unifier :as u]))
-
+  (:use [clojure.core.logic :exclude [is] :as l]
+        [numeric.expresso.construct]))
 
 
 

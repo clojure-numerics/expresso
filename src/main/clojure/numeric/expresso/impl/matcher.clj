@@ -1,12 +1,9 @@
 (ns numeric.expresso.impl.matcher
   (:refer-clojure :exclude [==])
-  (:use [clojure.core.logic.protocols]
-        [numeric.expresso.impl.pimplementation]
+  (:use [numeric.expresso.impl.pimplementation]
         [numeric.expresso.protocols]
-        [clojure.core.logic :exclude [is] ]
-        clojure.test)
-  (:require [clojure.core.logic.fd :as fd]
-            [clojure.walk :as walk]
+        [clojure.core.logic])
+  (:require [clojure.walk :as walk]
             [numeric.expresso.utils :as utils]))
 (declare match-expressiono expression-matcho isao add-replacemento)
 ;;This namespace implements the semantic matching algorithms used in expresso

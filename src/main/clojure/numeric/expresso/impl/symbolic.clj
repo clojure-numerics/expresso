@@ -1,4 +1,4 @@
-(ns numeric.expresso.symbolic
+(ns numeric.expresso.impl.symbolic
   (:refer-clojure :exclude [])
   (:use [clojure.core.logic.protocols]
         [numeric.expresso.impl.matcher]

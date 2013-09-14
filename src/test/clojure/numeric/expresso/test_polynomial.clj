@@ -1,14 +1,6 @@
 (ns numeric.expresso.test-polynomial
-  (:use numeric.expresso.polynomial)
-  (:use clojure.test)
-  (:refer-clojure :exclude [==])
-  (:use [clojure.core.logic.protocols]
-        [clojure.core.logic :exclude [is] :as l]
-        [clojure.test])
-  (:require [clojure.core.logic.fd :as fd])
-  (:require [numeric.expresso.protocols :as protocols])
-  (:require [clojure.core.logic.unifier :as u]))
-
+  (:use numeric.expresso.impl.polynomial)
+  (:use clojure.test))
 
 (deftest test-to-poly-normal-form
   (is (= 7 (to-poly-normal-form '(+ 3 x 4 (- x)))))

@@ -1,22 +1,10 @@
 (ns numeric.expresso.test-optimize
   (:refer-clojure :exclude [==])
-  (:use [clojure.core.logic.protocols]
-        [clojure.core.logic :exclude [is] :as l]
-        [numeric.expresso.construct]
-        [numeric.expresso.properties :as props]
-        [numeric.expresso.protocols]
+  (:use [clojure.core.logic :exclude [is] :as l]
         [numeric.expresso.optimize]
-        [numeric.expresso.rules]
-        [clojure.test])
-  (:require [clojure.core.logic.fd :as fd]
-            [clojure.walk :as walk]
-            [clojure.core.logic.unifier :as u]
-            [numeric.expresso.utils :as utils]
-            [numeric.expresso.solve :as s]
-            [clojure.core.matrix :as matrix]
-            [clojure.core.matrix.operators :as mop]
-            [numeric.expresso.impl.matcher :as m]
-            [numeric.expresso.construct :as c]))
+        [numeric.expresso.construct]
+        [numeric.expresso.protocols]
+        [clojure.test]))
 
 
 (deftest test-common-subexpressions

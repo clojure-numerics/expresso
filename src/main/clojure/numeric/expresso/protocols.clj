@@ -1,13 +1,4 @@
-(ns numeric.expresso.protocols
-  (:refer-clojure :exclude [==])
-  (:use [clojure.test]
-        [clojure.core.logic.protocols]
-        [clojure.core.logic :exclude [is]])
-  (:require 
-            [clojure.set :as set]
-            [numeric.expresso.types :as types]
-            [clojure.core.matrix :as mat]
-            [clojure.walk :as walk]))
+(ns numeric.expresso.protocols)
 
 ;; This namespace defines the basic abstractions used in expresso
 ;; If you want to read and understand the code, this is the right place

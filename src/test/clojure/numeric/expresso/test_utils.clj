@@ -1,15 +1,8 @@
 (ns numeric.expresso.test-utils
   (:use numeric.expresso.utils)
-  (:use clojure.test)
   (:refer-clojure :exclude [==])
-  (:use [clojure.core.logic.protocols]
-        [clojure.core.logic :exclude [is] :as l]
-        clojure.test)
-;  (:require [numeric.expresso.construct :as c])
-  (:require [clojure.core.logic.fd :as fd]
-            [numeric.expresso.construct :as c]
-            [numeric.expresso.solve :as s])
-  (:require [clojure.core.logic.unifier :as u]))
+  (:use [clojure.core.logic :exclude [is] :as l]
+        [clojure.test]))
 
 
 (deftest test-expo 

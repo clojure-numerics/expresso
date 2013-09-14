@@ -1,21 +1,18 @@
 (ns numeric.expresso.test-parse
-  (:refer-clojure :exclude [==])
-  (:use [clojure.core.logic.protocols]
-        [clojure.core.logic :exclude [is] :as l]
-        [numeric.expresso.properties]
-        [numeric.expresso.rules]
+  (:use [numeric.expresso.construct]
         [numeric.expresso.parse]
-        [numeric.expresso.construct]
-        [clojure.test])
-  (:require [clojure.core.logic.fd :as fd]
-            [clojure.walk :as walk]
-            [instaparse.core :as insta]
-            [clojure.core.logic.unifier :as u]
-            [numeric.expresso.utils :as utils]))
+        [clojure.test]))
 
 (deftest test-parse-expression
   (is (= (ex (+ 1 2)) (parse-expression "1+2")))
   (is (= (ex (+ 1 2 3 4)) (parse-expression "1+2+3+4")))
   (is (= (ex (+ (* 1 2 3) 4)) (parse-expression "1*2*3+4")))
   (is (= (ex (* 1 2 (+ 3 4))) (parse-expression "1*2*(3+4)")))
-  (is (= (ex (+ 1 (* 2 (numeric.expresso.core/** 3 4)) 5)) (parse-expression "1+2*3**4+5"))))
+  (is (= (ex (+ 1 (* 2 (** 3 4)) 5)) (parse-expression "1+2*3**4+5"))))
+
+(deftest test-parse-variables
+  (is (= (ex (+ x 1)) (parse-expression "x+1"))))
+
+(deftest test-parse-function
+  (is (= (ex (abs x)) (parse-expression "abs(x)"))))
+

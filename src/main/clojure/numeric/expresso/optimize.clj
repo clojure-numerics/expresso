@@ -1,23 +1,15 @@
 (ns numeric.expresso.optimize
   (:refer-clojure :exclude [==])
-  (:use [clojure.core.logic.protocols]
-        [clojure.core.logic :exclude [is] :as l]
-        [numeric.expresso.construct]
+  (:use [numeric.expresso.construct]
+        [clojure.core.logic]
         [numeric.expresso.properties :as props]
         [numeric.expresso.protocols]
-        [numeric.expresso.rules]
-        [clojure.test])
-  (:require [clojure.core.logic.fd :as fd]
-            [clojure.walk :as walk]
-            [clojure.core.logic.unifier :as u]
+        [numeric.expresso.rules])
+  (:require [clojure.walk :as walk]
             [numeric.expresso.utils :as utils]
-            [numeric.expresso.solve :as s]
-            [clojure.core.matrix :as matrix]
             [clojure.core.memoize :as memo]
-            [clojure.core.matrix.operators :as mop]
             [numeric.expresso.impl.matcher :as m]
-            [numeric.expresso.simplify :as simp]
-            [numeric.expresso.construct :as c]))
+            [numeric.expresso.simplify :as simp]))
 
 ;;This namespace provides the expresso optimizer. It strives to be very
 ;;extensible by relying on rule based translation and being datadriven by
@@ -37,11 +29,15 @@
     (cev op (map (partial map-elems func) (expr-args expr)))
     (func expr)))
 
-(defn- zip [& colls]
+(defn- zip
+  "zips the colls together"
+  [& colls]
   (apply (partial map (fn [& a] a)) colls))
 
 
-(defn subexpressions [expr]
+(defn- subexpressions
+  "returns all subexpressions of expr"
+  [expr]
   (filter expr-op (rest (tree-seq expr-op expr-args expr))))
 
 ;;This core.logic relation finds all combinations of two subexpression in subexpressions
@@ -49,7 +45,9 @@
 ;;In future this can be replaced by a more clever function which recognizes more
 ;;expressions as being equivalent
 
-(defn matching-subexpressions [subs]
+(defn- matching-subexpressions
+  "create all pairs of subexpressions in subs which match"
+  [subs]
   (run* [q]
         (fresh [a b rem]
                (rembero a subs rem)
@@ -57,13 +55,18 @@
                (condu ((m/match-expressiono a b)))
                (== q [a b]))))
 
-(defn match? [a b] (not (empty? (run 1 [q] (m/match-expressiono a b)))))
+(defn- match?
+  "checks if a and b match"
+  [a b]
+  (not (empty? (run 1 [q] (m/match-expressiono a b)))))
 
 ;;from all pairs of matching subexpressions the subexpressions which match must be concat-
 ;;enated, so that we get a list of equivalent-classes which consists of the set of all
 ;;forms occurring in the expression which are equivalent
 
-(defn concat-aq [msubs]
+(defn- concat-aq
+  "concats equivalent subexpressions"
+  [msubs]
   (reduce (fn [[aq r] next]
             (let [a (first aq)
                   b (second next)]
@@ -72,7 +75,10 @@
                 [aq (conj r next)])))
           [(first msubs) []] (rest msubs)))
 
-(defn equivalent-subexpressions [msubs]
+(defn- equivalent-subexpressions
+  "creates a list of equivalent classes each containing mutually matching
+   subexpressions"
+  [msubs]
   (loop [msubs msubs aquiv []]
     (if (seq msubs)
       (let [[aq r] (concat-aq msubs)
@@ -80,7 +86,9 @@
         (recur r (conj aquiv same)))
       aquiv)))
 
-(defn common-subexpressions [expr]
+(defn common-subexpressions
+  "returns a list of common-subexpressions in expr"
+  [expr]
   (->> expr
       subexpressions
       matching-subexpressions
@@ -89,7 +97,10 @@
 ;;to remove the common subexpressions, a let is created with a binding for each
 ;;set of equivalent subexpressions each subexpression in the set is then substituted
 ;;for the binding.
-(defn remove-common-subexpressions [expr]
+(defn remove-common-subexpressions
+  "removes common subexpressions in expr by transforming it to a let
+   with one binding pair for each equivalent class of subexpressions in expr"
+  [expr]
   (let [cs (common-subexpressions expr)
         locals (zip (repeatedly #(gensym 'local)) cs)
         expr (reduce (fn [expr [s repl]]
@@ -117,16 +128,20 @@
                      (rule (* (- ?x) ?&*) :=> (- (* ?x ?&*)))]))
 
 
-(defn optimize-by-rules [expr]
+(defn optimize-by-rules
+  "optimizes the expression according to optimize-rules"
+  [expr]
   (->> expr
        (transform-expression (concat simp/universal-rules
                                      simp/eval-rules simp/to-inverses-rules
                                      optimize-rules))
-       #_(transform-expression simp/cancel-inverses-rules)))
+       (transform-expression simp/cancel-inverses-rules)))
   
-(defn replace-with-special-operations [expr]
+(defn replace-with-special-operations
+  "replaces general (slow) operators with specialized (fast) ones in exp"
+  [expr]
   (transform-expression
-   (concat simp/universal-rules
+   (concat simp/arity-rules
            [(rule (ex (** ?x 0.5)) :=> (ex (sqrt ?x)))
             (rule (ex (** ?x 1/2)) :=> (ex (sqrt ?x)))
             (rule (ex (+ ?m (* ?a ?b) ~?&*))
@@ -137,12 +152,12 @@
                                     (every? #{(shape ?m)} shapes)))))
             ]) expr))
 
-(defn add-parens [symb args i j]
+(defn- add-parens [symb args i j]
   (cev symb (concat (subvec args 0 i) [(cev symb (subvec args i j))]
                     (subvec args j (count args)))))
         
 
-(def matrix-chain-cost*
+(def ^:private matrix-chain-cost*
   (memo/memo
    (fn [shapes i j]
      (if (= i j)
@@ -160,13 +175,13 @@
                                                    (concat parensl parensr)))))
            [minimum [expr]]))))))
 
-(defn matrix-chain-cost [shapes i j]
+(defn- matrix-chain-cost [shapes i j]
   (let [res (matrix-chain-cost* shapes i j)]
     (memo/memo-clear! matrix-chain-cost*)
     res))
 
 
-(defn optimize-matrix-chain-order [args]
+(defn- optimize-matrix-chain-order [args]
   (let [shapes (vec (concat (shape (first args))
                             (map (comp second shape) (rest args))))]
     (-> (first (second (matrix-chain-cost shapes 1 (dec (count shapes)))))
@@ -185,7 +200,10 @@
              (cev 'inner-product args)))
            :if (guard (> (count-sm ?&+) 2)))])
   
-(defn optimize-matrix-chain [expr]
+(defn optimize-matrix-chain
+  "optimizes the order of matrix multiplications in a chain of inner products of
+   matrices"
+  [expr]
   (transform-expression matrix-chain-rules expr))
 
 ;;compiling the expression works vial the emit-code protocol function defined
@@ -199,13 +217,19 @@
 ;;functions
 
 
-(defn compile-expr* [bindings expr]
+(defn compile-expr*
+  "compiles the expression to a function with the binding symbol vector as
+   argument list. Function version of compile-expr"
+  [bindings expr]
   (let [expr (to-expression expr)
         code (emit-code expr)
         c (list `fn bindings code)]
      (eval c)))
 
-(defmacro compile-expr [bindings expr]
+(defmacro compile-expr
+  "compiles the expression to a function with the binding symbol vector as
+   argument list."
+  [bindings expr]
   `(compile-expr* ~(list 'quote bindings) ~expr))
 
 ;;This is a *very* simple optimizations which just uses the eval-rules from
@@ -213,7 +237,9 @@
 ;;and even folds constants in associative or commutative operators. See
 ;;simplify.clj for more
 
-(defn constant-folding [expr]
+(defn constant-folding
+  "folds constants and constant (sub-) expressions in expr"
+  [expr]
   (transform-expression simp/eval-rules expr))
 
 
@@ -229,9 +255,14 @@
 ;;optimizations specified in optimizations of which each take the expression
 ;;and optimize certain parts of it. See the documentation for the optimizations
 
-(defn optimize [expr]
-  (loop [opt optimizations expr expr]
-    (if (seq opt)
-      (recur (rest opt) ((first opt) expr))
-      expr)))
+(defn optimize
+  "optimizes the expressions with the optimization passes in optimizations or
+   the specified vector of optimizations"
+  ([expr] (optimize expr optimizations))
+  ([expr optimizations]
+     (loop [opt optimizations expr expr]
+       (if (seq opt)
+         (recur (rest opt) ((first opt) expr))
+         expr))))
+  
 

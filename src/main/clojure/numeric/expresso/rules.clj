@@ -1,12 +1,9 @@
 (ns numeric.expresso.rules
   (:refer-clojure :exclude [==])
-  (:use [clojure.core.logic.protocols]
-        [clojure.core.logic :exclude [is]]
+  (:use [clojure.core.logic]
         [numeric.expresso.impl.matcher]
-        [numeric.expresso.protocols]
-        clojure.test)
-  (:require [clojure.core.logic.fd :as fd]
-            [numeric.expresso.properties :as props]
+        [numeric.expresso.protocols])
+  (:require [numeric.expresso.properties :as props]
             [clojure.walk :as walk]
             [clojure.core.memoize :as memo]
             [numeric.expresso.utils :as utils]
@@ -55,11 +52,11 @@
              (trans n-exp)
              (== trans n-exp))))
 
-(defn name-of-lvar [c]
+(defn- name-of-lvar [c]
   (let [n (re-find #"<lvar:(\?(?:\&[\+\*])?\w*)>"  (str c))]
     (and (seq n) (symbol (second n)))))
 
-(defn revert-back-lvars [code]
+(defn- revert-back-lvars [code]
   (walk/postwalk (fn [c] (if-let [name (name-of-lvar c)]
                            name
                            c)) code))
@@ -68,7 +65,9 @@
 ;;convert it to a core.logic relation and the ...rel macros take a core.logic
 ;;relation.
 
-(defmacro transfn [args & code]
+(defmacro transfn
+  "transfn creates a function to be used as transition in a rule"
+  [args & code]
   (let [args (revert-back-lvars args)
         code (revert-back-lvars code)]
   `(fn ~args
@@ -80,7 +79,9 @@
                         ((nilo tmp#) fail)
                         ((== res# tmp#)))))))))
 
-(defmacro transrel [args & code]
+(defmacro transrel
+  "transrel creates a relation to be used as transition in a rule"
+  [args & code]
   (let [args (revert-back-lvars args)
         code (revert-back-lvars code)]
     `(fn ~(vec (butlast args))
@@ -89,14 +90,18 @@
                   (fresh []
                          ~@code))))))
 
-(defmacro guardfn [args & code]
+(defmacro guardfn
+  "guardfn creates a function to be used as guard in a rule"
+  [args & code]
   (let [args (revert-back-lvars args)
         code (revert-back-lvars code)]
   `(fn ~args
      (project ~args
               (== true (do ~@code))))))
 
-(defmacro guardrel [args & code]
+(defmacro guardrel
+  "guardrel creates a relations to be used as guard in a rule"
+  [args & code]
   (let [args (revert-back-lvars args)
         code (revert-back-lvars code)]
     `(fn ~(vec args)
@@ -104,17 +109,19 @@
                 (fresh [] ~@code)))))
 
 
-(defn lvars-in-code [transcode]
+(defn- lvars-in-code [transcode]
   (let [lv (filter #(.startsWith (str %) "?") (flatten transcode))]
     (into [] (into #{} lv))))
 
-(defn str-seq [s]
+(defn- str-seq
+  "fully transforms (possible lazy ) s to a string"
+  [s]
   (if (sequential? s)
     (apply str (map str-seq s))
     (str s)))
     
 
-(defn replace-back [transcode]
+(defn- replace-back [transcode]
   (let [matches (re-seq #"<lvar:(\?(?:\&[\+\*])?\w*)>" (str-seq transcode))
         symb-matches (map (fn [v] [(symbol (first v)) (symbol (second v))]) matches)
         replacement-map (into {} matches)
@@ -123,14 +130,16 @@
                                   (symbol r)  %)) transcode)]
     erg))
 
-(defn reconstruct [lvars]
+(defn- reconstruct [lvars]
   (map replace-?-with-lvar lvars))
 
-(defn make-inline-trans [transcode]
+(defn- make-inline-trans [transcode]
   (let [lvars (lvars-in-code transcode)]
     `((transfn ~lvars ~transcode) ~@lvars)))
 
-(defn trans* [transcode]
+(defn trans*
+  "function version of trans"
+  [transcode]
   (let [res (?-to-lvar (make-inline-trans (replace-back transcode)))]
     res))
 
@@ -160,8 +169,9 @@
   (guard* guardcode))
 
 
-
-(defn rule* [v]
+(defn rule*
+  "function version of rule"
+  [v]
   (let [expanded (?-to-lvar v)
         [pat to trans & rest] v
         trans (if (= to :==>) (make-inline-trans trans) trans)
@@ -193,7 +203,8 @@
 
 
 (defn apply-semantic-rule
-  "applies rule to expression. The first succesful application of the rule gets performed"
+  "applies rule to expression. The first succesful application of the rule gets
+   performed"
   [rule exp]
   (first (-run {:occurs-check false :n 1 :reify-vars (fn [v s] s)} [q]
                (fresh [pat trans guard tmp]
@@ -223,7 +234,7 @@
                           (not (sequential? (first rule)))
                           (not (lvar? (first rule))))
                      (and ex-op rule-op (not (exp-isa? ex-op rule-op))))))
-      (if (:syntactical (meta rule))
+      (if (:syntactic (meta rule))
         (apply-syntactic-rule rule exp)
         (apply-semantic-rule rule exp)))))
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -263,26 +274,19 @@
 
 (declare apply-rules transform-with-rules transform-expression*
          transform-expressiono)
-(defn apply-to-end
+(defn- apply-to-end
   [rules expr]
     (let [nexpr (apply-rules rules expr)]
       (if (= expr nexpr)
         nexpr
         (transform-expression* nexpr))))
 
-(defn apply-to-endo [rules expr new-expr]
+(defn- apply-to-endo [rules expr new-expr]
   (fresh [nexpr]
          (conda
           ((apply-ruleso rules expr nexpr)
            (transform-expressiono rules nexpr new-expr))
           ((== new-expr expr)))))
-
-#_(defn apply-simp
-  [rules expr]
-  (let [nexpr (apply-rules rules expr)]
-    (if (= nexpr expr)
-      expr
-      (transform-with-rules rules nexpr walk/postwalk apply-simp))))
 
 (defn apply-all-rules
   "tries to apply all rules in rules on expression"
@@ -293,7 +297,9 @@
                             nexpr expr))
       expr)))
 
-(defn exp-isa? [ex-op rule-op]
+(defn- exp-isa?
+  "isa? semantics in expression. For unqualified symbols check e/symbol"
+  [ex-op rule-op]
   (or (isa? ex-op rule-op) (isa? (symbol (str "e/" ex-op)) rule-op)))
 
 (defn apply-rules
@@ -331,31 +337,31 @@
        tmp))
   ([rules expr] (transform-with-rules rules expr walk/prewalk apply-rules)))
 
-(defn simplified? [expr rules]
+(defn- simplified? [expr rules]
   (and (instance? clojure.lang.IObj expr)
        (contains? (:simplified-by (meta expr)) (:id (meta rules)))))
 
-(defn annotate-simplified [expr *rules*]
+(defn- annotate-simplified [expr *rules*]
   (if (instance? clojure.lang.IObj expr)
     (with-meta expr (assoc (meta expr)
                       :simplified-by #{(:id (meta *rules*))}))
     expr))
 
-(defn add-simp-annotations [res expr]
+(defn- add-simp-annotations [res expr]
   (if (instance? clojure.lang.IObj res)
     (with-meta res (update-in (meta res)
                               [:simplified-by]
                               #(set/union % (:simplified-by (meta expr)))))))
 
 
-(defn merge-transformed-meta [meta-exp transformed] 
+(defn- merge-transformed-meta [meta-exp transformed] 
   (if (instance? clojure.lang.IObj transformed)
     (with-meta transformed (merge meta-exp (meta transformed)))
     transformed))
 
-(def transform-expression*
-  (fn [expr]
-    (transform-expr expr *rules*)))
+(defn- transform-expression* [expr]
+  (transform-expr expr *rules*))
+
 ;;Transform-expression is the optimized transform-all function to transform
 ;;an expression according to the rules in the rule vector. The outcoming
 ;;expression is guaranteed to be in a standart form defined by the rule vector
@@ -365,6 +371,7 @@
 ;;uses a protocol dispatch so that custom expression types can specify how
 ;;rules will be applied. For example the LetExpression transforms itself by
 ;;first transforming the bindings and then the body.
+
 (defn transform-expression
   "transforms the expression according to the rules in the rules vector in a
    bottom up manner until no rule can be applied to any subexpression anymore"
@@ -429,6 +436,7 @@
                                                   transformed) nexpr))))))))
 
 (defn transform-one-level
+  "transforms the top level of expr according to rules"
   [rules expr]
   (transform-with-rules rules expr (fn [f expr] (f expr)) apply-rules))
 
