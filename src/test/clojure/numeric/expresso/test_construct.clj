@@ -1,14 +1,10 @@
 (ns numeric.expresso.test-construct
   (:use numeric.expresso.construct)
-  (:use clojure.test)
-  (:refer-clojure :exclude [==])
-  (:use [clojure.core.logic.protocols]
-        [clojure.core.logic :exclude [is] :as l]
+  (:use [clojure.core.logic :exclude [is]]
         [clojure.test])
-  (:require [clojure.core.logic.fd :as fd])
+  (:refer-clojure :exclude [==])
   (:require [numeric.expresso.protocols :as protocols]
-            [numeric.expresso.impl.pimplementation :as impl])
-  (:require [clojure.core.logic.unifier :as u]))
+            [numeric.expresso.impl.pimplementation :as impl]))
 
 (deftest test-to-expression
   (testing "a normal s-expression is converted to an expresso expression in an idempotent step"

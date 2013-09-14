@@ -122,3 +122,17 @@
                                                  (* 5 (** x 2))))) )))
   (is (= (ex (+ (* 243.0 (** x 10)) (* 1215.0 (** x 9)) (* 4050.0 (** x 8)) (* 8910.0 (** x 7)) (* 15255.0 (** x 6)) (* 19683.0 (** x 5)) (* 20340.0 (** x 4)) (* 15840.0 (** x 3)) (* 9600.0 (** x 2)) (* 3840.0 x) 1024.0))
          (to-polynomial-normal-form 'x (ex (** (+ (* 3 x) 4 (* 3 (** x 2))) 5))))))
+
+(def disjunctive-normal-form-rules
+  (construct-with [not and or]
+    [(rule (not (not ?x)) :=> ?x :syntactic)
+     (rule (not (or ?a ?b)) :=> (and (not ?a) (not ?b)) :syntactic)
+     (rule (not (and ?a ?b)) :=> (or (not ?a) (not ?b)) :syntactic)
+     (rule (and ?a (or ?b ?c)) :=> (or (and ?a ?b) (and ?a ?c)) :syntactic)
+     (rule (and (or ?a ?b) ?c) :=> (or (and ?a ?c) (and ?b ?c)) :syntactic)
+     (rule (and (and ?a ?b) ?c) :=> (and ?a (and ?b ?c)) :syntactic)
+     (rule (or (or ?a ?b) ?c) :=> (or ?a (or ?b ?c)) :syntactic)]))
+
+(construct-with [and not or]
+  (transform-with-rules disjunctive-normal-form-rules
+    (or 'a (not (or 'b (and 'c (not 'd)))))))

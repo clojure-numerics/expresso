@@ -1,18 +1,18 @@
 (ns numeric.expresso.core
   (:refer-clojure :exclude [==])
-  (:require [numeric.expresso.solve :as solve]
+  (:require [clojure.core.logic :as logic]
+            [numeric.expresso.solve :as solve]
             [numeric.expresso.simplify :as simp]
             [numeric.expresso.optimize :as opt]
             [numeric.expresso.protocols :as protocols]
             [numeric.expresso.rules :as rules]
-            [numeric.expresso.examples :as examples]
             [numeric.expresso.parse :as parse]
+            [numeric.expresso.calculus :as calc]
+            [numeric.expresso.types :as types]
             [numeric.expresso.utils :as utils]
             [numeric.expresso.properties :as props]
             [numeric.expresso.impl.polynomial :as poly]
             [numeric.expresso.construct :as constr])) 
-
-
 
 (defmacro ex
   "constructs an expression from the given s-exp. variables are automatically
@@ -28,23 +28,100 @@
 
 (defmacro ex'
   "like ex but constructs the expressions with explicit quoting needed, so
-   (let [x 3] (ex' (+ 3 x))) :=> (clojure.core/+ 3 3)
+   (let [x 3] (ex' (+ 3 x))) :=> (+ 3 3)
    supports an optional vector of symbols as first argument, which are implicitly
    quoted in the expression:
-   (let [x 3] (ex' [x] (+ 3 x))) :=> (clojure.core/+ 3 x)"
+   (let [x 3] (ex' [x] (+ 3 x))) :=> (+ 3 x)"
   ([expr] (constr/ex'* expr))
   ([symbv expr] (apply constr/ex'* [symbv expr])))
 
+(defn expression?
+  "tests whether the input is a compound expression.
+   Examples: (expression? (ex (+ 1 2))) ;=> true
+             (expression? '(+ 1 2)) ;=> true
+             (expression? [+ 1 2]) ;=> false"
+  [expr]
+  (-> expr
+      constr/to-expression
+      protocols/expr-op
+      boolean))
 
+(defn constant?
+  "tests whether the input is a constant. The negation of expression?.
+   Examples: (constant? 5) ;=> true
+             (constant? [+ 1 2]) ;=> true
+             (constant? '(+ 1 2)) ;=> false"
+  [expr]
+  (not (expression? expr)))
+             
+
+(defn properties
+  "returns the set of properties which the given expression contains
+   Example: (properties (expresso-symbol 'x :properties #{:positive}))
+             => #{:positive})"
+  [expr]
+  (protocols/properties expr))
+
+(defn vars
+  "returns the set of variables in the given expression
+   Example: (vars (ex (* x y x))) ;=> #{x y}"
+  [expr]
+  (protocols/vars expr))
+
+(defn shape
+  "returns the shape of the given expression. Can also return an lvar or an
+   expression indicating that the shape couldn't fully be inferred.
+   Example: (shape (ex (+ 1 2))) ;=> [], (shape (matrix-symbol 'x)) ;=> lvar..."
+  [expr]
+  (protocols/shape expr))
+
+(defn expresso-symbol
+  "annotates the given symbol with the information of its shape, type and
+   properties. Types are defined in numeric.expresso.types.
+   Example: (expresso-symbol 'x) ;=> x,
+            (expresso-symbol 'x :properties #{:positive})
+   ;=> 'x and (properties x) :=> #{:positive}"
+  [symb & {:keys [shape type properties]
+           :or {shape (logic/lvar 'shape)
+                type types/number
+                properties #{}}}]
+  (constr/expresso-symb symb :shape shape :type type :properties properties))
+
+(defn matrix-symbol
+  "annotates the symbol so that it represents a matrix in expresso. Also accepts
+   shape and properties keyword arguments
+   Example: (matrix-symbol 'x :shape [2 2]) => 'x"
+  [symb &{:keys [shape properties]
+          :or {shape (logic/lvar 'shape)
+               properties #{}}}]
+  (constr/matrix-symb symb :shape shape :properties properties))
+
+(defn zero-matrix
+  "creates a symbol (or annotates the given symbol) to represent a zero-matrix
+   Example: (properties (zero-matrix)) ;=> #{:mzero}"
+  [& {:keys [shape symb properties]
+      :or {shape (logic/lvar 'shape)
+           symb (gensym "zeromat")
+           properties #{:mzero}}}]
+  (constr/zero-matrix :symb symb :shape shape :properties properties))
+
+(defn identity-matrix
+  "creates a symbol (or annotates the given symbol) to represent an
+   identity-matrix. Example: (properties (identity-matrix)) ;=> #{:midentity}"
+  [& {:keys [shape symb properties]
+      :or {shape (logic/lvar 'shape)
+           symb (gensym "identitymat")
+           properties #{:midentity}}}]
+  (constr/identity-matrix :shape shape :symb symb :properties properties))
 
 (defn parse-expression
   "parses the expression from the given string supports = + - * / ** with the
    normal precedence. Also supports arbitrary functions in the input.
    Unnests operators where possible.
    examples:
-   (parse-expression \"1+2+3\") :=> (clojure.core/+ 1 2 3)
+   (parse-expression \"1+2+3\") :=> (+ 1 2 3)
    (parse-expression \"1+2*3**4+5\")
-     :=> (clojure.core/+ 1 (clojure.core/* 2 (numeric.expresso.core/** 3 4)) 5)
+     :=> (+ 1 (* 2 (** 3 4)) 5)
    (parse-expression \"sin(x)**2 + cos(x)**2 = 1\")
      :=> (= (+ (** (sin x) 2) (** (cos x) 2)) 1)"
    [s]
@@ -170,7 +247,7 @@
    ;=> (* 36 (** x 2))"
   [symbv expr]
   (let [expr (->> expr constr/to-expression)]
-    (reduce #(simp/differentiate %2 %1) expr symbv)))
+    (reduce #(calc/differentiate %2 %1) expr symbv)))
 
 (defmacro compile-expr
   "compiles the given expression to a clojure function which can be called
@@ -204,3 +281,4 @@
   (-> expr
        constr/to-expression
        (opt/optimize optimizations)))
+

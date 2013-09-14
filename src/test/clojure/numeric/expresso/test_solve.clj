@@ -1,17 +1,9 @@
 (ns numeric.expresso.test-solve
   (:use numeric.expresso.solve)
   (:use clojure.test)
-  (:use numeric.expresso.rules)
   (:use numeric.expresso.construct)
   (:refer-clojure :exclude [==])
-  (:use [clojure.core.logic.protocols]
-        [clojure.core.logic :exclude [is log] :as l]
-        clojure.test)
-  (:require [numeric.expresso.construct :as c])
-  (:require [clojure.core.matrix :as matrix])
-  (:require [clojure.core.matrix.operators :as mop])
-  (:require [clojure.core.logic.fd :as fd])
-  (:require [clojure.core.logic.unifier :as u]))
+  (:use [clojure.core.logic :exclude [is log] :as l]))
 
 
 
@@ -41,8 +33,8 @@
           'z [2 4 6]
           'x [1 2 3]}}
          (solve-system '[y z x]
-                       #{(ex (= z (mop/* 2 x)))
-                         (ex (= y (mop/+ x z)))
+                       #{(ex (= z (* 2 x)))
+                         (ex (= y (+ x z)))
                          (ex (== x [1 2 3]))})))
   (is (= #{{'x 2}} (solve-system '[x] #{(ex (= (+ x y) 3))
 				     (ex (= y 1))})))
@@ -121,5 +113,3 @@
                           (* 2 (log x)))))))
   (is (= #{16.168643024342963 -10.168643024342964}
          (solve 'x (ex (= (log (- (** x 2) (* 6 x) 16)) 5))))))
-
-  

@@ -1,26 +1,17 @@
 (ns numeric.expresso.solve
   (:refer-clojure :exclude [==])
-  (:use [clojure.core.logic.protocols]
-        [clojure.core.logic :exclude [is log] :as l]
-        [numeric.expresso.construct]
+  (:use [numeric.expresso.construct]
         [numeric.expresso.impl.polynomial]
-        [numeric.expresso.properties :as props]
         [numeric.expresso.protocols]
+        [numeric.expresso.properties]
         [numeric.expresso.impl.pimplementation]
         [numeric.expresso.rules]
-        [numeric.expresso.simplify]
-         [numeric.expresso.examples]
-        [clojure.test])
-  (:require [clojure.core.logic.fd :as fd]
-            [clojure.walk :as walk]
-            [clojure.core.logic.unifier :as u]
+        [numeric.expresso.simplify])
+  (:require [clojure.walk :as walk]
             [numeric.expresso.utils :as utils]
             [clojure.set :as set]
             [numeric.expresso.impl.symbolic :as symb]
-            [numeric.expresso.solve :as s]
             [clojure.core.matrix :as matrix]
-            [clojure.core.matrix.operators :as mop]
-            [numeric.expresso.impl.matcher :as m]
             [numeric.expresso.construct :as c]))
 
 (declare contains-expr? positions-of-x surrounded-by check-solution)

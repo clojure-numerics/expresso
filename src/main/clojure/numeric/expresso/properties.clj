@@ -1,21 +1,13 @@
 (ns numeric.expresso.properties
   (:refer-clojure :exclude [==])
-  (:use [clojure.core.logic.protocols]
-        [clojure.core.logic :exclude [is] :as l]
-        [clojure.test])
-  (:require [numeric.expresso.protocols :as protocols])
-  (:require [numeric.expresso.impl.pimplementation :as impl])
+  (:use [clojure.core.logic])
   (:import [numeric.expresso.impl.pimplementation
             Expression])
-  (:require [clojure.core.logic.fd :as fd]
-            [clojure.walk :as walk]
-            [clojure.core.logic.unifier :as u]
-            [clojure.core.matrix.operators :as mop]
+  (:require [clojure.walk :as walk]
             [clojure.core.matrix :as mat]
-            [clojure.set :as set]
             [numeric.expresso.types :as types]
-            [numeric.expresso.utils :as utils]
-            [numeric.expresso.impl.matcher :as match]))
+            [numeric.expresso.impl.matcher :as match]
+            [numeric.expresso.protocols :as protocols]))
 
 (declare evaluate-sum emit-sum emit-arithmetic)
 

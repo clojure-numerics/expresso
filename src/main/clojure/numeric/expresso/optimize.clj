@@ -1,23 +1,15 @@
 (ns numeric.expresso.optimize
   (:refer-clojure :exclude [==])
-  (:use [clojure.core.logic.protocols]
-        [clojure.core.logic :exclude [is] :as l]
-        [numeric.expresso.construct]
+  (:use [numeric.expresso.construct]
+        [clojure.core.logic]
         [numeric.expresso.properties :as props]
         [numeric.expresso.protocols]
-        [numeric.expresso.rules]
-        [clojure.test])
-  (:require [clojure.core.logic.fd :as fd]
-            [clojure.walk :as walk]
-            [clojure.core.logic.unifier :as u]
+        [numeric.expresso.rules])
+  (:require [clojure.walk :as walk]
             [numeric.expresso.utils :as utils]
-            [numeric.expresso.solve :as s]
-            [clojure.core.matrix :as matrix]
             [clojure.core.memoize :as memo]
-            [clojure.core.matrix.operators :as mop]
             [numeric.expresso.impl.matcher :as m]
-            [numeric.expresso.simplify :as simp]
-            [numeric.expresso.construct :as c]))
+            [numeric.expresso.simplify :as simp]))
 
 ;;This namespace provides the expresso optimizer. It strives to be very
 ;;extensible by relying on rule based translation and being datadriven by

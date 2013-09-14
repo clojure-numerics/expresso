@@ -1,16 +1,10 @@
 (ns numeric.expresso.parse
   (:refer-clojure :exclude [==])
-  (:use [clojure.core.logic.protocols]
-        [clojure.core.logic :exclude [is] :as l]
-        [numeric.expresso.properties]
-        [numeric.expresso.rules]
-        [numeric.expresso.construct]
-        [clojure.test])
-  (:require [clojure.core.logic.fd :as fd]
-            [clojure.walk :as walk]
+  (:use [numeric.expresso.rules]
+        [numeric.expresso.construct])
+  (:require [clojure.walk :as walk]
             [instaparse.core :as insta]
             [numeric.expresso.protocols :as protocols]
-            [clojure.core.logic.unifier :as u]
             [numeric.expresso.utils :as utils]))
 
 

@@ -1,8 +1,6 @@
 (ns numeric.expresso.constructing-functions
   (:refer-clojure :exclude [== + - * /])
-  (:use [clojure.core.logic.protocols]
-        [clojure.core.logic :exclude [is log] :as l]
-        [numeric.expresso.construct]
+  (:use [numeric.expresso.construct]
         [clojure.test]))
 
  

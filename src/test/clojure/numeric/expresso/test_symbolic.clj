@@ -2,15 +2,8 @@
   (:refer-clojure :exclude [])
   (:use [clojure.core.logic.protocols]
         [numeric.expresso.impl.symbolic]
-        [numeric.expresso.impl.matcher]
-        [numeric.expresso.protocols]
-        clojure.test)
-  (:require [clojure.core.logic.fd :as fd]
-            [clojure.walk :as walk]
-            [clojure.core.matrix.operators :as matop]
-            [numeric.expresso.utils :as utils]
-            [clojure.core.matrix :as mat]
-            [numeric.expresso.construct :as c]))
+        [clojure.test])
+  (:require [clojure.core.matrix :as mat]))
 
 (def test2 (mat/matrix [[0 1 2 3 4 5]
                         [0 1 2 3 4 5]

@@ -1,12 +1,9 @@
 (ns numeric.expresso.rules
   (:refer-clojure :exclude [==])
-  (:use [clojure.core.logic.protocols]
-        [clojure.core.logic :exclude [is]]
+  (:use [clojure.core.logic]
         [numeric.expresso.impl.matcher]
-        [numeric.expresso.protocols]
-        clojure.test)
-  (:require [clojure.core.logic.fd :as fd]
-            [numeric.expresso.properties :as props]
+        [numeric.expresso.protocols])
+  (:require [numeric.expresso.properties :as props]
             [clojure.walk :as walk]
             [clojure.core.memoize :as memo]
             [numeric.expresso.utils :as utils]
