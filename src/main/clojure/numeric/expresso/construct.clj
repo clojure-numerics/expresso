@@ -406,17 +406,16 @@
 ;;the ex' macro replaces in its body all function position operators with
 ;;calls to ce. The operators are fully namespace-qualified when calling ce.
 ;;It does not automatically quote a symbol in the expr
-(defn- create-expression-with-values
-  "creates the code for expression construction with explicit quoting if not
-   in s"
+(declare resolve-op)
+
+(defn- create-expression-with-explicit-quoting
   [s expr]
-  (if (and (sequential? expr) (symbol? (first expr)) (not= 'quote (first expr)))
-    (if (= (first expr) 'clojure.core/unquote)
+  (if (and (seq? expr) (symbol? (first expr)) (not= (first expr) 'quote))
+    (if (= 'clojure.core/unquote (first expr))
       (second expr)
-      (let [f (first expr)
-            symb (if-let [r (resolve f)] (var-to-symbol r) f)]
-        (list* `ce  (list 'quote symb) (rest expr))))
-    expr))
+      (list* `ce (list 'quote (resolve-op (first expr)))
+             (map #(create-expression-with-explicit-quoting s %) (rest expr))))
+    (if (s expr) (list 'quote expr) expr)))
 
 (defn ex'*
   "function version of ex'"
@@ -424,9 +423,8 @@
   (let [[s expr]
         (if (= (count expr) 1)
           [#{} (first expr)]
-          [(into #{} (first expr)) (second expr)])
-        expr (walk/postwalk #(if (s %) (list 'quote %) %) expr)]
-    (walk/prewalk #(create-expression-with-values s %) expr)))
+          [(into #{} (first expr)) (second expr)])]
+    (create-expression-with-explicit-quoting s expr)))
 
 (defmacro ex'
   "creates an expression with explicit quoting."
@@ -442,14 +440,15 @@
   [op]
   (if-let [r (resolve op)] (var-to-symbol r) op))
 
+
 (defn- create-expression-with-implicit-quoting
   "creates an expression with implicit quoting"
   [expr]
-  (if (and (sequential? expr) (symbol? (first expr)))
+  (if (and (seq? expr) (symbol? (first expr)))
     (if (= 'clojure.core/unquote (first expr))
       (second expr)
       (list* `ce (list 'quote (resolve-op (first expr)))
-            (map create-expression-with-implicit-quoting (rest expr))))
+             (map create-expression-with-implicit-quoting (rest expr))))
     (list 'quote expr)))
 
 (defn ex*
