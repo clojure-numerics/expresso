@@ -23,8 +23,8 @@
      <exp-term> = func-term | expon
      expon = exp-term <'**'> term
      <func-term> = term 
-     func = symbol <'('> args <')'> <' '>*
-     args = expr | expr <','> args
+     func = (symbol <'('> args <')'> <' '>*) | (symbol <'('> <' '>* <')'> <' '>*)
+     args = expr | expr <','> args 
      <term> = literal | <' '>* literal <' '>* | <'('>  expr <')'> 
      <literal> = number | symbol | vec | func
      vec = <'['> expr* <']'>
@@ -70,7 +70,8 @@
          :args (fn [& r]
                  (if (= (count r) 1)
                            r (conj (second r) (first r))))
-         :func (fn [symb args]
-                 (cev symb args))
+         :func (fn [symb & rest]
+                 (if (seq rest)
+                   (cev symb (first rest)) (cev symb [])))
          })
        transform-if-successful))

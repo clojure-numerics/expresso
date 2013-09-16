@@ -160,7 +160,7 @@
    simplified/original-expression after the invokation of simplify.
    example: (simplify (ex (+ (* a b) (* a c) 5 -5))) => (* a (+ b c))
             (simplify (ex (+ (* a b) (* a c) 5 -5)) :ratio 0.5) => nil"
-  [expr & {:keys [ratio simplify-rules] :or {ratio nil}}]
+  [expr & {:keys [ratio] :or {ratio nil}}]
   (-> expr
        constr/to-expression
        simp/simp-expr
@@ -191,9 +191,10 @@
    Example: (to-polynomial-normal-form 'x (ex (* (+ x a 1) (* x (+ 1 a)))))
    :=> (+ (* (+ 1 (* 2 a) (** a 2)) x) (* (+ 1 a) (** x 2)))"
   [v expr]
-  (->> expr
-       constr/to-expression
-       (poly/poly-in v)))
+  (some->> expr
+           constr/to-expression
+           (poly/poly-in v)
+           (rules/transform-expression simp/universal-rules)))
 
 (defn rearrange
   "if the equation contains only one occurrence of v it will be rearranged so

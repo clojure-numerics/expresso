@@ -103,6 +103,16 @@
           [(ce `= v (ex' (/ (+ (- b) (sqrt (- (** b 2) (* 4 a c)))) (* 2 a))))
            (ce `= v (ex' (/ (- (- b) (sqrt (- (** b 2) (* 4 a c)))) (* 2 a))))])))
 
+(defn- try-factorise [x poly]
+  (let [first-not-null
+        (loop [i 0] (if (and (<= i (degree poly))
+                             (utils/num= (coef poly i) 0))
+                      (recur (inc i)) i))
+        common-factor (poly-in 'x (ex (** ~x ~first-not-null)))
+        [quot rem] (poly-division poly common-factor)]
+    (when (utils/num= 0 rem)
+      (solve-factors x [common-factor quot]))))
+
 ;;if the lhs of polyeq (rhs=0 here) can be transformed to a polynomial
 ;;solve the resulting polynomial depending on the degree of the polynomial
 ;;also fries to factor a polynomial by guessing with ratio-root test
@@ -120,9 +130,10 @@
          (or (= deg 0) (= deg 1)) (solve-by-simplification-rules
                                    x (ce '= (to-expression (to-sexp poly)) 0))
          (= deg 2) (solve-quadratic x poly)
-         :else (let [factors (ratio-root poly)]
-                 (and (every? #(<= (degree %) 2) factors)
-                      (solve-factors x factors))))))))
+         :else (or (let [factors (ratio-root poly)]
+                     (and (every? #(<= (degree %) 2) factors)
+                          (solve-factors x factors)))
+                   (try-factorise x poly)))))))
 
 (defn- simplify-eq [eq] (ce `= (simp-expr (nth eq 1))  (nth eq 2)))
 
@@ -144,7 +155,7 @@
        (check-if-can-be-rearranged v)
        (rearrange v)
        (map simplify-rhs)))
-       
+      
 ;;the expresso solve is extensible - the actual solving mechanism are nothing
 ;;but rules which get applied for solving. Here the rules pattern is a vector
 ;;of [variable expression] 
@@ -268,13 +279,20 @@
         (some expr-op sols) (mapv simp-expr sols)
         :else sols))
 
-(defn- add-needed-vars [vs eqs]
+(defn- add-needed-vars* [vs eqs]
   (let [eqv (map (fn [a] [a (vars a)]) eqs)
         needed-vars (filter identity
                             (map (fn [a]
                                    (if (some vs (second a))
                                      (set/difference (second a) vs))) eqv))]
     (into #{} (concat vs (apply set/union needed-vars)))))
+
+(defn- add-needed-vars [vs eqs]
+  (loop [vs vs]
+    (let [nvs (add-needed-vars* vs eqs)]
+      (if (= nvs vs)
+        nvs
+        (recur nvs)))))
 
 (defn- to-map [vars v]
   (if (empty? v)

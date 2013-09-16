@@ -28,14 +28,14 @@
          (solve-system '[y]
                        #{(ex (= z (* 2 x)))
                          (ex (= y (+ x z)))
-                         (ex (== x [1 2 3]))})))
+                         (ex (= x [1 2 3]))})))
   (is (= #{{'y [3 6 9]
           'z [2 4 6]
           'x [1 2 3]}}
          (solve-system '[y z x]
                        #{(ex (= z (* 2 x)))
                          (ex (= y (+ x z)))
-                         (ex (== x [1 2 3]))})))
+                         (ex (= x [1 2 3]))})))
   (is (= #{{'x 2}} (solve-system '[x] #{(ex (= (+ x y) 3))
 				     (ex (= y 1))})))
   (is (= #{{'x 1}} (solve-system '[x] #{(ex (= (+ x y) 3))

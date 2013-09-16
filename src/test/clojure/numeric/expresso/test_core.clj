@@ -114,7 +114,7 @@
 
 
 (deftest test-transform-to-polynomial-normal-form
-  (is (= (ex (+ (** x 3)))
+  (is (= (ex (** x 3))
          (to-polynomial-normal-form 'x (ex (+ (** x 3) (* 3 (** x 2))
                                               (- (* 2 (** x 2))
                                                  (* 5 (** x 2))))) )))
@@ -165,7 +165,12 @@
   (is (= #{17}
          (solve 'x (ex (= (sqrt (- x 8)) 3)))))
   (is (= #{-2 3}
-         (solve 'x (ex (= (abs (- (* 2 x) 1)) 5))))))
+         (solve 'x (ex (= (abs (- (* 2 x) 1)) 5)))))
+  (is (= '#{{remaining2 (+ -15N (* 3/5 _0))}}
+         (solve '[remaining2]
+                (ex (= original b))
+                (ex (= remaining1 (- original (/ original 4))))
+                (ex (= remaining2 (- remaining1 (+ (/ remaining1 5) 15))))))))
 
 (deftest test-differentiate
   (is (= (ex (* 2 x)) (differentiate '[x] (ex (** x 2)))))
