@@ -6,7 +6,14 @@ A clojure library for symbolic manipulation of Algebraic Expressions.
 
 [![Build Status](https://travis-ci.org/clojure-numerics/expresso.png?branch=master)](https://travis-ci.org/clojure-numerics/expresso)
 
-
+```clojure
+(solve 'blue
+  (ex (= pencils (+ green white blue red)))
+  (ex (= (/ pencils 10) green))
+  (ex (= (/ pencils 2) white))
+  (ex (= (/ pencils 4) blue))
+  (ex (= red 45))) ;=> #{{blue 75N}}
+```
 ### Objectives
 
 expresso aims to be a general library for manipulating mathematical expressions.

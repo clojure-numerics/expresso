@@ -359,8 +359,10 @@
                                   (first equation-containing-v)
                                   os)
            sol (solve v equation-without-deps)]
-       (for [s sol]
-         (assoc os v s)))) other-sols))
+       (if (= sol '_0)
+         [os]
+         (for [s sol]
+           (assoc os v s))))) other-sols))
 
 ;;solves the general-system via substitution for a variable v.
 ;;first, the equation which contains v is searched for in the set.
@@ -380,7 +382,8 @@
        (let [eqv (map (fn [a] [a (vars a)]) eqs)
              equation-containing-v (some (fn [a]
                                            (if (contains? (second a) v)
-                                             a nil)) eqv)]
+                                             a nil)) eqv)
+             _ (prn "equation-containing-v " equation-containing-v)]
          (if equation-containing-v
            (let [depends-on (not-in-existing-sols
                              (first existing-sols)
@@ -424,6 +427,10 @@
 ;;solutions in the solution maps. For example if #{{'x 'y 'y 1}} is the solution
 ;;remove dependency will remove the dependency on 'y on the solution of 'x and
 ;;return #{{'x 1 'y 1}}
+
+;;TODO it currently fails on some solvable systems because it doesn't check
+;;whether it has searched for the system before and doesn't inline equations
+;;which don't introduce new symbols to the equation
 (defn solve-general-system
   "solves the system of equations for the symbols in symbv by general
    substitution"
