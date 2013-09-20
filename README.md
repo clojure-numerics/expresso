@@ -35,9 +35,9 @@ This are the key objectives:
 
 Add the following line to your leiningen dependencies:
 ```clojure
-[expresso "0.1.0"]
+[expresso "0.2.0"]
 ```
-
+For an in-depth tutorial and showcase of expresso, see the [expresso tutorial](https://github.com/mschuene/expresso-tutorial)
 ### Defining expressions
 
 expressos expressions are just normal clojure s-expressions. Expresso has various convenience functions/macros
@@ -107,4 +107,5 @@ core.logic. Here are a few example rules
 ```
 
 ### Status 
-This library is in a 'very' early state. Don't expect it to be stable yet. Any bug-reports/feature recommendations are very welcome
+This library is ready to use, but still in an early state so you might find some
+bugs. Any bug reports/feature recommendations are very welcome.
