@@ -16,3 +16,6 @@
 (deftest test-parse-function
   (is (= (ex (abs x)) (parse-expression "abs(x)"))))
 
+(deftest test-literal-symbols
+  (is (= 'inner-product (parse-expression "`inner-product`")))
+  (is (= (ex (inner-product a)) (parse-expression "`inner-product`(a)"))))

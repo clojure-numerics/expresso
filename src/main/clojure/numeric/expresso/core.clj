@@ -1,5 +1,5 @@
 (ns numeric.expresso.core
-  (:refer-clojure :exclude [==])
+  (:refer-clojure)
   (:require [clojure.core.logic :as logic]
             [numeric.expresso.solve :as solve]
             [numeric.expresso.simplify :as simp]

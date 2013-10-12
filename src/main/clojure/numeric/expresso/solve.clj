@@ -382,8 +382,7 @@
        (let [eqv (map (fn [a] [a (vars a)]) eqs)
              equation-containing-v (some (fn [a]
                                            (if (contains? (second a) v)
-                                             a nil)) eqv)
-             _ (prn "equation-containing-v " equation-containing-v)]
+                                             a nil)) eqv)]
          (if equation-containing-v
            (let [depends-on (not-in-existing-sols
                              (first existing-sols)
