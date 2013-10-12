@@ -77,7 +77,7 @@
 
 (defn expresso-symbol
   "annotates the given symbol with the information of its shape, type and
-   properties. Types are defined in numeric.expresso.types.
+   properties. Types are defined in numeric.expresso.types. 
    Example: (expresso-symbol 'x) ;=> x,
             (expresso-symbol 'x :properties #{:positive})
    ;=> 'x and (properties x) :=> #{:positive}"
@@ -117,13 +117,14 @@
 (defn parse-expression
   "parses the expression from the given string supports = + - * / ** with the
    normal precedence. Also supports arbitrary functions in the input.
-   Unnests operators where possible.
+   Unnests operators where possible. You can escape symbols with `
    examples:
    (parse-expression \"1+2+3\") :=> (+ 1 2 3)
    (parse-expression \"1+2*3**4+5\")
      :=> (+ 1 (* 2 (** 3 4)) 5)
    (parse-expression \"sin(x)**2 + cos(x)**2 = 1\")
-     :=> (= (+ (** (sin x) 2) (** (cos x) 2)) 1)"
+     :=> (= (+ (** (sin x) 2) (** (cos x) 2)) 1)
+   (parse-expression \"`inner-product`(a)\" :=> (inner-product a)"
    [s]
    (parse/parse-expression s))
    
