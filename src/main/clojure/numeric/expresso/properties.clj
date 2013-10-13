@@ -1,6 +1,7 @@
 (ns numeric.expresso.properties
   (:refer-clojure :exclude [==])
   (:use [clojure.core.logic])
+  (:require [numeric.expresso.impl.pimplementation])
   (:import [numeric.expresso.impl.pimplementation
             Expression])
   (:require [clojure.walk :as walk]
