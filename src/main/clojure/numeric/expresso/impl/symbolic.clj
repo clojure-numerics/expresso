@@ -154,8 +154,8 @@
 
 (defn pivot-index [row]
   (loop [i 0]
-    (if (< i (count row))
-      (if (== (nth row i) 0) (recur (inc i)) i))))
+    (if (< i (mat/ecount row))
+      (if (== (mat/mget row i) 0) (recur (inc i)) i))))
 
 (defn sort-rows [m]
   (let [rows (mat/rows m)]
