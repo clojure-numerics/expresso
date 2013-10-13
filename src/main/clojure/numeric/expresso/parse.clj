@@ -23,12 +23,15 @@
      <exp-term> = func-term | expon
      expon = exp-term <'**'> term
      <func-term> = term 
-     func = symbol <'('> args <')'> <' '>*
-     args = expr | expr <','> args
+     func = (symbol <'('> args <')'> <' '>*) | (symbol <'('> <' '>* <')'> <' '>*)
+     args = expr | expr <','> args 
      <term> = literal | <' '>* literal <' '>* | <'('>  expr <')'> 
      <literal> = number | symbol | vec | func
      vec = <'['> expr* <']'>
-     symbol = #'[a-zA-Z]'+
+     symbol = math-symbol | lit-symbol
+     math-symbol = #'[a-zA-Z]' #'[a-zA-Z0-9]'*
+     lit-symbol = <'`'> <' '>* clojure-symbol <'`'>*
+     clojure-symbol = #'[a-zA-Z.*+!_?$&=/-]' #'[a-zA-Z.*+!_?$&=0-9:#/-]'*
      number = floating-point-number | int 
      <floating-point-number> = int  | (int frac) | (int exp) |
                                (int frac exp) | (floating-point-number 'M')
@@ -66,11 +69,15 @@
          :eq  (partial ce '=)
          :expr identity
          :vec vector
-         :symbol (fn [& r] (symbol (apply str r)))
+         :symbol identity
+         :math-symbol (fn [& r] (symbol (apply str r)))
+         :clojure-symbol (fn [& r] (symbol (apply str r)))
+         :lit-symbol identity
          :args (fn [& r]
                  (if (= (count r) 1)
                            r (conj (second r) (first r))))
-         :func (fn [symb args]
-                 (cev symb args))
+         :func (fn [symb & rest]
+                 (if (seq rest)
+                   (cev symb (first rest)) (cev symb [])))
          })
        transform-if-successful))

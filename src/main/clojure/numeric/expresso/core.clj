@@ -1,5 +1,5 @@
 (ns numeric.expresso.core
-  (:refer-clojure :exclude [==])
+  (:refer-clojure)
   (:require [clojure.core.logic :as logic]
             [numeric.expresso.solve :as solve]
             [numeric.expresso.simplify :as simp]
@@ -77,7 +77,7 @@
 
 (defn expresso-symbol
   "annotates the given symbol with the information of its shape, type and
-   properties. Types are defined in numeric.expresso.types.
+   properties. Types are defined in numeric.expresso.types. 
    Example: (expresso-symbol 'x) ;=> x,
             (expresso-symbol 'x :properties #{:positive})
    ;=> 'x and (properties x) :=> #{:positive}"
@@ -117,13 +117,14 @@
 (defn parse-expression
   "parses the expression from the given string supports = + - * / ** with the
    normal precedence. Also supports arbitrary functions in the input.
-   Unnests operators where possible.
+   Unnests operators where possible. You can escape symbols with `
    examples:
    (parse-expression \"1+2+3\") :=> (+ 1 2 3)
    (parse-expression \"1+2*3**4+5\")
      :=> (+ 1 (* 2 (** 3 4)) 5)
    (parse-expression \"sin(x)**2 + cos(x)**2 = 1\")
-     :=> (= (+ (** (sin x) 2) (** (cos x) 2)) 1)"
+     :=> (= (+ (** (sin x) 2) (** (cos x) 2)) 1)
+   (parse-expression \"`inner-product`(a)\" :=> (inner-product a)"
    [s]
    (parse/parse-expression s))
    
@@ -160,7 +161,7 @@
    simplified/original-expression after the invokation of simplify.
    example: (simplify (ex (+ (* a b) (* a c) 5 -5))) => (* a (+ b c))
             (simplify (ex (+ (* a b) (* a c) 5 -5)) :ratio 0.5) => nil"
-  [expr & {:keys [ratio simplify-rules] :or {ratio nil}}]
+  [expr & {:keys [ratio] :or {ratio nil}}]
   (-> expr
        constr/to-expression
        simp/simp-expr
@@ -191,9 +192,10 @@
    Example: (to-polynomial-normal-form 'x (ex (* (+ x a 1) (* x (+ 1 a)))))
    :=> (+ (* (+ 1 (* 2 a) (** a 2)) x) (* (+ 1 a) (** x 2)))"
   [v expr]
-  (->> expr
-       constr/to-expression
-       (poly/poly-in v)))
+  (some->> expr
+           constr/to-expression
+           (poly/poly-in v)
+           (rules/transform-expression simp/universal-rules)))
 
 (defn rearrange
   "if the equation contains only one occurrence of v it will be rearranged so

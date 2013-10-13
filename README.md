@@ -6,7 +6,14 @@ A clojure library for symbolic manipulation of Algebraic Expressions.
 
 [![Build Status](https://travis-ci.org/clojure-numerics/expresso.png?branch=master)](https://travis-ci.org/clojure-numerics/expresso)
 
-
+```clojure
+(solve 'blue
+  (ex (= pencils (+ green white blue red)))
+  (ex (= (/ pencils 10) green))
+  (ex (= (/ pencils 2) white))
+  (ex (= (/ pencils 4) blue))
+  (ex (= red 45))) ;=> #{{blue 75N}}
+```
 ### Objectives
 
 expresso aims to be a general library for manipulating mathematical expressions.
@@ -28,9 +35,9 @@ This are the key objectives:
 
 Add the following line to your leiningen dependencies:
 ```clojure
-[expresso "0.1.0"]
+[expresso "0.2.0"]
 ```
-
+For an in-depth tutorial and showcase of expresso, see the [expresso tutorial](https://github.com/mschuene/expresso-tutorial)
 ### Defining expressions
 
 expressos expressions are just normal clojure s-expressions. Expresso has various convenience functions/macros
@@ -100,4 +107,5 @@ core.logic. Here are a few example rules
 ```
 
 ### Status 
-This library is in a 'very' early state. Don't expect it to be stable yet. Any bug-reports/feature recommendations are very welcome
+This library is ready to use, but still in an early state so you might find some
+bugs. Any bug reports/feature recommendations are very welcome.

@@ -45,8 +45,8 @@
 (defmethod props 'add [_] {:exec-func mat/add
                            :properties #{:associative :commutative}})
 (defmethod props 'sub [_] {:exec-func mat/sub})
-(defmethod props 'inner-product [_] {:exec-func mat/inner-product})
-(defmethod props 'scale [_] {:exec-func mat/scale :properties #{:associative}})
+(defmethod props 'inner-product [_] {:exec-func mat/inner-product :properties #{:associative}})
+(defmethod props 'scale [_] {:exec-func mat/scale })
 (defmethod props 'mul [_] {:exec-func mat/mul})
 (defmethod props 'add-product [_] {:exec-func mat/add-product})
 (defmethod props 'add-scaled [_] {:exec-func mat/add-scaled})

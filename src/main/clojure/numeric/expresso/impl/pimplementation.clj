@@ -225,7 +225,8 @@
         (let [shape (shape this)]
           (if (not (or (lvar? shape) (expr-op shape)))
             (cond
-             (props :midentity) (if (= [] shape) 1 (mat/identity-matrix shape))
+             (props :midentity) (if (= [] shape) 1 (mat/identity-matrix
+                                                    (first shape)))
              (props :mzero) (mat/new-array shape))
             this))
         this)))
