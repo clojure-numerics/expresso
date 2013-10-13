@@ -6,9 +6,9 @@
   :profiles {:dev {:dependencies [[org.clojure/tools.trace "0.7.6"]
                                   [criterium "0.4.2"]]}}
   :dependencies [[org.clojure/clojure "1.5.1"]
-                 [instaparse "1.2.2"]
+                 [instaparse "1.2.3"]
                  [org.clojure/core.memoize "0.5.6"]
-                 [net.mikera/core.matrix "0.10.0"]
+                 [net.mikera/core.matrix "0.11.0"]
                  [org.clojure/core.logic "0.8.4"]]
   :source-paths ["src" "src/main/clojure"]
   :test-paths ["test" "src/test/clojure"]
