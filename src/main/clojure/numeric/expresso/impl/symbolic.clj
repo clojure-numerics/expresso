@@ -189,7 +189,7 @@
         m (if (< 0 (- cc (mat/row-count m) 1))
             (mat/matrix (concat (mat/rows m)
                                 (repeat (- cc (mat/row-count m) 1)
-                                        (mat/new-array [cc]))))
+                                        (mat/new-vector cc))))
             m)]   
       (loop [row row numbv 0 solv []]
         (if (< row 0)
