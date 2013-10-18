@@ -278,7 +278,7 @@
   (fresh [perm npargs sm cnp neargs to-seq-match]
          (conda
           ((no-seq-matcherso pargs)
-           (permuteo pargs perm)
+           (== pargs perm)
            (== perm eargs))
           ((split-pargso pargs [npargs sm])
            (project [npargs] (== cnp (count npargs)))

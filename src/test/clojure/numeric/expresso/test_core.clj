@@ -176,7 +176,7 @@
   (is (= (ex (* 2 x)) (differentiate '[x] (ex (** x 2)))))
   (is (= 2.0 (differentiate '[x x] (ex (** x 2)))))
   (is (= (ex (* 3 (** x 2))) (differentiate '[x] (ex (** x 3)))))
-  (is (= (ex (* 12.0 (** x 3)))
+  (is (= (ex (* (** x 3) 12.0))
          (differentiate '[x] (ex (* (** x 3) (* 3 x))))))
   (is (= (ex (* 36.0 (** x 2)))
          (differentiate '[x x] (ex (* (** x 3) (* 3 x)))))))
