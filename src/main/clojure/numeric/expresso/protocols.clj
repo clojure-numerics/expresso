@@ -224,6 +224,13 @@
 (defprotocol PTransformExpression
   (transform-expr [expr rules]))
 
+;;To be able to compile patterns, we transform them to constraints (what
+;;they conceptually are
+(defprotocol PToConstraint
+  (to-constraints [pat]))
+
+
+(defmulti emit-constraints (fn [a b] a))
 
 ;;Multimethod used by the default implementation for ISeq of emit-code to emit
 ;;the function for the operator. defaults to the :emit-func key in the operator

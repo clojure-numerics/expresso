@@ -4,12 +4,15 @@
         [numeric.expresso.impl.polynomial]
         [numeric.expresso.protocols]
         [numeric.expresso.properties]
+        [clojure.core.logic]
         [numeric.expresso.impl.pimplementation]
         [numeric.expresso.rules]
         [numeric.expresso.simplify])
   (:require [clojure.walk :as walk]
             [numeric.expresso.utils :as utils]
             [clojure.set :as set]
+            [clojure.core.logic :as l]
+            [numeric.expresso.properties :as props]
             [numeric.expresso.impl.symbolic :as symb]
             [clojure.core.matrix :as matrix]
             [numeric.expresso.construct :as c]))

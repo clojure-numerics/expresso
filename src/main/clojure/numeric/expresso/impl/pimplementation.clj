@@ -594,6 +594,10 @@
   clojure.lang.IPersistentSet 
   (walk-term [v f] (with-meta (set (walk-term (seq v) f)) (meta v))))
 
-
+(extend-protocol PToConstraint
+  Object
+  (to-constraints [a]
+    (emit-constraints :syntactical a)))
 
 ;;TODO protocol evaluable
+
