@@ -11,6 +11,12 @@
             [clojure.set :as set]))
 
 
+(defn get-partial-match [s]
+  (:partial-match (:s s)))
+
+(defn set-partial-match [s pm]
+  (assoc s :s (assoc (get s :s) :partial-match pm)))
+
 (def r
   [(rule (ex (+ ?a ?b)) :=> 0)
    (rule (ex (* ?a ?b)) :=> 0)
@@ -90,3 +96,11 @@
     ;;so strip the metadata here. In future a dedicated
     ;;function should do it so that one doesn't need a reader
     (eval (read-string (str c)))))
+
+
+(defn test-hacko []
+  (fn [a]
+    (let [pm (or (get-partial-match a) {})]
+      (prn "hi, pm ist " pm)
+      (set-partial-match a
+         (assoc pm :succeed-1 "yes")))))
