@@ -35,12 +35,12 @@
   (walk/prewalk replace-?-with-lvar code))
 
 
-(defn- check-guardo
+(defn check-guardo
   "succeeds iff the guard relation succeeds"
   [guard]
   (project [guard] guard))
 
-(defn- apply-transformationo
+(defn apply-transformationo
   "the transformation can either be an expression or a core.logic relation
    of (trans result)"
   [trans n-exp]

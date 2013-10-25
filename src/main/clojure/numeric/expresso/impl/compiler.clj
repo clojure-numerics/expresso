@@ -19,25 +19,26 @@
 
 (def r
   [(rule (ex (+ ?a ?b)) :=> 0)
-   (rule (ex (* ?a ?b)) :=> 0)
-   (rule (ex (+ ?a 0)) :=> 0)
-   (rule (ex (* 0 ?a)) :=> 0)
-   (rule (ex (* 1 ?a)) :=> 1)
-   (rule (ex (* ?a (+ ?b ?c))) :=> 0)])
+   (rule (ex (* ?a ?b)) :=> 1)
+   (rule (ex (+ ?a 0)) :=> 2)
+   (rule (ex (* 0 ?a)) :=> 3)
+   (rule (ex (* 1 ?a)) :=> 4)
+   (rule (ex (* ?a (+ ?b ?c))) :=> 5)])
 
 (def pats (map first
                [(rule (ex (+ ?a ?b)) :=> 0)
-                (rule (ex (* ?a ?b)) :=> 0)
-                (rule (ex (+ ?a 0)) :=> 0)
-                (rule (ex (* 0 ?a)) :=> 0)
-                (rule (ex (* 1 ?a)) :=> 1)
-                (rule (ex (* ?a (+ ?b ?c))) :=> 0)]))
+                (rule (ex (* ?a ?b)) :=> 1)
+                (rule (ex (+ ?a 0)) :=> 2)
+                (rule (ex (* 0 ?a)) :=> 3)
+                (rule (ex (* 1 ?a)) :=> 4)
+                (rule (ex (* ?a (+ ?b ?c))) :=> 5)]))
+                        
 
 (ns-unmap *ns* 'to-decision-tree)
-(defn to-decision-tree [pats]
-  (cev `or (map #(cev `and (concat %1 [%2])) (map to-constraints pats) (range))))
+(defn to-decision-tree [rules]
+  (cev `or (map #(cev `and (concat %1 [['finalize-match %2 %3]]))
+                (map (comp to-constraints first) rules) rules (range))))
   
-
 
 (def dt-rules
   [(rule (ex (and ?&*1 (and ?&*2) ?&*3)) :=> (ex (and ?&*1 ?&*2 ?&*3)))
@@ -47,10 +48,16 @@
    (rule (ex (or ?&*0 (and ?x ?&*1) ?&*4 (and ?x ?&*2) ?&*3))
          :=> (ex (or ?&*0 ~?&*4 (and ~?x (or (and ~?&*1) (and ~?&*2))) ~?&*3)))])
 
+(defn ==patho [lhs rhs path]
+  (fn [a]
+    (when (= lhs rhs)
+      (let [pm (get-partial-match a)]
+        (set-partial-match a (assoc pm path rhs))))))
+
 
 (defmulti compile-pattern #(if (sequential? %) (first %) %))
 (defmethod compile-pattern :default [x]
-   `(== ~'q ~x))
+   `(fn [~'a] (unify ~'a ~'q (assoc (get-partial-match ~'a) :x ~x))))
 
 (defn compile-path [p]
   `[~@p])
@@ -59,7 +66,7 @@
            (and (sequential? ~'s) (first ~'s))) ~(list 'quote eq)))
 
 (defmethod compile-pattern '== [[_ path eq]]
-  `(== (utils/get-in-expression ~'expr ~(compile-path path)) ~eq))
+  `(==patho (utils/get-in-expression ~'expr ~(compile-path path)) ~eq ~(compile-path path)))
 
 (defmethod compile-pattern 'count [[_ path  eq]]
   `(== (let [~'s (utils/get-in-expression ~'expr ~(compile-path path))]
@@ -77,14 +84,31 @@
                  res)) r)]
     `(conde ~@compiled)))
 
+(defn to-constr [lv]
+  `(lvar ~(list 'quote (symbol (:name lv))) false))
 
+(defmethod compile-pattern 'finalize-match [[_ rule i]]
+  (let [[pat trans guard] rule
+        lv-pos (lvar-positions pat)]
+    `(all
+      ~@(concat (map (fn [[lv pos]]
+                       `(== ~(to-constr lv)
+                            (utils/get-in-expression ~'expr ~(compile-path pos))))
+                     lv-pos)
+                [`(check-guardo (nth (nth ~'r ~i) 2))
+                 `(apply-transformationo (second (nth ~'r ~i)) ~'q)]))))
+      
+
+;;IDEA to avoid issues with core.logics lack of environment trimming add the bindings , then do the transformations and then delete! the bindings again from the substitution
 (defn rules-to-code [rules]
   (->> rules
-       walk/macroexpand-all
-       (map first)
-       (#(do (prn %) %))
-       to-decision-tree
-       (transform-expression dt-rules)
+      walk/macroexpand-all
+;       (map first)
+;       (#(do (prn %) %))
+      to-decision-tree
+      (#(do (prn %) %))
+      (transform-expression dt-rules)
+      (#(do (prn %) %))
        compile-pattern))
 
 (defn compile-rules [rules]
@@ -103,4 +127,5 @@
     (let [pm (or (get-partial-match a) {})]
       (prn "hi, pm ist " pm)
       (set-partial-match a
-         (assoc pm :succeed-1 "yes")))))
+                         (assoc pm :succeed-1 "yes")))))
+

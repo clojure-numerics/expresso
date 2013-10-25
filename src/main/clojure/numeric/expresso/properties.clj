@@ -237,3 +237,50 @@
       (if (every? #{[]} (map protocols/shape args))
         (list* op (map protocols/emit-code args))
         (list* exec-func (map protocols/emit-code args))))))
+
+
+(defn emit-syntactical-constraints
+  ([pat] (emit-syntactical-constraints pat []))
+  ([pat pre]
+     (if-let [op (protocols/expr-op pat)]
+       (let [constr [['symbol pre op]
+                     ['count pre (count (protocols/expr-args pat))]]]
+         (concat constr
+                 (apply concat
+                        (for [[arg i] (map (fn [& r] r) (protocols/expr-args pat)
+                                           (range))
+                              :when (not (lvar? arg))]
+                          (if (seq? arg)
+                            (emit-syntactical-constraints
+                             arg (concat pre [i]))
+                            [['== (concat pre [i]) arg]]))))))))
+
+(defn lvar-positions [pat]
+  (if-let [op (protocols/expr-op pat)]
+    (let [args (vec (protocols/expr-args pat))
+          n (count args)]
+      (loop [i 0 pos []]
+        (if (< i n)
+          (cond
+           (lvar? (nth args i)) (recur (inc i) (concat pos [[(nth args i) [i]]]))
+           (protocols/expr-op (nth args i))
+           (recur (inc i)
+                  (concat pos (map (fn [[lv p]] [lv (concat [i] p)])
+                                   (lvar-positions (nth args i)))))
+           :else (recur (inc i) pos))
+          pos)))))
+  
+
+(defn add-lvar-constraints [pat constraints]
+  (let [lvar-pos (lvar-positions pat)]
+    (concat constraints
+            (reduce (fn [l [k v]]
+                      (if (> (count v) 1)
+                        (concat l  [(concat ['eq] (map second v))])
+                        l))
+                    [] (group-by first lvar-pos)))))
+
+(defmethod protocols/emit-constraints :syntactical [_ pat]
+  (add-lvar-constraints pat (emit-syntactical-constraints pat)))
+
+
