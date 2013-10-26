@@ -87,6 +87,16 @@
 (defn to-constr [lv]
   `(lvar ~(list 'quote (symbol (:name lv))) false))
 
+(def ^:dynamic *compile-rules* 1)
+
+(defn get-compile-rules [] *compile-rules*)
+
+(defn apply-chosen-rule [i q]
+  (let [rule (nth r i)]
+    (all
+     (check-guardo (nth rule 2))
+     (apply-transformationo (second rule) q))))
+
 (defmethod compile-pattern 'finalize-match [[_ rule i]]
   (let [[pat trans guard] rule
         lv-pos (lvar-positions pat)]
@@ -95,8 +105,9 @@
                        `(== ~(to-constr lv)
                             (utils/get-in-expression ~'expr ~(compile-path pos))))
                      lv-pos)
-                [`(check-guardo (nth (nth ~'r ~i) 2))
-                 `(apply-transformationo (second (nth ~'r ~i)) ~'q)]))))
+                [`(apply-chosen-rule ~i ~'q )]))))
+                ;[`(check-guardo (nth (nth ~'r ~i) 2))
+                 ;`(apply-transformationo (second (nth ~'r ~i)) ~'q)]))))
       
 
 ;;IDEA to avoid issues with core.logics lack of environment trimming add the bindings , then do the transformations and then delete! the bindings again from the substitution
@@ -106,20 +117,20 @@
 ;       (map first)
 ;       (#(do (prn %) %))
       to-decision-tree
-      (#(do (prn %) %))
+     ; (#(do (prn %) %))
       (transform-expression dt-rules)
-      (#(do (prn %) %))
-       compile-pattern))
+     ; (#(do (prn %) %))
+      compile-pattern))
+
 
 (defn compile-rules [rules]
-  (let [code (rules-to-code rules)
-        c `(fn [~'expr ~'q]
-             ~(rules-to-code rules))
-        _ (prn c)]
+  (let []
     ;;metadata is evil when there are functions in it
     ;;so strip the metadata here. In future a dedicated
     ;;function should do it so that one doesn't need a reader
-    (eval (read-string (str c)))))
+    (binding [*compile-rules* rules]
+              (eval (read-string (str `(fn [~'expr ~'q]
+             ~(rules-to-code rules))))))))
 
 
 (defn test-hacko []
