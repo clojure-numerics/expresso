@@ -27,7 +27,7 @@
 (deftest test-shape
   (is (= '() (shape 1)))
   (is (= [2 2] (shape [[1 2][3 4]])))
-  (is (= '() (shape 'bla))))
+  (is (nil? (shape 'bla))))
 
 
 

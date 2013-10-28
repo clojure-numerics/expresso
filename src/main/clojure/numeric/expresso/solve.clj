@@ -303,8 +303,9 @@
   (map first (filter #(some vs (second %)) (map (fn [x] [x (vars x)]) eqv))))
 
 (defn- check-if-linear [matrix]
-  (when (and (not (empty? matrix)) (not (some (comp not number?)
-                                              (matrix/eseq matrix))))
+  (when (and 
+          (> (matrix/ecount matrix) 0)
+          (matrix/numerical? matrix))             
     matrix))
 
 (defn- check-if-poly [v]

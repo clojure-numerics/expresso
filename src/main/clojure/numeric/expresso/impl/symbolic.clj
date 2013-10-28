@@ -154,8 +154,8 @@
 
 (defn pivot-index [row]
   (loop [i 0]
-    (if (< i (count row))
-      (if (== (nth row i) 0) (recur (inc i)) i))))
+    (if (< i (mat/ecount row))
+      (if (== (mat/mget row i) 0) (recur (inc i)) i))))
 
 (defn sort-rows [m]
   (let [rows (mat/rows m)]
@@ -189,7 +189,7 @@
         m (if (< 0 (- cc (mat/row-count m) 1))
             (mat/matrix (concat (mat/rows m)
                                 (repeat (- cc (mat/row-count m) 1)
-                                        (mat/new-array [cc]))))
+                                        (mat/new-vector cc))))
             m)]   
       (loop [row row numbv 0 solv []]
         (if (< row 0)
