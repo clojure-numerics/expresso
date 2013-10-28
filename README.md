@@ -21,7 +21,7 @@ This are the key objectives:
 
  - Enable mathematical expressions to be encoded
  - Provide a powerful facility for general expression manipulation (aka term rewriting)
- - Provida a range of very useful manipulations, which include
+ - Provide a range of very useful manipulations, which include
    - simplifying mathematical expressions
    - solving a (set of) equations in regard to unknowns
    - differentiating expressions
@@ -40,7 +40,7 @@ Add the following line to your leiningen dependencies:
 For an in-depth tutorial and showcase of expresso, see the [expresso tutorial](https://github.com/mschuene/expresso-tutorial)
 ### Defining expressions
 
-expressos expressions are just normal clojure s-expressions. Expresso has various convenience functions/macros
+expresso's expressions are just normal clojure s-expressions. expresso has various convenience functions/macros
 for creating expressions:
 
 ```clojure
