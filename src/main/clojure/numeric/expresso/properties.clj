@@ -54,7 +54,6 @@
 (defmethod props 'add-scaled-product [_] {:exec-func mat/add-scaled-product})
 (defmethod props 'scale [_] {:exec-func mat/scale})
 (defmethod props 'normalise [_] {:exec-func mat/normalise})
-(defmethod props 'normalise-probabilities  [_] {:exec-func mat/normalise-probabilities})
 (defmethod props 'dot [_] {:exec-func mat/dot})
 (defmethod props 'outer-product [_] {:exec-func mat/outer-product})
 (defmethod props 'cross [_] {:exec-func mat/cross})
