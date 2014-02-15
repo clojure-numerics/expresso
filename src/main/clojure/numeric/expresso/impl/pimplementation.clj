@@ -544,7 +544,8 @@
         (apply (partial set/union cs) (map constraints this)))))
   Expression
   (add-constraint [this constraint]
-    (Expression. (add-constraint-normal (expr-op this)) (expr-args this)))
+    (Expression. (add-constraint-normal (expr-op this) constraint)
+                 (expr-args this)))
   (constraints [this]
     (let [cs (get (meta this) :constraints #{})]
       (apply (partial set/union (set/union cs (constraints (expr-op this))))

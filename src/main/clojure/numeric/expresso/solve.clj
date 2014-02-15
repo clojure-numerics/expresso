@@ -514,7 +514,7 @@
   (unary-rearrange-step 'tan 'atan args rhs))
 
 (defmethod rearrange-step-function 'atan [[op args pos rhs]]
-  (unary-rearrange-step 'atan 'tan args ))
+  (unary-rearrange-step 'atan 'tan args rhs))
 
 (defmethod rearrange-step-function 'exp [[op args pos rhs]]
   (unary-rearrange-step 'exp 'log args rhs))

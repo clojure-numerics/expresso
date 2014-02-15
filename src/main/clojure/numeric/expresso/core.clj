@@ -12,7 +12,7 @@
             [numeric.expresso.utils :as utils]
             [numeric.expresso.properties :as props]
             [numeric.expresso.impl.polynomial :as poly]
-            [numeric.expresso.construct :as constr])) 
+            [numeric.expresso.construct :as constr]))
 
 (defmacro ex
   "constructs an expression from the given s-exp. variables are automatically
@@ -53,7 +53,7 @@
              (constant? '(+ 1 2)) ;=> false"
   [expr]
   (not (expression? expr)))
-             
+
 
 (defn properties
   "returns the set of properties which the given expression contains
@@ -77,7 +77,7 @@
 
 (defn expresso-symbol
   "annotates the given symbol with the information of its shape, type and
-   properties. Types are defined in numeric.expresso.types. 
+   properties. Types are defined in numeric.expresso.types.
    Example: (expresso-symbol 'x) ;=> x,
             (expresso-symbol 'x :properties #{:positive})
    ;=> 'x and (properties x) :=> #{:positive}"
@@ -127,7 +127,7 @@
    (parse-expression \"`inner-product`(a)\" :=> (inner-product a)"
    [s]
    (parse/parse-expression s))
-   
+
 (defn evaluate
   "evaluates the expression after replacing the symbols in the symbol map with
    their associated values. Example: (evaluate (ex (* 2 x)) {'x 3}) :=> 6"
@@ -137,10 +137,11 @@
       constr/to-expression
       (protocols/evaluate sm))))
 
-(defn substitute [expr repl]
+(defn substitute 
   "substitutes every occurrence of a key in the replacement-map by its value
    Example: (substitute (ex (+ (* a b) (* a b) (/ c d)))
              {(ex (* a b)) 'x 'c 'y 'd 'z}) => (+ x x (/ y z))"
+  [expr repl]
   (-> expr
       constr/to-expression
       (protocols/substitute-expr repl)))
@@ -153,7 +154,7 @@
           simplified-expr-count (-> simplified-expr flatten count)]
       (when (<= (/ simplified-expr-count expr-count) ratio)
         simplified-expr))))
-        
+
 
 (defn simplify
   "best heuristics approach to simplify the given expression to a 'simpler' form.

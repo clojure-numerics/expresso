@@ -105,7 +105,7 @@
          :else express)
               expr (if (instance? clojure.lang.IObj nexpress)
                      (with-meta nexpress (meta express)) nexpress)]
-    (if (and (coll? expr))
+    (if (coll? expr)
       (with-meta (extract expr) (meta expr))
       expr)))
     

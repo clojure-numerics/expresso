@@ -13,7 +13,7 @@
 (def integer ::integer)
 (def long ::long)
 (def double ::double)
-(def number ::number)
+
 
 
 (derive integer number)
