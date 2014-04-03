@@ -109,3 +109,14 @@ core.logic. Here are a few example rules
 ### Status 
 This library is ready to use, but still in an early state so you might find some
 bugs. Any bug reports/feature recommendations are very welcome.
+
+### Future Development
+Currently, expresso is well suited for manipulations of symbolic expressions in clojure, it also has some support for
+solving equations, etc what you excpect from a computer algebra system. However it is still far from a full featured 
+CAS System like Maxima. Any contributions to help it become a real clojure Computer Algebra System are very welcome!
+
+In the short term I am hoping to get symbolic matrices working soon. That means having an expression as a core.matrix implementation. This will be possible with the generic core.matrix api which is currently in development.
+
+Also I am planning to replace the current rule based engine with a more faster one and to have proper compilation from 
+rules to fast clojure functions. Kovas Boguta has made some very interesting experiments in this direction with his
+[combinator](https://github.com/kovasb/combinator) project.
