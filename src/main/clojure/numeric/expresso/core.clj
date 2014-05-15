@@ -244,6 +244,9 @@
   "Differentiates the given expression regarding the symbols in the symbol
    vector symbv
    example:
+   (differentiate '[x] (ex (* (** x 3) (* 3 x))))
+   ;=> (* 12 (** x 3))
+   To differentiate twice:
    (differentiate '[x x] (ex (* (** x 3) (* 3 x))))
    ;=> (* 36 (** x 2))"
   [symbv expr]
