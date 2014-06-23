@@ -172,6 +172,22 @@
                 (ex (= remaining1 (- original (/ original 4))))
                 (ex (= remaining2 (- remaining1 (+ (/ remaining1 5) 15))))))))
 
+
+(deftest test-solve-variable-order
+  (is (= '#{{dx 4}} (solve 'dx (ex (= 4 dx)) (ex (= dt 5)) (ex (= cs (/ dt dx))))))
+  (is (= '#{{s 5/9, m 5/3}}
+         (solve ['s 'm] 
+                (ex (= m (/ t x)))
+                (ex (= s (/ m 3)))
+                (ex (= t 5))
+                (ex (= x 3)))))
+  (is (= '#{{s 5/9, m 5/3}}
+         (solve ['m 's] 
+                (ex (= m (/ t x)))
+                (ex (= s (/ m 3)))
+                (ex (= t 5))
+                (ex (= x 3))))))
+
 (deftest test-differentiate
   (is (= (ex (* 2 x)) (differentiate '[x] (ex (** x 2)))))
   (is (= 2.0 (differentiate '[x x] (ex (** x 2)))))

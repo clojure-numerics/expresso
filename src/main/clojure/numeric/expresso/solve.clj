@@ -346,12 +346,12 @@
 (defn- not-in-existing-sols [sol-map var-set]
   (into #{} (remove sol-map var-set)))
 
-(defn- solve-for-dependencies [existing-sols depends-on other-eqs]
-  (reduce (fn [sols r]
-            (let [ss (solve-general-system* r other-eqs sols)]
-              (for [l sols s ss]
-                (merge l s))))
-          existing-sols depends-on))
+(defn- solve-for-dependencies [existing-sols depends-on other-eqs vs]
+  (reduce (fn [[sols rem-eqs] r]
+            (let [[ss rem-eqs] (solve-general-system* r rem-eqs sols vs)]
+              [(for [l sols s ss]
+                  (merge l s)) rem-eqs]))
+          [existing-sols other-eqs] depends-on))
 
 (defn- solve-with-dependencies [other-sols v equation-containing-v]
   (utils/combine-solutions
@@ -365,35 +365,48 @@
          (for [s sol]
            (assoc os v s))))) other-sols))
 
+(defn- equation-with-minimal-dependencies [eqs v]
+  (let [eqv (map (fn [a] [a (vars a)]) eqs)
+        containing-v (filter #(contains? (second %) v) eqv)
+        minimal-deps (sort-by (comp count second) containing-v)]
+    minimal-deps))
+
 ;;solves the general-system via substitution for a variable v.
 ;;first, the equation which contains v is searched for in the set.
 ;;If it was found, then recursively all its dependencies (the other variables
-;;the equation contains) has to be solved with the remaining equations.
+;;the equation contains) have to be solved with the remaining equations.
 ;;The solutions for the other variables then have to be combined so that
 ;;there is one solution map for each possible 'combination' of solutions.
 ;;with this solutions of the dependencies the equation can be solved for
 ;;the variable v.
 
 (defn- solve-general-system*
-  ([v eqs] (solve-general-system* v eqs [{}]))
-  ([v eqs existing-sols]
+  ([v eqs vs] (solve-general-system* v eqs [{}] vs))
+  ([v eqs existing-sols vs]
      (if (v (first existing-sols))
-       existing-sols
+       [existing-sols eqs]
        ;;v is variable and eqs set of equations
-       (let [eqv (map (fn [a] [a (vars a)]) eqs)
-             equation-containing-v (some (fn [a]
-                                           (if (contains? (second a) v)
-                                             a nil)) eqv)]
-         (if equation-containing-v
-           (let [depends-on (not-in-existing-sols
+       ;;don't be hard on choice of equation-containing-v here
+       ;;try first with equation introducing minimal dependencies
+       ;;if this doesn't add solutions then try next best guess
+       (loop [equations-containing-v (equation-with-minimal-dependencies eqs v)]
+         (if (seq equations-containing-v)
+           (let [equation-containing-v (first equations-containing-v)
+                 depends-on (not-in-existing-sols
                              (first existing-sols)
                              (set/difference (second equation-containing-v)
                                              #{v}))
                  other-eqs (set/difference eqs #{(first equation-containing-v)})
-                 deps (solve-for-dependencies
-                             existing-sols depends-on other-eqs)]
-             (set (solve-with-dependencies deps v equation-containing-v)))
-           existing-sols)))))
+                 [deps rem-eqs] (solve-for-dependencies
+                                 existing-sols depends-on other-eqs vs)
+                 ret (set (solve-with-dependencies deps v equation-containing-v))]
+             (if (and (not (empty? depends-on)) (= deps existing-sols)
+                      (and (not (empty? ret)) (empty? (set/difference (vars (v (first ret)))
+                                                                      vs)))) ;;todo schreib hier dass entweder abhängig von nichts oder wenn dass abhängigkeiten von anderen variablen für die gelöst wird da nicht nur sind
+               (recur (rest equations-containing-v))
+               [ret
+                rem-eqs]))
+            [existing-sols eqs])))))
 
 (defn- remove-dependency [solm expr symb]
   (-> (substitute-expr expr {symb (get solm symb)})
@@ -435,13 +448,16 @@
   "solves the system of equations for the symbols in symbv by general
    substitution"
   [symbv eqs]
-  (let [eqs (into #{} eqs)]
+  (let [eqs (into #{} eqs)
+        vs (into #{} symbv)]
     (->> (map #(utils/submap (into #{} symbv) %1)
-              (reduce (fn [ls r]
-                        (if (r (first ls))
-                          ls
-                          (for[l ls s (solve-general-system* r eqs ls)]
-                            (merge l s)))) [{}] symbv))
+              (first
+               (reduce (fn [[ls rem-eqs] r]
+                         (if (r (first ls))
+                           [ls rem-eqs]
+                           (let [[ss rem-eqs] (solve-general-system* r rem-eqs ls vs)]
+                             [(for[l ls s ss]
+                                (merge l s)) rem-eqs]))) [[{}] eqs] symbv)))
          (map #(remove-dependencies symbv %))
          (into #{}))))
 
