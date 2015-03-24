@@ -1,16 +1,16 @@
 (ns numeric.expresso.impl.polynomial
-  (:refer-clojure :exclude [==])
+  (:refer-clojure :exclude [== record?])
   (:use [clojure.core.logic.protocols]
         [clojure.core.logic :exclude [is] :as l]
         [numeric.expresso.properties]
         [numeric.expresso.construct]
         [clojure.test])
-  (:require [clojure.core.logic.fd :as fd]
+  (:require [clojure.core.logic.fd :as fd :exclude [record?]]
             [clojure.walk :as walk]
             [clojure.set :as set]
             [numeric.expresso.protocols :as protocols]
             [numeric.expresso.impl.pimplementation :as impl]
-            [clojure.core.logic.unifier :as u]
+            [clojure.core.logic.unifier :as u :exclude [record?]]
             [numeric.expresso.types :as types]
             [clojure.core.matrix :as mat]
             [clojure.core.matrix.operators :as mop]

@@ -1,6 +1,6 @@
 (ns numeric.expresso.test-core
   (:use numeric.expresso.core)
-  (:use clojure.test)
+  (:use [clojure.test :exclude [test-vars]])
   (:require [numeric.expresso.types :as types]
             [numeric.expresso.protocols :as protocols]
             [clojure.core.logic :as logic]))

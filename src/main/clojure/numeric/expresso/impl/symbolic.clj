@@ -1,10 +1,10 @@
 (ns numeric.expresso.impl.symbolic
-  (:refer-clojure :exclude [])
+  (:refer-clojure :exclude [record?])
   (:use [clojure.core.logic.protocols]
         [numeric.expresso.impl.matcher]
         [numeric.expresso.protocols]
         clojure.test)
-  (:require [clojure.core.logic.fd :as fd]
+  (:require [clojure.core.logic.fd :as fd :exclude [record?]]
             [clojure.walk :as walk]
             [clojure.core.matrix.operators :as matop]
             [numeric.expresso.utils :as utils]
@@ -214,3 +214,4 @@
 
 (defn gaus-solve [matrix]
   (report-solution (ff-gauss-echelon matrix)))
+

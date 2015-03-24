@@ -1,5 +1,5 @@
 (ns numeric.expresso.types
-  (:refer-clojure :exclude [== long double])
+  (:refer-clojure :exclude [== long double record?])
   (:use [clojure.test]
         [clojure.core.logic.protocols]
         [clojure.core.logic :exclude [is]])

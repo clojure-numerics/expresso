@@ -1,5 +1,5 @@
 (ns numeric.expresso.construct
-  (:refer-clojure :exclude [==])
+  (:refer-clojure :exclude [== record?])
   (:use [numeric.expresso.properties]
         [clojure.core.logic])
   (:require [clojure.walk :as walk]

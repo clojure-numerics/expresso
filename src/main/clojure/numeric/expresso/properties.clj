@@ -1,11 +1,12 @@
 (ns numeric.expresso.properties
-  (:refer-clojure :exclude [==])
+  (:refer-clojure :exclude [== record?])
   (:use [clojure.core.logic])
   (:require [numeric.expresso.impl.pimplementation])
   (:import [numeric.expresso.impl.pimplementation
             Expression])
   (:require [clojure.walk :as walk]
             [clojure.core.matrix :as mat]
+            [clojure.core.matrix.linear :as lin]
             [numeric.expresso.types :as types]
             [numeric.expresso.impl.matcher :as match]
             [numeric.expresso.protocols :as protocols]))
@@ -67,7 +68,6 @@
 (defmethod props 'pow [_] {:exec-func mat/pow})
 (defmethod props 'log [_] {:exec-func mat/log
                            })
-(defmethod props 'rank [_] {:exec-func mat/rank})
 (defmethod props 'sum [_] {:eval-func evaluate-sum
                            :emit-func emit-sum})
 (defmethod props 'sqrt [_] {:exec-func mat/sqrt
@@ -78,8 +78,17 @@
 (defmethod props 'acos [_] {:exec-func mat/acos})
 (defmethod props 'atan [_] {:exec-func mat/atan})
 (defmethod props 'abs [_] {:exec-func mat/abs})
-(defmethod props 'exp [_] {:exec-func mat/exp}
-                           )
+(defmethod props 'exp [_] {:exec-func mat/exp})
+(defmethod props 'norm [_] {:exec-func lin/norm})
+(defmethod props 'rank [_] {:exec-func lin/rank})
+(defmethod props 'qr [_] {:exec-func lin/qr})
+(defmethod props 'cholesky [_] {:exec-func lin/cholesky})
+(defmethod props 'lu [_] {:exec-func lin/lu})
+(defmethod props 'svd [_] {:exec-func lin/svd})
+(defmethod props 'eigen [_] {:exec-func lin/eigen})
+(defmethod props 'solve [_] {:exec-func lin/solve})
+(defmethod props 'least-squares [_] {:exec-func lin/least-squares})
+
 
 (defmulti matcher "gets the matching relation for the extractor-expression"
   first)

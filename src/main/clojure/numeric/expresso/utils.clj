@@ -1,13 +1,13 @@
 (ns numeric.expresso.utils
-  (:refer-clojure :exclude [==])
+  (:refer-clojure :exclude [== record?])
   (:use [clojure.core.logic.protocols]
         [clojure.core.logic :exclude [is] :as l]
         [numeric.expresso.protocols]
         [numeric.expresso.impl.pimplementation]
         clojure.test)
-  (:require [clojure.core.logic.fd :as fd])
+  (:require [clojure.core.logic.fd :as fd :exclude [record?]])
   (:require [clojure.walk :as walk])
-  (:require [clojure.core.logic.unifier :as u]))
+  (:require [clojure.core.logic.unifier :as u :exclude [record?]]))
 
 (def debug-mode true)
 

@@ -1,5 +1,5 @@
 (ns numeric.expresso.impl.matcher
-  (:refer-clojure :exclude [==])
+  (:refer-clojure :exclude [== record?])
   (:use [numeric.expresso.impl.pimplementation]
         [numeric.expresso.protocols]
         [clojure.core.logic])

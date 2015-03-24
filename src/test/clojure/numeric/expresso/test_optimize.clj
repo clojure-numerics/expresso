@@ -1,5 +1,5 @@
 (ns numeric.expresso.test-optimize
-  (:refer-clojure :exclude [==])
+  (:refer-clojure :exclude [== record?])
   (:use [clojure.core.logic :exclude [is] :as l]
         [numeric.expresso.optimize]
         [numeric.expresso.construct]

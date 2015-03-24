@@ -1,8 +1,8 @@
 (ns numeric.expresso.test-solve
+  (:refer-clojure :exclude [== record?])
   (:use numeric.expresso.solve)
   (:use clojure.test)
   (:use numeric.expresso.construct)
-  (:refer-clojure :exclude [==])
   (:use [clojure.core.logic :exclude [is log] :as l]))
 
 

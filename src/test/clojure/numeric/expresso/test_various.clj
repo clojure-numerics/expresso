@@ -1,5 +1,5 @@
 (ns numeric.expresso.test-various
-  (:refer-clojure :exclude [==])
+  (:refer-clojure :exclude [== record?])
   (:use [clojure.core.logic.protocols]
         [clojure.core.logic :exclude [is] :as l]
         [numeric.expresso.construct]
@@ -9,9 +9,9 @@
         [numeric.expresso.rules]
         [numeric.expresso.simplify]
         [clojure.test])
-  (:require [clojure.core.logic.fd :as fd]
+  (:require [clojure.core.logic.fd :as fd :exclude [record?]]
             [clojure.walk :as walk]
-            [clojure.core.logic.unifier :as u]
+            [clojure.core.logic.unifier :as u :exclude [record?]]
             [numeric.expresso.utils :as utils]
             [clojure.core.matrix :as matrix]
             [clojure.core.matrix.operators :as mop]

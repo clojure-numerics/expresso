@@ -1,5 +1,5 @@
 (ns numeric.expresso.simplify
-  (:refer-clojure :exclude [==])
+  (:refer-clojure :exclude [== record?])
   (:use [clojure.core.logic :exclude [log] :as l]
         [numeric.expresso.construct]
         [numeric.expresso.impl.polynomial]

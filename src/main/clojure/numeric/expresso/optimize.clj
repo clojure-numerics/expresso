@@ -1,5 +1,5 @@
 (ns numeric.expresso.optimize
-  (:refer-clojure :exclude [==])
+  (:refer-clojure :exclude [== record?])
   (:use [numeric.expresso.construct]
         [clojure.core.logic]
         [numeric.expresso.properties :as props]

@@ -1,11 +1,11 @@
 (ns numeric.expresso.test-simplify
+  (:refer-clojure :exclude [== record?])
   (:use numeric.expresso.simplify)
   (:use clojure.test)
   (:use [numeric.expresso.protocols]
         [numeric.expresso.impl.pimplementation]
         [numeric.expresso.construct]
-        [clojure.core.logic :exclude [is]])
-  (:refer-clojure :exclude [==]))
+        [clojure.core.logic :exclude [is]]))
 
 
 (def matr (matrix-symb 'a))

@@ -1,7 +1,7 @@
 (ns numeric.expresso.test-rules
   (:use numeric.expresso.rules)
   (:use clojure.test)
-  (:refer-clojure :exclude [==])
+  (:refer-clojure :exclude [== record?])
   (:use [clojure.core.logic :exclude [is] :as l]
         [numeric.expresso.construct]))
 

@@ -1,8 +1,8 @@
 (ns numeric.expresso.test-construct
+  (:refer-clojure :exclude [== record?])
   (:use numeric.expresso.construct)
   (:use [clojure.core.logic :exclude [is]]
         [clojure.test])
-  (:refer-clojure :exclude [==])
   (:require [numeric.expresso.protocols :as protocols]
             [numeric.expresso.impl.pimplementation :as impl]))
 

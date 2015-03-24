@@ -1,6 +1,6 @@
 (ns numeric.expresso.test-utils
   (:use numeric.expresso.utils)
-  (:refer-clojure :exclude [==])
+  (:refer-clojure :exclude [== record?])
   (:use [clojure.core.logic :exclude [is] :as l]
         [clojure.test]))
 
