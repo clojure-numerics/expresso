@@ -324,7 +324,9 @@
   [vars eqv]
   (let [v (into #{} vars)
         vs (add-needed-vars v eqv)
-        vars (into {} (map vector (range) vs))]
+        vars (into {} (concat (map vector (range) vars)
+                              (map vector (range (count v) (+ (count vars) (count vs)))
+                                   (set/difference vs v))))]
     (some->> eqv
          (map lhs-to-poly)
          check-if-poly

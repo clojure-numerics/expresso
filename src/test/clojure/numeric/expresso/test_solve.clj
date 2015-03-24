@@ -11,7 +11,7 @@
 (deftest test-solve-linear-system
   (is (= '#{{x 3}} (solve-linear-system '[x] [(ex (= x y))
                                        (ex (= y 3))])))
-  (is (= '#{{z _1 y _0 x 3}}
+  (is (= '#{{x 3.0, y _1, z _0}}
          (solve-linear-system '[x y z] [(ex (= x 3))
                                (ex (= y y))
                                (ex (= z z))])))
