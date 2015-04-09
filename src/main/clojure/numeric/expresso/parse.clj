@@ -11,7 +11,7 @@
 ;; instaparse grammar for infix expression, used by Expresso's parser.
 (def arithmetic
   (insta/parser
-   " expr = equals
+   " expr =  <' '>* equals <' '>*
      <equals> = add-sub | eq
      eq = add-sub <'='> add-sub
      <add-sub> = mul-div | add | sub
@@ -25,8 +25,9 @@
      <func-term> = term 
      func = (symbol <'('> args <')'> <' '>*) | (symbol <'('> <' '>* <')'> <' '>*)
      args = expr | expr <','> args 
-     <term> = literal | <' '>* literal <' '>* | <'('>  expr <')'> 
-     <literal> = number | symbol | vec | func
+     <term> = literal | <' '>* <'('>  expr <')'> <' '>*
+     <literal> = <' '>* literal-without-spaces <' '>*
+     <literal-without-spaces> = number | symbol | vec | func
      vec = <'['> expr* <']'>
      symbol = math-symbol | lit-symbol
      math-symbol = #'[a-zA-Z]' #'[a-zA-Z0-9]'*

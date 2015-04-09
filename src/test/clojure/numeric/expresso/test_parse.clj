@@ -19,3 +19,12 @@
 (deftest test-literal-symbols
   (is (= 'inner-product (parse-expression "`inner-product`")))
   (is (= (ex (inner-product a)) (parse-expression "`inner-product`(a)"))))
+
+
+(deftest test-double-braces-and-spaces
+  (is (= '(* (/ (+ 1 a) 2) (/ (+ 1 b) 2))
+         (parse-expression "( ( 1 + a )/2 )*( ( 1 + b )/2 )")))
+  (is (= '(+ 1 a)
+         (parse-expression "((1) + a)")))
+  (is (= '(+ 1 a)
+         (parse-expression "((1) + a)"))))
