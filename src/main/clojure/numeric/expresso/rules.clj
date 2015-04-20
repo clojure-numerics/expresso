@@ -279,7 +279,7 @@
     (let [nexpr (apply-rules rules expr)]
       (if (= expr nexpr)
         nexpr
-        (transform-expression* nexpr))))
+        (transform-expression* nexpr rules))))
 
 (defn- apply-to-endo [rules expr new-expr]
   (fresh [nexpr]
@@ -359,8 +359,9 @@
     (with-meta transformed (merge meta-exp (meta transformed)))
     transformed))
 
-(defn- transform-expression* [expr]
-  (transform-expr expr *rules*))
+(defn- transform-expression*
+  ([expr rules]
+   (transform-expr expr rules)))
 
 ;;Transform-expression is the optimized transform-all function to transform
 ;;an expression according to the rules in the rule vector. The outcoming
@@ -376,11 +377,10 @@
   "transforms the expression according to the rules in the rules vector in a
    bottom up manner until no rule can be applied to any subexpression anymore"
   [rules expr]
-  (binding [*rules* (if (:id (meta rules))
-                      rules
-                      (with-meta rules (assoc (meta rules) :id (gensym "id"))))]
-    (let [res (transform-expression* expr)]
-      res)))
+  (transform-expression* expr
+                         (if (:id (meta rules))
+                           rules
+                           (with-meta rules (assoc (meta rules) :id (gensym "id"))))))
 
 ;;transform-expression uses tagging to mark expression simplified according to
 ;;the :id key in the metadata of the rule. If no is specified a new will be
@@ -401,7 +401,7 @@
       expr
       (let [res
             (if-let [op (expr-op expr)]
-              (let [transformed (doall (map  transform-expression*
+              (let [transformed (doall (map  #(transform-expression* % rules)
                                              (expr-args expr)))
                     n-expr (merge-transformed-meta
                               (meta expr) (c/cev (first expr) transformed))
