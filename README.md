@@ -35,7 +35,7 @@ This are the key objectives:
 
 Add the following line to your leiningen dependencies:
 ```clojure
-[expresso "0.2.0"]
+[expresso "0.2.2-SNAPSHOT"]
 ```
 For an in-depth tutorial and showcase of expresso, see the [expresso tutorial](https://github.com/mschuene/expresso-tutorial)
 ### Defining expressions
