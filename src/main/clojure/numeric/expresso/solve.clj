@@ -350,7 +350,7 @@
 
 (defn- solve-for-dependencies [existing-sols depends-on other-eqs vs]
   (reduce (fn [[sols rem-eqs] r]
-            (let [[ss rem-eqs] (solve-general-system* r rem-eqs sols vs)]
+            (let [[ss rem-eqs] (solve-general-system* r rem-eqs sols depends-on)]
               [(for [l sols s ss]
                   (merge l s)) rem-eqs]))
           [existing-sols other-eqs] depends-on))

@@ -170,7 +170,15 @@
          (solve '[remaining2]
                 (ex (= original b))
                 (ex (= remaining1 (- original (/ original 4))))
-                (ex (= remaining2 (- remaining1 (+ (/ remaining1 5) 15))))))))
+                (ex (= remaining2 (- remaining1 (+ (/ remaining1 5) 15)))))))
+  (is (= (solve '[x y]
+                (ex (= y (* x 4/3)))                           ;; y = 4/3 x
+                (ex (= 25 (+ (** (- x 0) 2) (** (- y 0) 2))))  ;; x^2 + y^2 = 25
+                )  '#{{x -3, y -4N} {x 3, y 4N}}))
+  (is (= (solve '[x y]
+                (ex (= 25 (+ (* (- x 6) (- x 6)) (* (- y 0) (- y 0)))))  ;; (x-6)^2 + y^2 = 25
+                (ex (= 25 (+ (** (- x 0) 2) (** (- y 0) 2))))            ;; x^2 + y^2 = 25
+                ) '#{{x 3, y 4.0} {x 3, y -4.0}})))
 
 
 (deftest test-solve-variable-order
