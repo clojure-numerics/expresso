@@ -124,8 +124,8 @@
                 (* 243 (** x 10))))
          (to-polynomial-normal-form 'x (ex (** (+ (* 3 x) 4 (* 3 (** x 2)))
                                                5)))))
-  (is (= (ex (+ (* (+ 1 (* 2 a) (** a 2)) x) (* (+ 1 a) (** x 2)))))
-      (to-polynomial-normal-form 'x (ex (* (+ x a 1) (* x (+ 1 a)))))))
+  (is (= (ex (+ (* (+ 1 (* 2 a) (** a 2)) x) (* (+ 1 a) (** x 2))))
+         (to-polynomial-normal-form 'x (ex (* (+ x a 1) (* x (+ 1 a))))))))
 
 (deftest test-rearrange
   (is (= [(ex (= x (- 4 1)))]
