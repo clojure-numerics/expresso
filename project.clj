@@ -6,10 +6,10 @@
   :profiles {:dev {:dependencies [[org.clojure/tools.trace "0.7.8"]
                                   [criterium "0.4.3"]]}}
   :dependencies [[org.clojure/clojure "1.6.0"]
-                 [instaparse "1.3.0"]
+                 [instaparse "1.4.3"]
                  [org.clojure/core.memoize "0.5.6"]
                  [net.mikera/core.matrix "0.33.2"]
-                 [org.clojure/core.logic "0.8.10"]]
+                 [mschuene/core.logic "0.8.11-SNAPSHOT"]]
   :source-paths ["src" "src/main/clojure"]
   :test-paths ["test" "src/test/clojure"]
   :aot [numeric.expresso.impl.pimplementation])
