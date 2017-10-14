@@ -17,7 +17,7 @@ A clojure library for symbolic manipulation of Algebraic Expressions.
 ### Objectives
 
 expresso aims to be a general library for manipulating mathematical expressions.
-This are the key objectives:
+These are the key objectives:
 
  - Enable mathematical expressions to be encoded
  - Provide a powerful facility for general expression manipulation (aka term rewriting)
@@ -25,7 +25,7 @@ This are the key objectives:
    - simplifying mathematical expressions
    - solving a (set of) equations in regard to unknowns
    - differentiating expressions
-   - optimizing of an expression for performance
+   - optimizing an expression for performance
    - compiling an expression to a clojure function
  - Be extensible through adding domain knowledge
  - Full compatibility with [core.matrix](https://github.com/mikera/matrix-api)
@@ -82,7 +82,7 @@ opt
 The public API is in numeric.expresso.core - go test it out!
 
 ### General Manipulation of Expressions
-Expresso supports a powerful way to manipulate expressions with rewrite rules, which are built ontop of 
+Expresso supports a powerful way to manipulate expressions with rewrite rules, which are built on top of 
 core.logic. Here are a few example rules
 
 ```clojure
@@ -112,7 +112,7 @@ bugs. Any bug reports/feature recommendations are very welcome.
 
 ### Future Development
 Currently, expresso is well suited for manipulations of symbolic expressions in clojure, it also has some support for
-solving equations, etc what you excpect from a computer algebra system. However it is still far from a full featured 
+solving equations, etc what you expect from a computer algebra system. However it is still far from a full featured 
 CAS System like Maxima. Any contributions to help it become a real clojure Computer Algebra System are very welcome!
 
 In the short term I am hoping to get symbolic matrices working soon. That means having an expression as a core.matrix implementation. This will be possible with the generic core.matrix api which is currently in development.
