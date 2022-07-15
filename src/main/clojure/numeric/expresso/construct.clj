@@ -138,6 +138,7 @@
 (defmethod expresso-name 'clojure.core/+ [_] '+)
 (defmethod expresso-name 'clojure.core/- [_] '-)
 (defmethod expresso-name 'clojure.core// [_] '/)
+(defmethod expresso-name 'clojure.core/abs [_] 'abs)
 (defmethod expresso-name `= [_] '=)
 (defmethod expresso-name 'numeric.expresso.core/** [_] '**)
 (defmethod expresso-name `mop/* [_] '*)
