@@ -1,4 +1,4 @@
-(defproject expresso "0.2.3"
+(defproject expresso "0.2.4"
   :description "a general Algebraic Expression manipulation library in clojure"
   :url "https://github.com/clojure-numerics/expresso"
   :license {:name "The MIT License"
@@ -7,7 +7,7 @@
                                   [criterium "0.4.3"]]}}
   :dependencies [[org.clojure/clojure "1.11.1"]
                  [instaparse "1.4.5"]
-                 [net.mikera/core.matrix "0.59.0"]
+                 [net.mikera/core.matrix "0.63.0"]
                  [org.clojure/core.memoize "0.5.8"]
                  [mschuene/core.logic "0.8.11.1"]]
   :source-paths ["src" "src/main/clojure"]
